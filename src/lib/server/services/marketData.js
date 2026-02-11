@@ -49,6 +49,33 @@ const fetchYFinanceQuote = (symbol) =>
     });
   });
 
+const toIsoFromUnixSeconds = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return new Date(num * 1000).toISOString();
+};
+
+const fetchYahooHttpQuote = async (symbol) => {
+  const endpoint = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
+  const response = await fetch(endpoint, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Yahoo quote API failed (${response.status})`);
+  }
+
+  const data = await response.json();
+  const item = data?.quoteResponse?.result?.[0];
+  const price = Number(item?.regularMarketPrice);
+  if (!Number.isFinite(price)) return null;
+
+  return {
+    symbol,
+    price,
+    currency: item?.currency || null,
+    asOf: toIsoFromUnixSeconds(item?.regularMarketTime) || new Date().toISOString(),
+    source: 'yahoo-http'
+  };
+};
+
 const buildCandidateSymbols = (symbol) => {
   const trimmed = String(symbol || '').trim().toUpperCase();
   if (!trimmed) return [];
@@ -78,6 +105,15 @@ const buildCandidateSymbols = (symbol) => {
 export const fetchSymbolQuote = async (symbol) => {
   const candidates = buildCandidateSymbols(symbol);
   let lastError = null;
+
+  for (const candidate of candidates) {
+    try {
+      const quote = await fetchYahooHttpQuote(candidate);
+      if (quote) return quote;
+    } catch (error) {
+      lastError = error;
+    }
+  }
 
   for (const candidate of candidates) {
     try {
