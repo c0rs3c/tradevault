@@ -71,7 +71,10 @@ MONGO_URI=mongodb://127.0.0.1:27017/trade-journal
 MARKET_DATA_PYTHON=python3
 AUTH_USERNAME=your_username
 AUTH_PASSWORD=your_password
+AUTH_USERNAME_2=admin
+AUTH_PASSWORD_2=jigmey
 AUTH_SECRET=your_long_random_secret
+AUTH_COOKIE_SECURE=0
 ```
 
 ## Run
