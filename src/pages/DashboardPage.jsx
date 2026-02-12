@@ -39,6 +39,12 @@ const monthLabel = (monthKey) => {
   return new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' }).format(parsed);
 };
 
+const toMonthKey = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 7);
+};
+
 const DashboardPage = () => {
   const { theme } = useSettings();
   const [data, setData] = useState(dashboardCache.data);
@@ -47,6 +53,9 @@ const DashboardPage = () => {
   const [expandedGroups, setExpandedGroups] = useState({});
   const [hiddenGroups, setHiddenGroups] = useState({});
   const [showAllWinningTrades, setShowAllWinningTrades] = useState(false);
+  const [showAllLosingTrades, setShowAllLosingTrades] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('ALL');
+  const [hasInitializedMonth, setHasInitializedMonth] = useState(false);
 
   useEffect(() => {
     const load = async ({ silent = false } = {}) => {
@@ -71,16 +80,56 @@ const DashboardPage = () => {
     load();
   }, []);
 
-  const analytics = data?.analytics || { summary: {}, winningTrades: [], equityCurve: [], monthlyPnL: [] };
+  const analytics = data?.analytics || {
+    summary: {},
+    winningTrades: [],
+    losingTrades: [],
+    equityCurve: [],
+    monthlyPnL: []
+  };
   const openTrades = data?.openTrades || [];
   const totalCapital = data?.totalCapital || 0;
   const summary = analytics.summary || {};
   const winningTrades = analytics.winningTrades || [];
+  const losingTrades = analytics.losingTrades || [];
   const equityCurve = analytics.equityCurve || [];
   const monthlyPnL = analytics.monthlyPnL || [];
-  const visibleWinningTrades = showAllWinningTrades ? winningTrades : winningTrades.slice(0, 5);
   const latestMonthly = monthlyPnL.length ? monthlyPnL[monthlyPnL.length - 1] : null;
   const monthlyLabel = latestMonthly?.month ? ` (${monthLabel(latestMonthly.month)})` : '';
+  const tradeMonthOptions = useMemo(() => {
+    const months = new Set();
+    [...winningTrades, ...losingTrades].forEach((trade) => {
+      const monthKey = toMonthKey(trade.closedOn);
+      if (monthKey) months.add(monthKey);
+    });
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [winningTrades, losingTrades]);
+  useEffect(() => {
+    if (hasInitializedMonth) return;
+    if (!tradeMonthOptions.length) return;
+    setSelectedMonth(tradeMonthOptions[0]);
+    setHasInitializedMonth(true);
+  }, [tradeMonthOptions, hasInitializedMonth]);
+  const filteredWinningTrades = useMemo(
+    () =>
+      selectedMonth === 'ALL'
+        ? winningTrades
+        : winningTrades.filter((trade) => toMonthKey(trade.closedOn) === selectedMonth),
+    [winningTrades, selectedMonth]
+  );
+  const filteredLosingTrades = useMemo(
+    () =>
+      selectedMonth === 'ALL'
+        ? losingTrades
+        : losingTrades.filter((trade) => toMonthKey(trade.closedOn) === selectedMonth),
+    [losingTrades, selectedMonth]
+  );
+  const visibleWinningTrades = showAllWinningTrades
+    ? filteredWinningTrades
+    : filteredWinningTrades.slice(0, 5);
+  const visibleLosingTrades = showAllLosingTrades
+    ? filteredLosingTrades
+    : filteredLosingTrades.slice(0, 5);
 
   const groupedOpenTrades = useMemo(() => {
     const groups = new Map();
@@ -389,49 +438,122 @@ const DashboardPage = () => {
       </div>
 
       <section className="surface-card p-4">
-        <h2 className="text-lg font-semibold">Winning Trades</h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="table-head">
-              <tr>
-                <th className="px-3 py-2">Symbol</th>
-                <th className="px-3 py-2">Closed On</th>
-                <th className="px-3 py-2">Realized P&L</th>
-                <th className="px-3 py-2">Realized R</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleWinningTrades.map((trade) => (
-                <tr key={trade.id} className="table-row-hover">
-                  <td className="px-3 py-2 font-medium">{trade.symbol}</td>
-                  <td className="px-3 py-2">{new Date(trade.closedOn).toLocaleDateString()}</td>
-                  <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
-                    {money(trade.realizedPnL)}
-                  </td>
-                  <td className="px-3 py-2">{Number(trade.realizedR || 0).toFixed(2)}</td>
-                </tr>
-              ))}
-              {!winningTrades.length && (
-                <tr>
-                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={4}>
-                    No winning closed trades yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {winningTrades.length > 5 && (
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              className="btn-muted px-3 py-1.5 text-sm"
-              onClick={() => setShowAllWinningTrades((prev) => !prev)}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Closed Trades</h2>
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-slate-600 dark:text-slate-300">Month</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
             >
-              {showAllWinningTrades ? 'Show Less' : 'Show Full Data'}
-            </button>
-          </div>
-        )}
+              <option value="ALL">All Months</option>
+              {tradeMonthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {monthLabel(month)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <section>
+            <h3 className="text-base font-semibold text-emerald-700 dark:text-emerald-300">
+              Winning Trades ({filteredWinningTrades.length})
+            </h3>
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="table-head">
+                  <tr>
+                    <th className="px-3 py-2">Symbol</th>
+                    <th className="px-3 py-2">Closed On</th>
+                    <th className="px-3 py-2">Realized P&L</th>
+                    <th className="px-3 py-2">Realized R</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleWinningTrades.map((trade) => (
+                    <tr key={trade.id} className="table-row-hover">
+                      <td className="px-3 py-2 font-medium">{trade.symbol}</td>
+                      <td className="px-3 py-2">{new Date(trade.closedOn).toLocaleDateString()}</td>
+                      <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
+                        {money(trade.realizedPnL)}
+                      </td>
+                      <td className="px-3 py-2">{Number(trade.realizedR || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {!filteredWinningTrades.length && (
+                    <tr>
+                      <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={4}>
+                        No winning trades for this month.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {filteredWinningTrades.length > 5 && (
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  className="btn-muted px-3 py-1.5 text-sm"
+                  onClick={() => setShowAllWinningTrades((prev) => !prev)}
+                >
+                  {showAllWinningTrades ? 'Show Less' : 'Show Full Data'}
+                </button>
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h3 className="text-base font-semibold text-red-700 dark:text-red-300">
+              Losing Trades ({filteredLosingTrades.length})
+            </h3>
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="table-head">
+                  <tr>
+                    <th className="px-3 py-2">Symbol</th>
+                    <th className="px-3 py-2">Closed On</th>
+                    <th className="px-3 py-2">Realized P&L</th>
+                    <th className="px-3 py-2">Realized R</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleLosingTrades.map((trade) => (
+                    <tr key={trade.id} className="table-row-hover">
+                      <td className="px-3 py-2 font-medium">{trade.symbol}</td>
+                      <td className="px-3 py-2">{new Date(trade.closedOn).toLocaleDateString()}</td>
+                      <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
+                        {money(trade.realizedPnL)}
+                      </td>
+                      <td className="px-3 py-2">{Number(trade.realizedR || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {!filteredLosingTrades.length && (
+                    <tr>
+                      <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={4}>
+                        No losing trades for this month.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {filteredLosingTrades.length > 5 && (
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  className="btn-muted px-3 py-1.5 text-sm"
+                  onClick={() => setShowAllLosingTrades((prev) => !prev)}
+                >
+                  {showAllLosingTrades ? 'Show Less' : 'Show Full Data'}
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
       </section>
     </div>
   );

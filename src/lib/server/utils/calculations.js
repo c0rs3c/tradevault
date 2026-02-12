@@ -359,6 +359,27 @@ export const buildDashboardAnalytics = (trades) => {
       };
     })
     .sort((a, b) => new Date(b.closedOn) - new Date(a.closedOn));
+  const losingTrades = closedLosses
+    .map((trade) => {
+      const exits = trade.exits || [];
+      const lastExitDate = exits.length
+        ? exits.reduce((latest, exit) => {
+            const latestTime = latest ? new Date(latest).getTime() : -Infinity;
+            const currentTime = new Date(exit.exitDate).getTime();
+            return currentTime > latestTime ? exit.exitDate : latest;
+          }, null)
+        : null;
+
+      return {
+        id: trade._id,
+        symbol: trade.symbol,
+        side: trade.side,
+        realizedPnL: round(trade.metrics.realizedPnL, 2),
+        realizedR: round(calcNormalizedRFromStopLoss(trade), 4),
+        closedOn: lastExitDate || trade.updatedAt || trade.entryDate
+      };
+    })
+    .sort((a, b) => new Date(b.closedOn) - new Date(a.closedOn));
 
   return {
     summary: {
@@ -376,6 +397,7 @@ export const buildDashboardAnalytics = (trades) => {
       openTradesCount: openPositionKeys.size
     },
     winningTrades,
+    losingTrades,
     equityCurve: equityPoints,
     monthlyPnL
   };
