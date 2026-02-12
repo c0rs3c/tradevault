@@ -80,7 +80,7 @@ AUTH_COOKIE_SECURE=0
 ## Run
 
 ```bash
-npm install
+./scripts/bootstrap.sh
 npm run dev
 ```
 
