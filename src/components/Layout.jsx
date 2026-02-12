@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSettings } from '../contexts/SettingsContext';
 
 const navClass = (isActive) =>
@@ -22,12 +22,21 @@ const NavItem = ({ href, label, exact = false }) => {
 
 const Layout = ({ children }) => {
   const { theme, setTheme } = useSettings();
+  const router = useRouter();
 
   const handleThemeToggle = async () => {
     try {
       await setTheme(theme === 'dark' ? 'light' : 'dark');
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to update theme');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      router.replace('/login');
     }
   };
 
@@ -85,6 +94,15 @@ const Layout = ({ children }) => {
                   <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 1 0 9.8 9.8Z" />
                 </svg>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="btn-muted"
+              aria-label="Logout"
+              title="Logout"
+            >
+              Logout
             </button>
           </nav>
         </div>

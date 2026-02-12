@@ -69,6 +69,9 @@ Copy `.env.example` to `.env`:
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/trade-journal
 MARKET_DATA_PYTHON=python3
+AUTH_USERNAME=your_username
+AUTH_PASSWORD=your_password
+AUTH_SECRET=your_long_random_secret
 ```
 
 ## Run
@@ -85,3 +88,5 @@ App runs on `http://localhost:3000`.
 - Import status (`OPEN/CLOSED`) is inferred by FIFO matching opposite-side fills over time.
 - Import page stores batches and supports one-click rollback (`Delete Import`) that removes all trades from that batch.
 - Live quote endpoint uses `scripts/get_quote.py` and requires `yfinance` in your Python env.
+- App is protected by username/password authentication using a persistent cookie session.
+- Session stays active until logout.

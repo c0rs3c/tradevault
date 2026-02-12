@@ -152,8 +152,29 @@ const TradesPage = () => {
     loadTrades();
   }, []);
 
+  const fetchQuoteForTrade = useCallback(async (tradeId) => {
+    setQuoteStatusByTradeId((prev) => ({
+      ...prev,
+      [tradeId]: { loading: true, error: false }
+    }));
+
+    try {
+      const quote = await fetchTradeQuote(tradeId);
+      setQuotesByTradeId((prev) => ({ ...prev, [tradeId]: quote }));
+      setQuoteStatusByTradeId((prev) => ({
+        ...prev,
+        [tradeId]: { loading: false, error: false }
+      }));
+    } catch {
+      setQuoteStatusByTradeId((prev) => ({
+        ...prev,
+        [tradeId]: { loading: false, error: true }
+      }));
+    }
+  }, []);
+
   const loadLivePrices = useCallback(async () => {
-    const quoteCandidates = trades;
+    const quoteCandidates = trades.filter((trade) => trade.metrics?.status === 'OPEN');
     if (!quoteCandidates.length) return;
 
     setLiveLoading(true);
@@ -514,7 +535,7 @@ const TradesPage = () => {
               onClick={loadLivePrices}
               disabled={liveLoading}
             >
-              {liveLoading ? 'Loading Live...' : 'Load Live Prices'}
+              {liveLoading ? 'Loading Live...' : 'Refresh Open Prices'}
             </button>
             <button
               type="button"
@@ -555,6 +576,7 @@ const TradesPage = () => {
               const allocatedPercent = totalCapital ? (allocatedValue / totalCapital) * 100 : 0;
               const computedRMultiple = tradeRMultipleBySl(trade);
               const holdingDays = tradeHoldingDays(trade);
+              const isOpenTrade = trade.metrics?.status === 'OPEN';
               return (
               <Fragment key={trade._id}>
                 <tr className="table-row-hover">
@@ -576,6 +598,14 @@ const TradesPage = () => {
                       </span>
                     ) : quoteStatusByTradeId[trade._id]?.error ? (
                       <span className="text-xs text-rose-600 dark:text-rose-400">Failed</span>
+                    ) : !isOpenTrade ? (
+                      <button
+                        type="button"
+                        onClick={() => fetchQuoteForTrade(trade._id)}
+                        className="rounded border border-slate-300 px-1.5 py-0.5 text-[11px] text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        Fetch
+                      </button>
                     ) : (
                       '-'
                     )}
