@@ -28,7 +28,9 @@ const fetchYFinanceQuote = (symbol) =>
     child.on('close', (code) => {
       if (code === 2) {
         return reject(
-          new Error('Python package yfinance is not installed. Run: python3 -m pip install yfinance')
+          new Error(
+            'Python package yfinance is not installed. Run: python3 -m pip install yfinance'
+          )
         );
       }
 
@@ -49,31 +51,13 @@ const fetchYFinanceQuote = (symbol) =>
     });
   });
 
-const toIsoFromUnixSeconds = (value) => {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return new Date(num * 1000).toISOString();
-};
+const sanitizeSymbolCore = (value) => {
+  const upper = String(value || '').trim().toUpperCase();
+  if (!upper) return '';
 
-const fetchYahooHttpQuote = async (symbol) => {
-  const endpoint = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
-  const response = await fetch(endpoint, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Yahoo quote API failed (${response.status})`);
-  }
-
-  const data = await response.json();
-  const item = data?.quoteResponse?.result?.[0];
-  const price = Number(item?.regularMarketPrice);
-  if (!Number.isFinite(price)) return null;
-
-  return {
-    symbol,
-    price,
-    currency: item?.currency || null,
-    asOf: toIsoFromUnixSeconds(item?.regularMarketTime) || new Date().toISOString(),
-    source: 'yahoo-http'
-  };
+  // Broker exports often use suffixes like INFY-EQ; yfinance expects INFY.
+  const withoutSeries = upper.replace(/[-\s](EQ|BE|BZ|BL|SM|ST)$/i, '');
+  return withoutSeries.replace(/\s+/g, '');
 };
 
 const buildCandidateSymbols = (symbol) => {
@@ -81,21 +65,36 @@ const buildCandidateSymbols = (symbol) => {
   if (!trimmed) return [];
 
   if (trimmed.startsWith('NSE:')) {
-    const core = trimmed.slice(4);
+    const core = sanitizeSymbolCore(trimmed.slice(4));
     return [core, `${core}.NS`];
   }
 
   if (trimmed.startsWith('BSE:')) {
-    const core = trimmed.slice(4);
+    const core = sanitizeSymbolCore(trimmed.slice(4));
     return [core, `${core}.BO`];
   }
 
-  if (trimmed.includes('.')) return [trimmed];
+  if (trimmed.includes(':')) {
+    const [rawCore, exchange] = trimmed.split(':');
+    const core = sanitizeSymbolCore(rawCore);
+    if (core && exchange === 'NSE') return [`${core}.NS`, core];
+    if (core && exchange === 'BSE') return [`${core}.BO`, core];
+    return [sanitizeSymbolCore(trimmed)];
+  }
 
-  const candidates = [`${trimmed}.NS`, `${trimmed}.BO`, trimmed];
-  if (trimmed === 'INFOBEAN') {
+  if (trimmed.includes('.')) {
+    const [core, suffix] = trimmed.split('.', 2);
+    const sanitizedCore = sanitizeSymbolCore(core);
+    return [`${sanitizedCore}.${suffix}`];
+  }
+
+  const sanitized = sanitizeSymbolCore(trimmed);
+  if (!sanitized) return [];
+
+  const candidates = [`${sanitized}.NS`, `${sanitized}.BO`, sanitized];
+  if (sanitized === 'INFOBEAN') {
     candidates.unshift('INFOBEANS.NS');
-  } else if (trimmed === 'INFOBEANS') {
+  } else if (sanitized === 'INFOBEANS') {
     candidates.unshift('INFOBEAN.NS');
   }
 
@@ -105,15 +104,6 @@ const buildCandidateSymbols = (symbol) => {
 export const fetchSymbolQuote = async (symbol) => {
   const candidates = buildCandidateSymbols(symbol);
   let lastError = null;
-
-  for (const candidate of candidates) {
-    try {
-      const quote = await fetchYahooHttpQuote(candidate);
-      if (quote) return quote;
-    } catch (error) {
-      lastError = error;
-    }
-  }
 
   for (const candidate of candidates) {
     try {

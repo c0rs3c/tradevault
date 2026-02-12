@@ -57,7 +57,7 @@ const run = async () => {
     updated += 1;
   }
 
-  console.log(`Backfill complete. scanned=${scanned}, updated=${updated}`);
+  process.stdout.write(`Backfill complete. scanned=${scanned}, updated=${updated}\n`);
   await mongoose.disconnect();
 };
 

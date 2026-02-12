@@ -152,10 +152,8 @@ const TradesPage = () => {
     loadTrades();
   }, []);
 
-  const loadLivePrices = useCallback(async ({ includeClosed = false } = {}) => {
-    const quoteCandidates = trades
-      .filter((trade) => includeClosed || trade.metrics?.status === 'OPEN')
-      .slice(0, 12);
+  const loadLivePrices = useCallback(async () => {
+    const quoteCandidates = trades;
     if (!quoteCandidates.length) return;
 
     setLiveLoading(true);
@@ -167,27 +165,12 @@ const TradesPage = () => {
       return next;
     });
 
-    const runWithConcurrency = async (items, worker, limit = 4) => {
-      const results = new Array(items.length);
-      let cursor = 0;
-      const consume = async () => {
-        while (cursor < items.length) {
-          const current = cursor;
-          cursor += 1;
-          results[current] = await worker(items[current]);
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(limit, items.length) }, consume));
-      return results;
-    };
-
-    const results = await runWithConcurrency(
-      quoteCandidates,
-      (trade) =>
+    const results = await Promise.all(
+      quoteCandidates.map((trade) =>
         fetchTradeQuote(trade._id)
           .then((quote) => ({ tradeId: trade._id, ok: true, quote }))
-          .catch(() => ({ tradeId: trade._id, ok: false })),
-      4
+          .catch(() => ({ tradeId: trade._id, ok: false }))
+      )
     );
 
     const nextQuotes = {};
@@ -207,9 +190,9 @@ const TradesPage = () => {
 
   useEffect(() => {
     if (!trades.length) return;
-    loadLivePrices({ includeClosed: false });
+    loadLivePrices();
     const intervalId = window.setInterval(() => {
-      loadLivePrices({ includeClosed: false });
+      loadLivePrices();
     }, 30 * 60 * 1000);
     return () => window.clearInterval(intervalId);
   }, [trades, loadLivePrices]);
@@ -528,7 +511,7 @@ const TradesPage = () => {
             <button
               type="button"
               className="btn-muted px-2.5 py-1 text-xs"
-              onClick={() => loadLivePrices({ includeClosed: true })}
+              onClick={loadLivePrices}
               disabled={liveLoading}
             >
               {liveLoading ? 'Loading Live...' : 'Load Live Prices'}
@@ -591,6 +574,8 @@ const TradesPage = () => {
                         <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-400 border-t-transparent dark:border-slate-500" />
                         Fetching...
                       </span>
+                    ) : quoteStatusByTradeId[trade._id]?.error ? (
+                      <span className="text-xs text-rose-600 dark:text-rose-400">Failed</span>
                     ) : (
                       '-'
                     )}
