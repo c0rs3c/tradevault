@@ -10,8 +10,9 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { fetchDashboard } from '../api/trades';
+import { fetchDashboard, fetchTrade } from '../api/trades';
 import SummaryCard from '../components/SummaryCard';
+import TradeChartOverlay from '../components/TradeChartOverlay';
 import { useSettings } from '../contexts/SettingsContext';
 
 const dashboardCache = {
@@ -56,6 +57,8 @@ const DashboardPage = () => {
   const [showAllLosingTrades, setShowAllLosingTrades] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [hasInitializedMonth, setHasInitializedMonth] = useState(false);
+  const [chartTrade, setChartTrade] = useState(null);
+  const [chartLoadingTradeId, setChartLoadingTradeId] = useState('');
 
   useEffect(() => {
     const load = async ({ silent = false } = {}) => {
@@ -130,6 +133,14 @@ const DashboardPage = () => {
   const visibleLosingTrades = showAllLosingTrades
     ? filteredLosingTrades
     : filteredLosingTrades.slice(0, 5);
+  const closedTradeSequence = useMemo(
+    () => [...filteredWinningTrades, ...filteredLosingTrades].map((trade) => String(trade.id)),
+    [filteredWinningTrades, filteredLosingTrades]
+  );
+  const chartTradeIndex = useMemo(() => {
+    if (!chartTrade?._id) return -1;
+    return closedTradeSequence.findIndex((id) => id === String(chartTrade._id));
+  }, [closedTradeSequence, chartTrade]);
 
   const groupedOpenTrades = useMemo(() => {
     const groups = new Map();
@@ -201,6 +212,47 @@ const DashboardPage = () => {
   };
   const toggleHiddenGroup = (id) => {
     setHiddenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+  const openChartForTrade = async (tradeSummary) => {
+    const tradeId = String(tradeSummary?.id || '');
+    if (!tradeId) return;
+    setChartLoadingTradeId(tradeId);
+    try {
+      const fullTrade = await fetchTrade(tradeId);
+      setChartTrade(fullTrade);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to load trade chart');
+    } finally {
+      setChartLoadingTradeId('');
+    }
+  };
+  const showPrevChartTrade = async () => {
+    if (chartTradeIndex <= 0) return;
+    const nextId = closedTradeSequence[chartTradeIndex - 1];
+    if (!nextId) return;
+    setChartLoadingTradeId(nextId);
+    try {
+      const fullTrade = await fetchTrade(nextId);
+      setChartTrade(fullTrade);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to load trade chart');
+    } finally {
+      setChartLoadingTradeId('');
+    }
+  };
+  const showNextChartTrade = async () => {
+    if (chartTradeIndex < 0 || chartTradeIndex >= closedTradeSequence.length - 1) return;
+    const nextId = closedTradeSequence[chartTradeIndex + 1];
+    if (!nextId) return;
+    setChartLoadingTradeId(nextId);
+    try {
+      const fullTrade = await fetchTrade(nextId);
+      setChartTrade(fullTrade);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to load trade chart');
+    } finally {
+      setChartLoadingTradeId('');
+    }
   };
 
   const isDark = theme === 'dark';
@@ -475,7 +527,17 @@ const DashboardPage = () => {
                 <tbody>
                   {visibleWinningTrades.map((trade) => (
                     <tr key={trade.id} className="table-row-hover">
-                      <td className="px-3 py-2 font-medium">{trade.symbol}</td>
+                      <td className="px-3 py-2 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => openChartForTrade(trade)}
+                          disabled={chartLoadingTradeId === String(trade.id)}
+                          className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
+                          title="Open chart"
+                        >
+                          {trade.symbol}
+                        </button>
+                      </td>
                       <td className="px-3 py-2">{new Date(trade.closedOn).toLocaleDateString()}</td>
                       <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
                         {money(trade.realizedPnL)}
@@ -523,7 +585,17 @@ const DashboardPage = () => {
                 <tbody>
                   {visibleLosingTrades.map((trade) => (
                     <tr key={trade.id} className="table-row-hover">
-                      <td className="px-3 py-2 font-medium">{trade.symbol}</td>
+                      <td className="px-3 py-2 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => openChartForTrade(trade)}
+                          disabled={chartLoadingTradeId === String(trade.id)}
+                          className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
+                          title="Open chart"
+                        >
+                          {trade.symbol}
+                        </button>
+                      </td>
                       <td className="px-3 py-2">{new Date(trade.closedOn).toLocaleDateString()}</td>
                       <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
                         {money(trade.realizedPnL)}
@@ -555,6 +627,13 @@ const DashboardPage = () => {
           </section>
         </div>
       </section>
+      <TradeChartOverlay
+        open={Boolean(chartTrade)}
+        trade={chartTrade}
+        onClose={() => setChartTrade(null)}
+        onPrevTrade={showPrevChartTrade}
+        onNextTrade={showNextChartTrade}
+      />
     </div>
   );
 };

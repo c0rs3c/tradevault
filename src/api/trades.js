@@ -69,6 +69,15 @@ export const fetchTradeQuote = async (id, signal) => {
   return data;
 };
 
+export const fetchMarketCandles = async ({ symbol, from, to, interval, expectedPrice, signal }) => {
+  const { data } = await http.get('/market/candles', {
+    params: { symbol, from, to, interval, expectedPrice },
+    signal,
+    timeout: 15000
+  });
+  return data;
+};
+
 export const importZerodhaTrades = async (csvText, fileName = '') => {
   const { data } = await http.post('/trades/import/zerodha', { csvText, fileName });
   return data;

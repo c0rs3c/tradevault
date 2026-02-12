@@ -9,6 +9,18 @@ const SettingsPage = () => {
   const [defaultRiskPercent, setDefaultRiskPercent] = useState('');
   const [theme, setTheme] = useState('dark');
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
+  const [chartDefaultTimeframe, setChartDefaultTimeframe] = useState('1D');
+  const [smaPeriods, setSmaPeriods] = useState(['10', '20', '50']);
+  const [smaColors, setSmaColors] = useState(['#2563eb', '#f59e0b', '#16a34a']);
+  const [smaLineWidth, setSmaLineWidth] = useState('thin');
+  const [entryArrowColor, setEntryArrowColor] = useState('#000000');
+  const [exitArrowColor, setExitArrowColor] = useState('#2563eb');
+  const [entryArrowSize, setEntryArrowSize] = useState('1');
+  const [exitArrowSize, setExitArrowSize] = useState('1');
+  const [entryLabelColor, setEntryLabelColor] = useState('#000000');
+  const [exitLabelColor, setExitLabelColor] = useState('#000000');
+  const [labelFontFamily, setLabelFontFamily] = useState('Trebuchet MS, Roboto, sans-serif');
+  const [labelFontSize, setLabelFontSize] = useState('12');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -17,6 +29,25 @@ const SettingsPage = () => {
     setDefaultRiskPercent(settings.defaultRiskPercent ?? '');
     setTheme(settings.theme === 'light' ? 'light' : 'dark');
     setAccentColor(ACCENT_THEMES[settings.accentColor] ? settings.accentColor : DEFAULT_ACCENT);
+    const tf = settings?.chartSettings?.defaultTimeframe;
+    setChartDefaultTimeframe(['30m', '1h', '1D', '1W'].includes(tf) ? tf : '1D');
+    const nextPeriods = [...(settings?.chartSettings?.smaPeriods || [10, 20, 50])].slice(0, 3);
+    while (nextPeriods.length < 3) nextPeriods.push([10, 20, 50][nextPeriods.length]);
+    setSmaPeriods(nextPeriods.map((v) => String(v)));
+    const nextColors = [...(settings?.chartSettings?.smaColors || ['#2563eb', '#f59e0b', '#16a34a'])].slice(0, 3);
+    while (nextColors.length < 3) nextColors.push(['#2563eb', '#f59e0b', '#16a34a'][nextColors.length]);
+    setSmaColors(nextColors);
+    const width = settings?.chartSettings?.smaLineWidth;
+    setSmaLineWidth(['thin', 'medium', 'thick'].includes(width) ? width : 'thin');
+    const marker = settings?.chartSettings?.markerSettings || {};
+    setEntryArrowColor(marker.entryArrowColor || '#000000');
+    setExitArrowColor(marker.exitArrowColor || '#2563eb');
+    setEntryArrowSize(String(marker.entryArrowSize ?? 1));
+    setExitArrowSize(String(marker.exitArrowSize ?? 1));
+    setEntryLabelColor(marker.entryLabelColor || '#000000');
+    setExitLabelColor(marker.exitLabelColor || '#000000');
+    setLabelFontFamily(marker.labelFontFamily || 'Trebuchet MS, Roboto, sans-serif');
+    setLabelFontSize(String(marker.labelFontSize ?? 12));
   }, [settings]);
 
   const handleSubmit = async (event) => {
@@ -29,7 +60,27 @@ const SettingsPage = () => {
         totalCapital: Number(totalCapital),
         defaultRiskPercent: defaultRiskPercent === '' ? null : Number(defaultRiskPercent),
         theme,
-        accentColor
+        accentColor,
+        chartSettings: {
+          defaultTimeframe: chartDefaultTimeframe,
+          smaPeriods: smaPeriods.map((value, index) => {
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed) || parsed <= 0) return [10, 20, 50][index];
+            return Math.round(parsed);
+          }),
+          smaColors,
+          smaLineWidth,
+          markerSettings: {
+            entryArrowColor,
+            exitArrowColor,
+            entryArrowSize: Number(entryArrowSize) || 1,
+            exitArrowSize: Number(exitArrowSize) || 1,
+            entryLabelColor,
+            exitLabelColor,
+            labelFontFamily,
+            labelFontSize: Number(labelFontSize) || 12
+          }
+        }
       });
       await refreshSettings();
       alert('Settings saved');
@@ -101,6 +152,156 @@ const SettingsPage = () => {
                 </button>
               );
             })}
+          </div>
+        </fieldset>
+
+        <section className="space-y-2 pt-1" aria-labelledby="tradingview-settings-heading">
+          <div className="h-px w-full bg-slate-200 dark:bg-slate-700" />
+          <h2
+            id="tradingview-settings-heading"
+            className="text-sm font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300"
+          >
+            TradingView Related Settings
+          </h2>
+        </section>
+
+        <fieldset className="space-y-2 rounded border border-slate-200 p-3 dark:border-slate-800">
+          <legend className="px-1 text-sm font-medium">Trade Chart</legend>
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">Default Timeframe</span>
+            <select
+              className="field-input"
+              value={chartDefaultTimeframe}
+              onChange={(e) => setChartDefaultTimeframe(e.target.value)}
+            >
+              <option value="30m">30m</option>
+              <option value="1h">1h</option>
+              <option value="1D">Daily</option>
+              <option value="1W">Weekly</option>
+            </select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">SMA Thickness</span>
+            <select
+              className="field-input"
+              value={smaLineWidth}
+              onChange={(e) => setSmaLineWidth(e.target.value)}
+            >
+              <option value="thin">Thin</option>
+              <option value="medium">Medium</option>
+              <option value="thick">Thick</option>
+            </select>
+          </label>
+          <div className="grid gap-3 md:grid-cols-3">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="space-y-1">
+                <span className="text-sm font-medium">SMA {index + 1}</span>
+                <input
+                  type="number"
+                  min="1"
+                  className="field-input"
+                  value={smaPeriods[index] || ''}
+                  onChange={(e) =>
+                    setSmaPeriods((prev) => prev.map((item, i) => (i === index ? e.target.value : item)))
+                  }
+                />
+                <input
+                  type="color"
+                  className="h-10 w-full rounded border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+                  value={smaColors[index] || '#000000'}
+                  onChange={(e) =>
+                    setSmaColors((prev) => prev.map((item, i) => (i === index ? e.target.value : item)))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Entry Arrow Color</span>
+              <input
+                type="color"
+                className="h-10 w-full rounded border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+                value={entryArrowColor}
+                onChange={(e) => setEntryArrowColor(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Exit Arrow Color</span>
+              <input
+                type="color"
+                className="h-10 w-full rounded border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+                value={exitArrowColor}
+                onChange={(e) => setExitArrowColor(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Entry Arrow Size</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0.5"
+                max="3"
+                className="field-input"
+                value={entryArrowSize}
+                onChange={(e) => setEntryArrowSize(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Exit Arrow Size</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0.5"
+                max="3"
+                className="field-input"
+                value={exitArrowSize}
+                onChange={(e) => setExitArrowSize(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Entry Label Color</span>
+              <input
+                type="color"
+                className="h-10 w-full rounded border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+                value={entryLabelColor}
+                onChange={(e) => setEntryLabelColor(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Exit Label Color</span>
+              <input
+                type="color"
+                className="h-10 w-full rounded border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+                value={exitLabelColor}
+                onChange={(e) => setExitLabelColor(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-sm font-medium">Label Font</span>
+              <select
+                className="field-input"
+                value={labelFontFamily}
+                onChange={(e) => setLabelFontFamily(e.target.value)}
+              >
+                <option value="Trebuchet MS, Roboto, sans-serif">Trebuchet</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Courier New, monospace">Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm font-medium">Label Font Size</span>
+              <input
+                type="number"
+                min="10"
+                max="24"
+                className="field-input"
+                value={labelFontSize}
+                onChange={(e) => setLabelFontSize(e.target.value)}
+              />
+            </label>
           </div>
         </fieldset>
 

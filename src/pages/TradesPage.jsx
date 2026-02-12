@@ -12,6 +12,7 @@ import {
   updatePyramid
 } from '../api/trades';
 import { useSettings } from '../contexts/SettingsContext';
+import TradeChartOverlay from '../components/TradeChartOverlay';
 
 const tradesCache = {
   data: null
@@ -128,6 +129,7 @@ const TradesPage = () => {
   const [editingPyramid, setEditingPyramid] = useState(null);
   const [editingExit, setEditingExit] = useState(null);
   const [editingStopLossAdjustment, setEditingStopLossAdjustment] = useState(null);
+  const [chartTrade, setChartTrade] = useState(null);
 
   const loadTrades = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -246,6 +248,10 @@ const TradesPage = () => {
 
     return list;
   }, [trades, search, statusFilter, sortBy]);
+  const chartTradeIndex = useMemo(() => {
+    if (!chartTrade?._id) return -1;
+    return filtered.findIndex((trade) => trade._id === chartTrade._id);
+  }, [filtered, chartTrade]);
 
   const handleDelete = async (id) => {
     const confirmation = window.prompt('Type "del" to delete this trade.');
@@ -262,6 +268,17 @@ const TradesPage = () => {
       alert(err.response?.data?.message || 'Delete failed');
     }
   };
+  const openChartForTrade = useCallback((trade) => {
+    setChartTrade(trade);
+  }, []);
+  const showPrevChartTrade = useCallback(() => {
+    if (chartTradeIndex <= 0) return;
+    setChartTrade(filtered[chartTradeIndex - 1]);
+  }, [chartTradeIndex, filtered]);
+  const showNextChartTrade = useCallback(() => {
+    if (chartTradeIndex < 0 || chartTradeIndex >= filtered.length - 1) return;
+    setChartTrade(filtered[chartTradeIndex + 1]);
+  }, [chartTradeIndex, filtered]);
 
   const upsertTrade = (updatedTrade) => {
     setTrades((prev) => {
@@ -581,7 +598,16 @@ const TradesPage = () => {
               <Fragment key={trade._id}>
                 <tr className="table-row-hover">
                   <td className="px-3 py-2 font-medium text-slate-600 dark:text-slate-300">{index + 1}</td>
-                  <td className="px-3 py-2 font-medium">{trade.symbol}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => openChartForTrade(trade)}
+                      className="underline decoration-dotted underline-offset-2 hover:text-sky-600 dark:hover:text-sky-300"
+                      title="Open chart"
+                    >
+                      {trade.symbol}
+                    </button>
+                  </td>
                   <td className="px-3 py-2">{new Date(trade.entryDate).toLocaleDateString()}</td>
                   <td className="px-3 py-2">{money(trade.metrics.avgEntryPrice)}</td>
                   <td className="px-3 py-2">{trade.metrics.openQty}</td>
@@ -1228,6 +1254,13 @@ const TradesPage = () => {
           </tbody>
         </table>
       </div>
+      <TradeChartOverlay
+        open={Boolean(chartTrade)}
+        trade={chartTrade}
+        onClose={() => setChartTrade(null)}
+        onPrevTrade={showPrevChartTrade}
+        onNextTrade={showNextChartTrade}
+      />
     </div>
   );
 };
