@@ -28,6 +28,7 @@ const DEFAULT_CHART_SETTINGS = {
   smaPeriods: [10, 20, 50],
   smaColors: ['#2563eb', '#f59e0b', '#16a34a'],
   smaLineWidth: 'thin',
+  smaScaleLabelsVisible: false,
   markerSettings: {
     entryArrowColor: '#000000',
     exitArrowColor: '#2563eb',
@@ -37,6 +38,17 @@ const DEFAULT_CHART_SETTINGS = {
     exitLabelColor: '#000000',
     labelFontFamily: 'Trebuchet MS, Roboto, sans-serif',
     labelFontSize: 12
+  },
+  purpleDotVolumeSettings: {
+    visible: true,
+    leftPaneVisible: true,
+    rightPaneVisible: true,
+    combineConditions: true,
+    volumeAbove: 1000000,
+    percentThreshold: 5,
+    color: '#a855f7',
+    size: 1,
+    position: 'belowBar'
   }
 };
 
@@ -120,6 +132,10 @@ const normalizeChartSettings = (settings) => {
   const smaLineWidth = allowedWidths.has(raw.smaLineWidth)
     ? raw.smaLineWidth
     : DEFAULT_CHART_SETTINGS.smaLineWidth;
+  const smaScaleLabelsVisible =
+    typeof raw.smaScaleLabelsVisible === 'boolean'
+      ? raw.smaScaleLabelsVisible
+      : DEFAULT_CHART_SETTINGS.smaScaleLabelsVisible;
   const markerRaw = raw.markerSettings || {};
   const validColor = (value, fallback) =>
     /^#([0-9a-fA-F]{6})$/.test(String(value || '')) ? String(value) : fallback;
@@ -141,8 +157,43 @@ const normalizeChartSettings = (settings) => {
       clamp(markerRaw.labelFontSize, 10, 24, DEFAULT_CHART_SETTINGS.markerSettings.labelFontSize)
     )
   };
+  const dotRaw = raw.purpleDotVolumeSettings || {};
+  const purpleDotVolumeSettings = {
+    visible:
+      typeof dotRaw.visible === 'boolean'
+        ? dotRaw.visible
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.visible,
+    leftPaneVisible:
+      typeof dotRaw.leftPaneVisible === 'boolean'
+        ? dotRaw.leftPaneVisible
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.leftPaneVisible,
+    rightPaneVisible:
+      typeof dotRaw.rightPaneVisible === 'boolean'
+        ? dotRaw.rightPaneVisible
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.rightPaneVisible,
+    combineConditions:
+      typeof dotRaw.combineConditions === 'boolean'
+        ? dotRaw.combineConditions
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.combineConditions,
+    volumeAbove: clamp(dotRaw.volumeAbove, 0, 1_000_000_000_000, DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.volumeAbove),
+    percentThreshold: clamp(dotRaw.percentThreshold, 0, 10_000, DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.percentThreshold),
+    color: validColor(dotRaw.color, DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.color),
+    size: clamp(dotRaw.size, 0.5, 3, DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.size),
+    position:
+      dotRaw.position === 'aboveBar' || dotRaw.position === 'belowBar'
+        ? dotRaw.position
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.position
+  };
 
-  return { defaultTimeframe: validTf, smaPeriods, smaColors, smaLineWidth, markerSettings };
+  return {
+    defaultTimeframe: validTf,
+    smaPeriods,
+    smaColors,
+    smaLineWidth,
+    smaScaleLabelsVisible,
+    markerSettings,
+    purpleDotVolumeSettings
+  };
 };
 
 const buildSmaData = (candles, period) => {
@@ -172,6 +223,44 @@ const defaultPaneData = () => ({
   error: '',
   resolvedSymbol: ''
 });
+
+const formatPrice = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '-';
+  return num.toFixed(2);
+};
+
+const formatPercent = (value) => {
+  if (value === null || value === undefined) return '-';
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '-';
+  return `${num.toFixed(2)}%`;
+};
+
+const formatVolume = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '-';
+  return Math.round(num).toLocaleString('en-US');
+};
+
+const toOhlcSummary = (bar, prevBar) => {
+  if (!bar) return null;
+  const open = Number(bar.open);
+  const high = Number(bar.high);
+  const low = Number(bar.low);
+  const close = Number(bar.close);
+  const volume = Number(bar.volume || 0);
+  const prevClose = Number(prevBar?.close);
+  const changePct = Number.isFinite(prevClose) && prevClose !== 0 ? ((close - prevClose) / prevClose) * 100 : null;
+  return {
+    open,
+    high,
+    low,
+    close,
+    volume,
+    changePct
+  };
+};
 
 const buildFetchRange = ({ trade, tradeEvents, timeframe }) => {
   const eventTimes = tradeEvents
@@ -213,6 +302,11 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
     left: defaultPaneData(),
     right: defaultPaneData()
   });
+  const [paneOhlc, setPaneOhlc] = useState({
+    single: null,
+    left: null,
+    right: null
+  });
   const chartPrefs = useMemo(() => normalizeChartSettings(settings), [settings]);
   const [showEntryMarkers, setShowEntryMarkers] = useState(true);
   const [showExitMarkers, setShowExitMarkers] = useState(true);
@@ -247,7 +341,26 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       left: defaultPaneData(),
       right: defaultPaneData()
     });
+    setPaneOhlc({
+      single: null,
+      left: null,
+      right: null
+    });
   }, [open, chartPrefs.defaultTimeframe, trade?._id]);
+
+  useEffect(() => {
+    if (!open) return;
+    const latestSummary = (candles) => {
+      if (!candles.length) return null;
+      const idx = candles.length - 1;
+      return toOhlcSummary(candles[idx], idx > 0 ? candles[idx - 1] : null);
+    };
+    setPaneOhlc({
+      single: latestSummary(paneData.single.candles),
+      left: latestSummary(paneData.left.candles),
+      right: latestSummary(paneData.right.candles)
+    });
+  }, [open, paneData.single.candles, paneData.left.candles, paneData.right.candles]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -420,6 +533,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         priceScaleId: 'right'
       });
       candleSeries.setData(candles);
+      const candleIndexByTime = new Map(candles.map((bar, index) => [String(bar.time), index]));
       chart.priceScale('right').applyOptions({
         scaleMargins: { top: 0.08, bottom: 0.32 }
       });
@@ -446,18 +560,20 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
 
       chartPrefs.smaPeriods.forEach((period, index) => {
         const smaData = buildSmaData(candles, period);
+        const showSmaScaleLabels = chartPrefs.smaScaleLabelsVisible;
         const series = chart.addSeries(LineSeries, {
           lineWidth: widthMap[chartPrefs.smaLineWidth] || 1,
           color: chartPrefs.smaColors[index],
-          priceLineVisible: false,
-          lastValueVisible: true,
-          title: `SMA ${period}`
+          priceLineVisible: showSmaScaleLabels,
+          lastValueVisible: showSmaScaleLabels,
+          crosshairMarkerVisible: showSmaScaleLabels,
+          title: showSmaScaleLabels ? `SMA ${period}` : ''
         });
         series.setData(smaData);
       });
 
       const candleTimes = candles.map((bar) => bar.time);
-      const markers = tradeEvents
+      const tradeEventMarkers = tradeEvents
         .filter((event) => {
           if (event.kind === 'ENTRY') return showEntryMarkers;
           if (event.kind === 'EXIT') return showExitMarkers;
@@ -496,7 +612,58 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
             }
           ];
         });
-      createSeriesMarkers(candleSeries, markers);
+      const dotSettings = chartPrefs.purpleDotVolumeSettings;
+      const paneDotVisible =
+        paneKey === 'left'
+          ? dotSettings.leftPaneVisible
+          : paneKey === 'right'
+            ? dotSettings.rightPaneVisible
+            : dotSettings.visible;
+      const purpleDotMarkers = paneDotVisible
+        ? candles
+            .map((bar, index) => {
+              if (index <= 0) return null;
+              const prevClose = Number(candles[index - 1]?.close);
+              const close = Number(bar.close);
+              const volume = Number(bar.volume || 0);
+              if (!Number.isFinite(prevClose) || prevClose === 0 || !Number.isFinite(close)) return null;
+              const rocPct = Math.abs(((close - prevClose) / prevClose) * 100);
+              const rocCheck = rocPct >= dotSettings.percentThreshold;
+              const volumeCheck = volume >= dotSettings.volumeAbove;
+              const shouldPlot = dotSettings.combineConditions ? rocCheck && volumeCheck : rocCheck || volumeCheck;
+              if (!shouldPlot) return null;
+              return {
+                id: `${paneKey}-purple-dot-${bar.time}`,
+                time: bar.time,
+                position: dotSettings.position,
+                color: dotSettings.color,
+                shape: 'circle',
+                size: dotSettings.size
+              };
+            })
+            .filter(Boolean)
+        : [];
+      createSeriesMarkers(candleSeries, [...tradeEventMarkers, ...purpleDotMarkers]);
+
+      const updateOhlcForTime = (time) => {
+        const rawIndex = candleIndexByTime.get(String(time));
+        const selectedIndex = Number.isInteger(rawIndex) ? rawIndex : candles.length - 1;
+        const selected = candles[selectedIndex];
+        const previousCandle = selectedIndex > 0 ? candles[selectedIndex - 1] : null;
+        setPaneOhlc((prevState) => ({
+          ...prevState,
+          [paneKey]: toOhlcSummary(selected, previousCandle)
+        }));
+      };
+      const onCrosshairMove = (event) => {
+        if (!event?.time || !event?.point) {
+          updateOhlcForTime(null);
+          return;
+        }
+        const time = nearestCandleTime(event.time, candleTimes);
+        updateOhlcForTime(time);
+      };
+      chart.subscribeCrosshairMove(onCrosshairMove);
 
       const savedViewport = viewportRef.current[paneKey];
       if (savedViewport?.logicalRange) {
@@ -544,6 +711,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         };
         resizeObserver.disconnect();
         container.removeEventListener('wheel', forgetAutoScaleOnRightScaleWheel);
+        chart.unsubscribeCrosshairMove(onCrosshairMove);
         chart.remove();
       };
       return { cleanup, chart, candleSeries };
@@ -863,6 +1031,13 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                   <div className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-slate-900/80 px-2 py-1 text-xs font-semibold text-white">
                     {TIMEFRAME_LABELS[singleTimeframe] || singleTimeframe}
                   </div>
+                  {paneOhlc.single && (
+                    <div className="pointer-events-none absolute left-16 top-2 z-10 text-xs font-medium text-black">
+                      O {formatPrice(paneOhlc.single.open)} H {formatPrice(paneOhlc.single.high)} L{' '}
+                      {formatPrice(paneOhlc.single.low)} C {formatPrice(paneOhlc.single.close)} Chg{' '}
+                      {formatPercent(paneOhlc.single.changePct)} V {formatVolume(paneOhlc.single.volume)}
+                    </div>
+                  )}
                   <div ref={singleChartRef} className="h-full w-full" />
                 </>
               )}
@@ -896,6 +1071,13 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                         <div className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-slate-900/80 px-2 py-1 text-xs font-semibold text-white">
                           {TIMEFRAME_LABELS[pane.tf] || pane.tf}
                         </div>
+                        {paneOhlc[pane.key] && (
+                          <div className="pointer-events-none absolute left-16 top-2 z-10 text-xs font-medium text-black">
+                            O {formatPrice(paneOhlc[pane.key].open)} H {formatPrice(paneOhlc[pane.key].high)} L{' '}
+                            {formatPrice(paneOhlc[pane.key].low)} C {formatPrice(paneOhlc[pane.key].close)} Chg{' '}
+                            {formatPercent(paneOhlc[pane.key].changePct)} V {formatVolume(paneOhlc[pane.key].volume)}
+                          </div>
+                        )}
                         <div ref={pane.ref} className="h-full w-full" />
                       </>
                     )}

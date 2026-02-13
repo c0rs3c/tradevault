@@ -6,6 +6,7 @@ const DEFAULT_CHART_SETTINGS = {
   smaPeriods: [10, 20, 50],
   smaColors: ['#2563eb', '#f59e0b', '#16a34a'],
   smaLineWidth: 'thin',
+  smaScaleLabelsVisible: false,
   markerSettings: {
     entryArrowColor: '#000000',
     exitArrowColor: '#2563eb',
@@ -15,6 +16,17 @@ const DEFAULT_CHART_SETTINGS = {
     exitLabelColor: '#000000',
     labelFontFamily: 'Trebuchet MS, Roboto, sans-serif',
     labelFontSize: 12
+  },
+  purpleDotVolumeSettings: {
+    visible: true,
+    leftPaneVisible: true,
+    rightPaneVisible: true,
+    combineConditions: true,
+    volumeAbove: 1000000,
+    percentThreshold: 5,
+    color: '#a855f7',
+    size: 1,
+    position: 'belowBar'
   }
 };
 
@@ -48,6 +60,10 @@ const normalizeChartSettings = (raw = {}) => {
   const smaLineWidth = allowedWidths.has(raw.smaLineWidth)
     ? raw.smaLineWidth
     : DEFAULT_CHART_SETTINGS.smaLineWidth;
+  const smaScaleLabelsVisible =
+    typeof raw.smaScaleLabelsVisible === 'boolean'
+      ? raw.smaScaleLabelsVisible
+      : DEFAULT_CHART_SETTINGS.smaScaleLabelsVisible;
   const markerRaw = raw.markerSettings || {};
   const validColor = (value, fallback) =>
     /^#([0-9a-fA-F]{6})$/.test(String(value || '')) ? String(value) : fallback;
@@ -77,13 +93,47 @@ const normalizeChartSettings = (raw = {}) => {
       clamp(markerRaw.labelFontSize, 10, 24, DEFAULT_CHART_SETTINGS.markerSettings.labelFontSize)
     )
   };
+  const dotRaw = raw.purpleDotVolumeSettings || {};
+  const purpleDotVolumeSettings = {
+    visible:
+      typeof dotRaw.visible === 'boolean'
+        ? dotRaw.visible
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.visible,
+    leftPaneVisible:
+      typeof dotRaw.leftPaneVisible === 'boolean'
+        ? dotRaw.leftPaneVisible
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.leftPaneVisible,
+    rightPaneVisible:
+      typeof dotRaw.rightPaneVisible === 'boolean'
+        ? dotRaw.rightPaneVisible
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.rightPaneVisible,
+    combineConditions:
+      typeof dotRaw.combineConditions === 'boolean'
+        ? dotRaw.combineConditions
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.combineConditions,
+    volumeAbove: clamp(dotRaw.volumeAbove, 0, 1_000_000_000_000, DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.volumeAbove),
+    percentThreshold: clamp(
+      dotRaw.percentThreshold,
+      0,
+      10_000,
+      DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.percentThreshold
+    ),
+    color: validColor(dotRaw.color, DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.color),
+    size: clamp(dotRaw.size, 0.5, 3, DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.size),
+    position:
+      dotRaw.position === 'aboveBar' || dotRaw.position === 'belowBar'
+        ? dotRaw.position
+        : DEFAULT_CHART_SETTINGS.purpleDotVolumeSettings.position
+  };
 
   return {
     defaultTimeframe,
     smaPeriods,
     smaColors,
     smaLineWidth,
-    markerSettings
+    smaScaleLabelsVisible,
+    markerSettings,
+    purpleDotVolumeSettings
   };
 };
 
@@ -114,7 +164,10 @@ const getOrCreateSettings = async () => {
     JSON.stringify(settings.chartSettings.smaPeriods || []) !== JSON.stringify(normalizedChart.smaPeriods) ||
     JSON.stringify(settings.chartSettings.smaColors || []) !== JSON.stringify(normalizedChart.smaColors) ||
     settings.chartSettings.smaLineWidth !== normalizedChart.smaLineWidth ||
-    JSON.stringify(settings.chartSettings.markerSettings || {}) !== JSON.stringify(normalizedChart.markerSettings)
+    settings.chartSettings.smaScaleLabelsVisible !== normalizedChart.smaScaleLabelsVisible ||
+    JSON.stringify(settings.chartSettings.markerSettings || {}) !== JSON.stringify(normalizedChart.markerSettings) ||
+    JSON.stringify(settings.chartSettings.purpleDotVolumeSettings || {}) !==
+      JSON.stringify(normalizedChart.purpleDotVolumeSettings)
   ) {
     settings.chartSettings = normalizedChart;
     updated = true;

@@ -29,6 +29,10 @@ const SettingsSchema = new mongoose.Schema(
         enum: ['thin', 'medium', 'thick'],
         default: 'thin'
       },
+      smaScaleLabelsVisible: {
+        type: Boolean,
+        default: false
+      },
       markerSettings: {
         entryArrowColor: { type: String, default: '#000000' },
         exitArrowColor: { type: String, default: '#2563eb' },
@@ -38,6 +42,17 @@ const SettingsSchema = new mongoose.Schema(
         exitLabelColor: { type: String, default: '#000000' },
         labelFontFamily: { type: String, default: 'Trebuchet MS, Roboto, sans-serif' },
         labelFontSize: { type: Number, default: 12 }
+      },
+      purpleDotVolumeSettings: {
+        visible: { type: Boolean, default: true },
+        leftPaneVisible: { type: Boolean, default: true },
+        rightPaneVisible: { type: Boolean, default: true },
+        combineConditions: { type: Boolean, default: true },
+        volumeAbove: { type: Number, default: 1000000, min: 0 },
+        percentThreshold: { type: Number, default: 5, min: 0 },
+        color: { type: String, default: '#a855f7' },
+        size: { type: Number, default: 1, min: 0.5, max: 3 },
+        position: { type: String, enum: ['aboveBar', 'belowBar'], default: 'belowBar' }
       }
     }
   },
