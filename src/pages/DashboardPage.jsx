@@ -37,13 +37,28 @@ const monthLabel = (monthKey) => {
   if (!monthKey) return '';
   const parsed = new Date(`${monthKey}-01T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return monthKey;
-  return new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' }).format(parsed);
+  return new Intl.DateTimeFormat('en-IN', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(parsed);
 };
 
 const toMonthKey = (value) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toISOString().slice(0, 7);
+};
+
+const formatDisplayDate = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(parsed);
 };
 
 const DashboardPage = () => {
@@ -59,6 +74,7 @@ const DashboardPage = () => {
   const [hasInitializedMonth, setHasInitializedMonth] = useState(false);
   const [chartTrade, setChartTrade] = useState(null);
   const [chartLoadingTradeId, setChartLoadingTradeId] = useState('');
+  const [refreshingCmp, setRefreshingCmp] = useState(false);
 
   useEffect(() => {
     const load = async ({ silent = false } = {}) => {
@@ -160,7 +176,8 @@ const DashboardPage = () => {
           realizedPnL: 0,
           unrealizedPnL: 0,
           unrealizedAllKnown: true,
-          realizedR: 0
+          realizedR: 0,
+          cmp: null
         });
       }
       const group = groups.get(key);
@@ -175,6 +192,10 @@ const DashboardPage = () => {
       group.avgEntryValue += Number(trade.metrics.avgEntryPrice || 0) * openQty;
       group.capitalAtRisk += Number(trade.metrics.capitalAtRisk || 0);
       group.realizedPnL += Number(trade.metrics.realizedPnL || 0);
+      const livePrice = Number(trade.lastPrice);
+      if (group.cmp === null && Number.isFinite(livePrice) && livePrice > 0) {
+        group.cmp = livePrice;
+      }
       if (trade.metrics.unrealizedPnL === null || trade.metrics.unrealizedPnL === undefined) {
         group.unrealizedAllKnown = false;
       } else {
@@ -212,6 +233,18 @@ const DashboardPage = () => {
   };
   const toggleHiddenGroup = (id) => {
     setHiddenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+  const refreshCmp = async () => {
+    setRefreshingCmp(true);
+    try {
+      const response = await fetchDashboard({ forceRefreshCmp: true });
+      setData(response);
+      dashboardCache.data = response;
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to refresh CMP');
+    } finally {
+      setRefreshingCmp(false);
+    }
   };
   const openChartForTrade = async (tradeSummary) => {
     const tradeId = String(tradeSummary?.id || '');
@@ -301,7 +334,17 @@ const DashboardPage = () => {
       </div>
 
       <section className="surface-card p-4">
-        <h2 className="text-lg font-semibold">Open Trades</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Open Trades</h2>
+          <button
+            type="button"
+            onClick={refreshCmp}
+            disabled={refreshingCmp}
+            className="btn-muted px-3 py-1.5 text-sm disabled:cursor-wait disabled:opacity-60"
+          >
+            {refreshingCmp ? 'Refreshing CMP...' : 'Refresh CMP'}
+          </button>
+        </div>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="table-head">
@@ -309,6 +352,7 @@ const DashboardPage = () => {
                 <th className="px-3 py-2" />
                 <th className="px-3 py-2">Symbol</th>
                 <th className="px-3 py-2">Avg Entry</th>
+                <th className="px-3 py-2">CMP</th>
                 <th className="px-3 py-2">Open Qty</th>
                 <th className="px-3 py-2">Position Size (Rs / %)</th>
                 <th className="px-3 py-2">Cpital at Risk (Rs / %)</th>
@@ -392,6 +436,9 @@ const DashboardPage = () => {
                       </td>
                       <td className="px-3 py-2 font-medium">{isHidden ? '••••' : group.symbol}</td>
                       <td className="px-3 py-2">{isHidden ? '••••' : group.avgEntryPrice.toFixed(2)}</td>
+                      <td className="px-3 py-2">
+                        {isHidden ? '••••' : group.cmp === null ? 'N/A' : group.cmp.toFixed(2)}
+                      </td>
                       <td className="px-3 py-2">{isHidden ? '••••' : group.openQty}</td>
                       <td className="px-3 py-2">
                         {isHidden
@@ -418,7 +465,7 @@ const DashboardPage = () => {
                     </tr>
                     {canExpand && expandedGroups[group.id] && (
                       <tr className="border-b-2 border-slate-300 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/70">
-                        <td className="px-3 py-2 text-xs" colSpan={8}>
+                        <td className="px-3 py-2 text-xs" colSpan={9}>
                           <div className="space-y-2">
                             {isHidden ? (
                               <p className="text-slate-600 dark:text-slate-300">Data hidden for this position.</p>
@@ -428,7 +475,7 @@ const DashboardPage = () => {
                                 .sort((a, b) => new Date(a.entryDate) - new Date(b.entryDate))
                                 .map((trade) => (
                                   <p key={trade._id} className="text-slate-700 dark:text-slate-300">
-                                    {new Date(trade.entryDate).toLocaleDateString()} | Entry: {trade.entryPrice} | Qty: {trade.entryQty} | Open Qty: {trade.metrics.openQty}
+                                    {formatDisplayDate(trade.entryDate)} | Entry: {trade.entryPrice} | Qty: {trade.entryQty} | Open Qty: {trade.metrics.openQty}
                                   </p>
                                 ))
                             )}
@@ -441,7 +488,7 @@ const DashboardPage = () => {
               })}
               {!groupedOpenTrades.length && (
                 <tr>
-                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={8}>
+                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={9}>
                     No open trades.
                   </td>
                 </tr>
@@ -538,7 +585,7 @@ const DashboardPage = () => {
                           {trade.symbol}
                         </button>
                       </td>
-                      <td className="px-3 py-2">{new Date(trade.closedOn).toLocaleDateString()}</td>
+                      <td className="px-3 py-2">{formatDisplayDate(trade.closedOn)}</td>
                       <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
                         {money(trade.realizedPnL)}
                       </td>
@@ -596,7 +643,7 @@ const DashboardPage = () => {
                           {trade.symbol}
                         </button>
                       </td>
-                      <td className="px-3 py-2">{new Date(trade.closedOn).toLocaleDateString()}</td>
+                      <td className="px-3 py-2">{formatDisplayDate(trade.closedOn)}</td>
                       <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
                         {money(trade.realizedPnL)}
                       </td>

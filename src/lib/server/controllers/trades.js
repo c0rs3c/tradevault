@@ -836,8 +836,8 @@ export const deleteExit = async (id, eid) => {
   return withMetrics(trade, totalCapital);
 };
 
-export const getDashboard = async () => {
-  if (queryCache.dashboard.data && Date.now() < queryCache.dashboard.until) {
+export const getDashboard = async ({ forceRefreshCmp = false } = {}) => {
+  if (!forceRefreshCmp && queryCache.dashboard.data && Date.now() < queryCache.dashboard.until) {
     return queryCache.dashboard.data;
   }
 
