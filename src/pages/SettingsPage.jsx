@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { saveSettings } from '../api/settings';
+import { fetchSymbols, refreshSymbols } from '../api/symbols';
 import { useSettings } from '../contexts/SettingsContext';
 import { ACCENT_THEMES, DEFAULT_ACCENT } from '../utils/appearance';
 
@@ -31,6 +32,9 @@ const SettingsPage = () => {
   const [purpleDotColor, setPurpleDotColor] = useState('#a855f7');
   const [purpleDotSize, setPurpleDotSize] = useState('1');
   const [purpleDotPosition, setPurpleDotPosition] = useState('belowBar');
+  const [symbolsCount, setSymbolsCount] = useState(0);
+  const [symbolsUpdatedAt, setSymbolsUpdatedAt] = useState('');
+  const [refreshingSymbols, setRefreshingSymbols] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -70,6 +74,34 @@ const SettingsPage = () => {
     setPurpleDotSize(String(purpleDot.size ?? 1));
     setPurpleDotPosition(purpleDot.position === 'aboveBar' ? 'aboveBar' : 'belowBar');
   }, [settings]);
+
+  useEffect(() => {
+    const loadSymbolsMeta = async () => {
+      try {
+        const data = await fetchSymbols();
+        setSymbolsCount(Number(data?.count || 0));
+        setSymbolsUpdatedAt(data?.updatedAt || '');
+      } catch {
+        setSymbolsCount(0);
+        setSymbolsUpdatedAt('');
+      }
+    };
+    loadSymbolsMeta();
+  }, []);
+
+  const handleRefreshSymbols = async () => {
+    setRefreshingSymbols(true);
+    try {
+      const data = await refreshSymbols();
+      setSymbolsCount(Number(data?.count || 0));
+      setSymbolsUpdatedAt(data?.updatedAt || '');
+      alert('Latest NSE symbol CSV downloaded successfully.');
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to download NSE symbol CSV');
+    } finally {
+      setRefreshingSymbols(false);
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -159,6 +191,25 @@ const SettingsPage = () => {
             <option value="light">Light</option>
           </select>
         </label>
+
+        <fieldset className="space-y-2 rounded border border-slate-200 p-3 dark:border-slate-800">
+          <legend className="px-1 text-sm font-medium">Symbol Master (NSE)</legend>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            CSV Source: https://archives.nseindia.com/content/equities/EQUITY_L.csv
+          </p>
+          <p className="text-xs text-slate-700 dark:text-slate-300">Symbols loaded: {symbolsCount}</p>
+          <p className="text-xs text-slate-700 dark:text-slate-300">
+            Last updated: {symbolsUpdatedAt ? new Date(symbolsUpdatedAt).toLocaleString() : 'Not available'}
+          </p>
+          <button
+            type="button"
+            onClick={handleRefreshSymbols}
+            disabled={refreshingSymbols}
+            className="btn-muted px-3 py-1.5 text-sm disabled:cursor-wait disabled:opacity-60"
+          >
+            {refreshingSymbols ? 'Downloading...' : 'Download Latest CSV'}
+          </button>
+        </fieldset>
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">Accent Color</legend>
