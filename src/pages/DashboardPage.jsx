@@ -61,6 +61,40 @@ const formatDisplayDate = (value) => {
   }).format(parsed);
 };
 
+const symbolText = (symbols) => {
+  const unique = [...new Set((symbols || []).filter(Boolean))];
+  if (!unique.length) return '-';
+  return unique.join(', ');
+};
+
+const EquityTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload || {};
+  return (
+    <div className="rounded border border-slate-300 bg-white px-3 py-2 text-xs shadow dark:border-slate-700 dark:bg-slate-900">
+      <p className="font-medium">{formatDisplayDate(label)}</p>
+      <p className={pnlTextClass(point.eventPnl)}>Event P&L: {money(point.eventPnl)}</p>
+      <p className="text-slate-700 dark:text-slate-300">Equity: {money(point.equity)}</p>
+      <p className="text-slate-700 dark:text-slate-300">Symbols: {symbolText(point.symbols)}</p>
+    </div>
+  );
+};
+
+const MonthlyPnlTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload || {};
+  return (
+    <div className="rounded border border-slate-300 bg-white px-3 py-2 text-xs shadow dark:border-slate-700 dark:bg-slate-900">
+      <p className="font-medium">{monthLabel(label)}</p>
+      <p className={pnlTextClass(point.pnl)}>P&L: {money(point.pnl)}</p>
+      <p className="text-slate-700 dark:text-slate-300">
+        Trades in bar: {Number(point.tradesInBar || 0)}
+      </p>
+      <p className="text-slate-700 dark:text-slate-300">Symbols: {symbolText(point.symbols)}</p>
+    </div>
+  );
+};
+
 const DashboardPage = () => {
   const { theme } = useSettings();
   const [data, setData] = useState(dashboardCache.data);
@@ -118,7 +152,7 @@ const DashboardPage = () => {
   const tradeMonthOptions = useMemo(() => {
     const months = new Set();
     [...winningTrades, ...losingTrades].forEach((trade) => {
-      const monthKey = toMonthKey(trade.closedOn);
+      const monthKey = toMonthKey(trade.openedOn);
       if (monthKey) months.add(monthKey);
     });
     return Array.from(months).sort((a, b) => b.localeCompare(a));
@@ -133,14 +167,14 @@ const DashboardPage = () => {
     () =>
       selectedMonth === 'ALL'
         ? winningTrades
-        : winningTrades.filter((trade) => toMonthKey(trade.closedOn) === selectedMonth),
+        : winningTrades.filter((trade) => toMonthKey(trade.openedOn) === selectedMonth),
     [winningTrades, selectedMonth]
   );
   const filteredLosingTrades = useMemo(
     () =>
       selectedMonth === 'ALL'
         ? losingTrades
-        : losingTrades.filter((trade) => toMonthKey(trade.closedOn) === selectedMonth),
+        : losingTrades.filter((trade) => toMonthKey(trade.openedOn) === selectedMonth),
     [losingTrades, selectedMonth]
   );
   const visibleWinningTrades = showAllWinningTrades
@@ -292,10 +326,6 @@ const DashboardPage = () => {
   const chartGrid = isDark ? '#334155' : '#cbd5e1';
   const chartAxis = isDark ? '#475569' : '#94a3b8';
   const chartTick = isDark ? '#cbd5e1' : '#334155';
-  const chartTooltipBg = isDark ? '#0f172a' : '#ffffff';
-  const chartTooltipBorder = isDark ? '#334155' : '#cbd5e1';
-  const chartTooltipText = isDark ? '#e2e8f0' : '#0f172a';
-  const chartTooltipLabel = isDark ? '#f8fafc' : '#111827';
 
   return (
     <div className="space-y-6">
@@ -508,8 +538,7 @@ const DashboardPage = () => {
                 <XAxis dataKey="date" tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
                 <YAxis tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: chartTooltipBg, borderColor: chartTooltipBorder, color: chartTooltipText }}
-                  labelStyle={{ color: chartTooltipLabel }}
+                  content={<EquityTooltip />}
                 />
                 <Line type="monotone" dataKey="equity" stroke="#34d399" strokeWidth={2} dot={false} />
               </LineChart>
@@ -526,8 +555,7 @@ const DashboardPage = () => {
                 <XAxis dataKey="month" tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
                 <YAxis tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: chartTooltipBg, borderColor: chartTooltipBorder, color: chartTooltipText }}
-                  labelStyle={{ color: chartTooltipLabel }}
+                  content={<MonthlyPnlTooltip />}
                 />
                 <Bar dataKey="pnl" fill="#34d399" />
               </BarChart>
@@ -540,7 +568,7 @@ const DashboardPage = () => {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Closed Trades</h2>
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-slate-600 dark:text-slate-300">Month</span>
+            <span className="text-slate-600 dark:text-slate-300">Opened Month</span>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -566,7 +594,8 @@ const DashboardPage = () => {
                 <thead className="table-head">
                   <tr>
                     <th className="px-3 py-2">Symbol</th>
-                    <th className="px-3 py-2">Closed On</th>
+                    <th className="px-3 py-2">First Entry</th>
+                    <th className="px-3 py-2">Final Close</th>
                     <th className="px-3 py-2">Realized P&L</th>
                     <th className="px-3 py-2">Realized R</th>
                   </tr>
@@ -585,6 +614,7 @@ const DashboardPage = () => {
                           {trade.symbol}
                         </button>
                       </td>
+                      <td className="px-3 py-2">{formatDisplayDate(trade.openedOn)}</td>
                       <td className="px-3 py-2">{formatDisplayDate(trade.closedOn)}</td>
                       <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
                         {money(trade.realizedPnL)}
@@ -594,7 +624,7 @@ const DashboardPage = () => {
                   ))}
                   {!filteredWinningTrades.length && (
                     <tr>
-                      <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={4}>
+                      <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={5}>
                         No winning trades for this month.
                       </td>
                     </tr>
@@ -624,7 +654,8 @@ const DashboardPage = () => {
                 <thead className="table-head">
                   <tr>
                     <th className="px-3 py-2">Symbol</th>
-                    <th className="px-3 py-2">Closed On</th>
+                    <th className="px-3 py-2">First Entry</th>
+                    <th className="px-3 py-2">Final Close</th>
                     <th className="px-3 py-2">Realized P&L</th>
                     <th className="px-3 py-2">Realized R</th>
                   </tr>
@@ -643,6 +674,7 @@ const DashboardPage = () => {
                           {trade.symbol}
                         </button>
                       </td>
+                      <td className="px-3 py-2">{formatDisplayDate(trade.openedOn)}</td>
                       <td className="px-3 py-2">{formatDisplayDate(trade.closedOn)}</td>
                       <td className={`px-3 py-2 ${pnlTextClass(trade.realizedPnL)}`}>
                         {money(trade.realizedPnL)}
@@ -652,7 +684,7 @@ const DashboardPage = () => {
                   ))}
                   {!filteredLosingTrades.length && (
                     <tr>
-                      <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={4}>
+                      <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={5}>
                         No losing trades for this month.
                       </td>
                     </tr>

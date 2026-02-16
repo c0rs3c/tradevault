@@ -1,17 +1,20 @@
-<svg width="64" height="64" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="favBg" x1="40" y1="24" x2="196" y2="216" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#34D399"/>
-      <stop offset="1" stop-color="#245B4A"/>
+    <linearGradient id="bg" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F7A5C"/>
+      <stop offset="1" stop-color="#0F4D3A"/>
+    </linearGradient>
+    <linearGradient id="line" x1="126" y1="365" x2="386" y2="179" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D1FAE5"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
     </linearGradient>
   </defs>
-  <rect x="24" y="24" width="192" height="192" rx="40" fill="url(#favBg)"/>
-  <rect x="70" y="66" width="100" height="108" rx="20" fill="#E2E8F0"/>
-  <circle cx="120" cy="120" r="29" fill="#0F172A"/>
-  <circle cx="120" cy="120" r="20" fill="#34D399"/>
-  <path d="M120 91V149" stroke="#0F172A" stroke-width="6" stroke-linecap="round"/>
-  <path d="M91 120H149" stroke="#0F172A" stroke-width="6" stroke-linecap="round"/>
-  <rect x="92" y="87" width="11" height="20" rx="5.5" fill="#0F172A"/>
-  <rect x="110" y="81" width="11" height="26" rx="5.5" fill="#0F172A"/>
-  <rect x="128" y="74" width="11" height="33" rx="5.5" fill="#0F172A"/>
+  <rect x="40" y="40" width="432" height="432" rx="104" fill="url(#bg)"/>
+  <rect x="40" y="40" width="432" height="432" rx="104" stroke="#CFF5E3" stroke-opacity="0.28" stroke-width="12"/>
+  <path d="M128 332L201 263L254 298L330 212L384 228" stroke="url(#line)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="128" cy="332" r="16" fill="#F0FDF4"/>
+  <circle cx="201" cy="263" r="16" fill="#F0FDF4"/>
+  <circle cx="254" cy="298" r="16" fill="#F0FDF4"/>
+  <circle cx="330" cy="212" r="16" fill="#F0FDF4"/>
+  <path d="M130 120H382" stroke="#D1FAE5" stroke-opacity="0.65" stroke-width="14" stroke-linecap="round"/>
 </svg>

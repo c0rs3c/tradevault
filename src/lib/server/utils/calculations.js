@@ -99,6 +99,33 @@ const getTradeHoldingDays = (trade) => {
   return diffInCalendarDaysInclusive(entryDate, lastExitDate || entryDate);
 };
 
+const getTradeClosedOn = (trade) => {
+  const exits = trade?.exits || [];
+  if (exits.length) {
+    const lastExitDate = exits.reduce((latest, exit) => {
+      const latestTime = latest ? new Date(latest).getTime() : -Infinity;
+      const currentTime = new Date(exit.exitDate).getTime();
+      return currentTime > latestTime ? exit.exitDate : latest;
+    }, null);
+    if (lastExitDate) return lastExitDate;
+  }
+  return trade?.updatedAt || trade?.entryDate || null;
+};
+
+const getTradeOpenedOn = (trade) => {
+  const entries = buildEntries(trade);
+  if (!entries.length) return trade?.entryDate || null;
+  const firstEntryDate = entries.reduce((earliest, entry) => {
+    const currentDate = entry?.entryDate;
+    const currentTime = currentDate ? new Date(currentDate).getTime() : Number.POSITIVE_INFINITY;
+    if (!Number.isFinite(currentTime)) return earliest;
+    if (!earliest) return currentDate;
+    const earliestTime = new Date(earliest).getTime();
+    return currentTime < earliestTime ? currentDate : earliest;
+  }, null);
+  return firstEntryDate || trade?.entryDate || null;
+};
+
 const buildFifoResult = ({ entries, exits, side }) => {
   const lots = entries.map((entry) => ({
     qtyRemaining: toNumber(entry.qty),
@@ -274,7 +301,6 @@ export const buildDashboardAnalytics = (trades) => {
   const totalRealizedPnL = trades.reduce((acc, trade) => acc + trade.metrics.realizedPnL, 0);
 
   const equityPoints = [];
-  const monthlyMap = {};
 
   const exitEvents = [];
   trades.forEach((trade) => {
@@ -286,7 +312,8 @@ export const buildDashboardAnalytics = (trades) => {
 
       exitEvents.push({
         date: parsedDate,
-        pnl: event.pnl
+        pnl: event.pnl,
+        symbol: trade.symbol
       });
     });
   });
@@ -301,20 +328,49 @@ export const buildDashboardAnalytics = (trades) => {
     runningEquity += event.pnl;
     equityPoints.push({
       date: event.date.toISOString().slice(0, 10),
-      equity: round(runningEquity, 2)
+      equity: round(runningEquity, 2),
+      eventPnl: round(event.pnl, 2),
+      symbols: event.symbol ? [event.symbol] : []
     });
 
     if (runningEquity > peak) peak = runningEquity;
     const drawdown = peak - runningEquity;
     if (drawdown > maxDrawdown) maxDrawdown = drawdown;
 
-    const monthKey = event.date.toISOString().slice(0, 7);
-    monthlyMap[monthKey] = round((monthlyMap[monthKey] || 0) + event.pnl, 2);
   });
-
+  const monthlyMap = closedTrades.reduce((acc, trade) => {
+    const closedOn = getTradeClosedOn(trade);
+    const parsedDate = new Date(closedOn);
+    if (Number.isNaN(parsedDate.getTime())) return acc;
+    const monthKey = parsedDate.toISOString().slice(0, 7);
+    acc[monthKey] = round((acc[monthKey] || 0) + toNumber(trade?.metrics?.realizedPnL), 2);
+    return acc;
+  }, {});
+  const monthlyTradesInBarMap = closedTrades.reduce((acc, trade) => {
+    const closedOn = getTradeClosedOn(trade);
+    const parsedDate = new Date(closedOn);
+    if (Number.isNaN(parsedDate.getTime())) return acc;
+    const monthKey = parsedDate.toISOString().slice(0, 7);
+    acc[monthKey] = (acc[monthKey] || 0) + 1;
+    return acc;
+  }, {});
+  const monthlySymbolsMap = closedTrades.reduce((acc, trade) => {
+    const closedOn = getTradeClosedOn(trade);
+    const parsedDate = new Date(closedOn);
+    if (Number.isNaN(parsedDate.getTime())) return acc;
+    const monthKey = parsedDate.toISOString().slice(0, 7);
+    if (!acc[monthKey]) acc[monthKey] = new Set();
+    if (trade.symbol) acc[monthKey].add(trade.symbol);
+    return acc;
+  }, {});
   const monthlyPnL = Object.keys(monthlyMap)
     .sort()
-    .map((month) => ({ month, pnl: monthlyMap[month] }));
+    .map((month) => ({
+      month,
+      pnl: round(monthlyMap[month], 2),
+      tradesInBar: monthlyTradesInBarMap[month] || 0,
+      symbols: Array.from(monthlySymbolsMap[month] || [])
+    }));
 
   const closedWins = closedTrades.filter((trade) => trade.metrics.realizedPnL > 0);
   const closedLosses = closedTrades.filter((trade) => trade.metrics.realizedPnL < 0);
@@ -340,43 +396,27 @@ export const buildDashboardAnalytics = (trades) => {
     : 0;
   const winningTrades = closedWins
     .map((trade) => {
-      const exits = trade.exits || [];
-      const lastExitDate = exits.length
-        ? exits.reduce((latest, exit) => {
-            const latestTime = latest ? new Date(latest).getTime() : -Infinity;
-            const currentTime = new Date(exit.exitDate).getTime();
-            return currentTime > latestTime ? exit.exitDate : latest;
-          }, null)
-        : null;
-
       return {
         id: trade._id,
         symbol: trade.symbol,
         side: trade.side,
+        openedOn: getTradeOpenedOn(trade),
         realizedPnL: round(trade.metrics.realizedPnL, 2),
         realizedR: round(calcNormalizedRFromStopLoss(trade), 4),
-        closedOn: lastExitDate || trade.updatedAt || trade.entryDate
+        closedOn: getTradeClosedOn(trade)
       };
     })
     .sort((a, b) => new Date(b.closedOn) - new Date(a.closedOn));
   const losingTrades = closedLosses
     .map((trade) => {
-      const exits = trade.exits || [];
-      const lastExitDate = exits.length
-        ? exits.reduce((latest, exit) => {
-            const latestTime = latest ? new Date(latest).getTime() : -Infinity;
-            const currentTime = new Date(exit.exitDate).getTime();
-            return currentTime > latestTime ? exit.exitDate : latest;
-          }, null)
-        : null;
-
       return {
         id: trade._id,
         symbol: trade.symbol,
         side: trade.side,
+        openedOn: getTradeOpenedOn(trade),
         realizedPnL: round(trade.metrics.realizedPnL, 2),
         realizedR: round(calcNormalizedRFromStopLoss(trade), 4),
-        closedOn: lastExitDate || trade.updatedAt || trade.entryDate
+        closedOn: getTradeClosedOn(trade)
       };
     })
     .sort((a, b) => new Date(b.closedOn) - new Date(a.closedOn));

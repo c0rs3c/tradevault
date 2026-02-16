@@ -9,10 +9,7 @@ const getUserPair = (usernameKey, passwordKey) => {
 };
 
 export const getAuthUsers = () => {
-  const users = [
-    getUserPair('AUTH_USERNAME', 'AUTH_PASSWORD'),
-    getUserPair('AUTH_USERNAME_2', 'AUTH_PASSWORD_2')
-  ].filter(Boolean);
+  const users = [getUserPair('AUTH_USERNAME', 'AUTH_PASSWORD')].filter(Boolean);
   return users;
 };
 
