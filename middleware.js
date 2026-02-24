@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const AUTH_COOKIE_NAME = 'tv_auth_session';
-const AUTH_COOKIE_VALUE = '1';
+import { AUTH_COOKIE_NAME, getSessionUsername } from '@/lib/auth/session';
 
 const PUBLIC_PATHS = new Set(['/login', '/api/auth/login', '/api/auth/logout', '/api/health']);
 
@@ -19,7 +17,7 @@ export function middleware(request) {
   }
 
   const sessionToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
-  const isAuthed = sessionToken === AUTH_COOKIE_VALUE;
+  const isAuthed = Boolean(getSessionUsername(sessionToken));
   if (isAuthed) return NextResponse.next();
 
   if (pathname.startsWith('/api/')) {

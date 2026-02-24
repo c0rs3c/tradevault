@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   AUTH_COOKIE_NAME,
-  AUTH_COOKIE_VALUE,
+  createSessionToken,
   isAuthConfigured,
   isValidCredentials
 } from '@/lib/auth/session';
@@ -39,7 +39,7 @@ export async function POST(request) {
   }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(AUTH_COOKIE_NAME, AUTH_COOKIE_VALUE, {
+  response.cookies.set(AUTH_COOKIE_NAME, createSessionToken(username), {
     httpOnly: true,
     sameSite: 'lax',
     secure: useSecureCookie(request),
