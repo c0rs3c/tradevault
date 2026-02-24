@@ -26,10 +26,33 @@ const Layout = ({ children }) => {
   const { theme, setTheme } = useSettings();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sessionUsername, setSessionUsername] = useState('');
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSessionUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active) {
+          setSessionUsername(String(data?.username || '').trim());
+        }
+      } catch {
+        // Header label is non-critical.
+      }
+    };
+
+    loadSessionUser();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleThemeToggle = async () => {
     try {
@@ -105,6 +128,14 @@ const Layout = ({ children }) => {
                 <NavItem href="/trades/new" label="New Trade" exact />
                 <NavItem href="/trades/import" label="Import Trade" exact />
                 <NavItem href="/settings" label="Settings" />
+                {sessionUsername ? (
+                  <span
+                    className="shrink-0 rounded-md border border-slate-200/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:border-slate-700/80 dark:text-slate-200 md:px-3 md:py-2 md:text-sm"
+                    title={`Logged in as ${sessionUsername}`}
+                  >
+                    {sessionUsername}
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   onClick={handleThemeToggle}
@@ -159,6 +190,11 @@ const Layout = ({ children }) => {
               <NavItem href="/trades/new" label="New Trade" exact />
               <NavItem href="/trades/import" label="Import Trade" exact />
               <NavItem href="/settings" label="Settings" />
+              {sessionUsername ? (
+                <div className="rounded-md border border-slate-200/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:border-slate-700/80 dark:text-slate-200">
+                  {sessionUsername}
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={handleThemeToggle}
