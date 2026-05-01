@@ -538,7 +538,48 @@ const DashboardPage = () => {
                           </button>
                         </div>
                       </td>
-                      <td className="px-3 py-2 font-medium">{isHidden ? '••••' : group.symbol}</td>
+                      <td className="px-3 py-2 font-medium">
+                        {isHidden ? (
+                          '••••'
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openChartForTrade({ id: group.trades[0]?._id })}
+                              disabled={!group.trades[0]?._id || chartLoadingTradeId === String(group.trades[0]?._id)}
+                              className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
+                              title="Open chart"
+                            >
+                              {group.symbol}
+                            </button>
+                            {group.trades[0]?._id ? (
+                              <Link
+                                href={`/trades/${group.trades[0]._id}`}
+                                className="group relative inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                aria-label={`Details for ${group.symbol}`}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.9"
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M9 9h6v6" strokeLinecap="round" />
+                                  <path d="m15 9-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M5 12v7h7" strokeLinecap="round" />
+                                  <path d="M12 5h7v7" strokeLinecap="round" />
+                                </svg>
+                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                                  Details
+                                </span>
+                              </Link>
+                            ) : null}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-3 py-2">{isHidden ? '••••' : group.avgEntryPrice.toFixed(2)}</td>
                       <td className="px-3 py-2">
                         {isHidden ? '••••' : group.cmp === null ? 'N/A' : group.cmp.toFixed(2)}
