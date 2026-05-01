@@ -9,7 +9,7 @@ import {
   createSeriesMarkers
 } from 'lightweight-charts';
 import { useSettings } from '../contexts/SettingsContext';
-import { fetchMarketCandles } from '../api/trades';
+import { fetchMarketCandles, fetchTradeQuote } from '../api/trades';
 
 const daysFromNow = (days) => {
   const date = new Date();
@@ -64,14 +64,21 @@ const LOOKBACK_DAYS_BY_INTERVAL = {
   '1W': 2000
 };
 
-const CANDLE_SCALE_MARGINS = {
-  top: 0.2,
-  bottom: 0.42
-};
-
 const TIMEFRAME_LABELS = {
   '1D': 'D',
   '1W': 'W'
+};
+
+const isSupportedTimeframe = (value) => TIMEFRAME_OPTIONS.some((option) => option.value === value);
+
+const CANDLE_SCALE_MARGINS = {
+  top: 0.08,
+  bottom: 0.18
+};
+
+const VOLUME_SCALE_MARGINS = {
+  top: 0.82,
+  bottom: 0.02
 };
 
 const buildTradeEvents = (trade) => {
@@ -112,6 +119,52 @@ const nearestCandleTime = (target, candleTimes) => {
     const currentTs = Number(current);
     return Math.abs(currentTs - targetTs) < Math.abs(closestTs - targetTs) ? current : closest;
   }, candleTimes[0]);
+};
+
+const buildVisiblePriceRange = (candles, logicalRange) => {
+  if (!Array.isArray(candles) || !candles.length || !logicalRange) return null;
+  const fromIndex = Math.max(0, Math.floor(Number(logicalRange.from)));
+  const toIndex = Math.min(candles.length - 1, Math.ceil(Number(logicalRange.to)));
+  if (!Number.isFinite(fromIndex) || !Number.isFinite(toIndex) || fromIndex > toIndex) return null;
+
+  let minValue = Number.POSITIVE_INFINITY;
+  let maxValue = Number.NEGATIVE_INFINITY;
+  for (let index = fromIndex; index <= toIndex; index += 1) {
+    const bar = candles[index];
+    const low = Number(bar?.low);
+    const high = Number(bar?.high);
+    if (!Number.isFinite(low) || !Number.isFinite(high)) continue;
+    minValue = Math.min(minValue, low);
+    maxValue = Math.max(maxValue, high);
+  }
+
+  if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) return null;
+  const span = Math.max(maxValue - minValue, maxValue * 0.01, 0.01);
+  const padding = span * 0.08;
+  return {
+    minValue: minValue - padding,
+    maxValue: maxValue + padding
+  };
+};
+
+const buildDailyAutoscaleProvider = (candles, chart) => (original) => {
+  const base = typeof original === 'function' ? original() : null;
+  const visibleRange = buildVisiblePriceRange(candles, chart.timeScale().getVisibleLogicalRange());
+  if (!visibleRange) return base;
+  if (!base?.priceRange) {
+    return {
+      ...base,
+      priceRange: visibleRange
+    };
+  }
+
+  return {
+    ...base,
+    priceRange: {
+      minValue: Math.max(base.priceRange.minValue, visibleRange.minValue),
+      maxValue: Math.min(base.priceRange.maxValue, visibleRange.maxValue)
+    }
+  };
 };
 
 const normalizeChartSettings = (settings) => {
@@ -294,15 +347,16 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
   const singleChartRef = useRef(null);
   const leftChartRef = useRef(null);
   const rightChartRef = useRef(null);
+  const wasOpenRef = useRef(false);
   const viewportRef = useRef({
     single: { logicalRange: null },
     left: { logicalRange: null },
     right: { logicalRange: null }
   });
-  const [layoutMode, setLayoutMode] = useState('double');
+  const [layoutMode, setLayoutMode] = useState('single');
   const [singleTimeframe, setSingleTimeframe] = useState('1D');
-  const [leftTimeframe, setLeftTimeframe] = useState('1D');
-  const [rightTimeframe, setRightTimeframe] = useState('1W');
+  const [leftTimeframe, setLeftTimeframe] = useState('1W');
+  const [rightTimeframe, setRightTimeframe] = useState('1D');
   const [paneData, setPaneData] = useState({
     single: defaultPaneData(),
     left: defaultPaneData(),
@@ -313,6 +367,8 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
     left: null,
     right: null
   });
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [showCompanyProfile, setShowCompanyProfile] = useState(true);
   const chartPrefs = useMemo(() => normalizeChartSettings(settings), [settings]);
   const [showEntryMarkers, setShowEntryMarkers] = useState(true);
   const [showExitMarkers, setShowExitMarkers] = useState(true);
@@ -330,13 +386,14 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
   };
 
   useEffect(() => {
-    if (!open) return;
-    setLayoutMode('double');
+    if (!open || wasOpenRef.current) return;
+    setLayoutMode('single');
     setSingleTimeframe('1D');
-    setLeftTimeframe('1D');
-    setRightTimeframe('1W');
+    setLeftTimeframe('1W');
+    setRightTimeframe('1D');
     setShowEntryMarkers(true);
     setShowExitMarkers(true);
+    setShowCompanyProfile(true);
     viewportRef.current = {
       single: { logicalRange: null },
       left: { logicalRange: null },
@@ -352,7 +409,61 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       left: null,
       right: null
     });
-  }, [open, chartPrefs.defaultTimeframe, trade?._id]);
+    setCompanyProfile(null);
+  }, [open]);
+
+  useEffect(() => {
+    wasOpenRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    viewportRef.current = {
+      single: { logicalRange: null },
+      left: { logicalRange: null },
+      right: { logicalRange: null }
+    };
+    setPaneData({
+      single: defaultPaneData(),
+      left: defaultPaneData(),
+      right: defaultPaneData()
+    });
+    setPaneOhlc({
+      single: null,
+      left: null,
+      right: null
+    });
+  }, [open, trade?._id]);
+
+  useEffect(() => {
+    if (!open || !trade?._id) return;
+    let cancelled = false;
+    const loadCompanyProfile = async () => {
+      try {
+        const quote = await fetchTradeQuote(trade._id);
+        if (cancelled) return;
+        setCompanyProfile({
+          companyName: quote?.companyName || '',
+          sector: quote?.sector || '',
+          industry: quote?.industry || '',
+          summary: quote?.summary || ''
+        });
+      } catch {
+        if (!cancelled) setCompanyProfile(null);
+      }
+    };
+    loadCompanyProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, trade?._id]);
+
+  const handleLayoutModeChange = (nextLayout) => {
+    setLayoutMode(nextLayout);
+    if (nextLayout === 'single') {
+      setSingleTimeframe((current) => (isSupportedTimeframe(current) ? current : '1D'));
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -495,6 +606,23 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         to: right
       });
     };
+    const focusTimeInViewport = (chart, time, anchorRatio = 0.62) => {
+      if (!time) return;
+      const timeScale = chart.timeScale();
+      const targetIndex = timeScale.timeToIndex(time, true);
+      const numericIndex = Number(targetIndex);
+      if (!Number.isFinite(numericIndex)) return;
+
+      const logical = timeScale.getVisibleLogicalRange();
+      if (!logical) return;
+      const window = Math.max(10, logical.to - logical.from);
+      const offsetToRight = Math.max(2, Math.floor(window * (1 - anchorRatio)));
+      const right = numericIndex + offsetToRight;
+      timeScale.setVisibleLogicalRange({
+        from: right - window,
+        to: right
+      });
+    };
 
     const renderPaneChart = ({ paneKey, timeframe, container, candles }) => {
       if (!container || !candles.length) return null;
@@ -527,6 +655,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
           horzLine: { color: '#64748b' }
         }
       });
+      const dailyAutoscaleProvider = timeframe === '1D' ? buildDailyAutoscaleProvider(candles, chart) : undefined;
 
       const candleSeries = chart.addSeries(CandlestickSeries, {
         upColor: '#16a34a',
@@ -536,7 +665,8 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         borderDownColor: '#dc2626',
         wickUpColor: '#16a34a',
         wickDownColor: '#dc2626',
-        priceScaleId: 'right'
+        priceScaleId: 'right',
+        autoscaleInfoProvider: dailyAutoscaleProvider
       });
       candleSeries.setData(candles);
       const candleIndexByTime = new Map(candles.map((bar, index) => [String(bar.time), index]));
@@ -548,7 +678,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       const volumeSeries = chart.addSeries(HistogramSeries, {
         priceScaleId: 'volume',
         priceFormat: { type: 'volume' },
-        scaleMargins: { top: 0.88, bottom: 0.02 }
+        scaleMargins: VOLUME_SCALE_MARGINS
       });
       volumeSeries.setData(
         candles.map((bar) => ({
@@ -560,7 +690,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       chart.priceScale('volume').applyOptions({
         visible: false,
         borderVisible: false,
-        scaleMargins: { top: 0.88, bottom: 0.02 }
+        scaleMargins: VOLUME_SCALE_MARGINS
       });
       chart.priceScale('volume').setAutoScale(true);
 
@@ -573,7 +703,8 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
           priceLineVisible: showSmaScaleLabels,
           lastValueVisible: showSmaScaleLabels,
           crosshairMarkerVisible: showSmaScaleLabels,
-          title: showSmaScaleLabels ? `SMA ${period}` : ''
+          title: showSmaScaleLabels ? `SMA ${period}` : '',
+          autoscaleInfoProvider: dailyAutoscaleProvider
         });
         series.setData(smaData);
       });
@@ -670,19 +801,29 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       if (savedViewport?.logicalRange) {
         chart.timeScale().setVisibleLogicalRange(savedViewport.logicalRange);
       } else {
-        const windowSize = timeframe === '1W' ? 80 : 140;
-        const latestEntryEventTime = [...tradeEvents]
-          .reverse()
-          .find((event) => event.kind === 'ENTRY')?.time;
-        const latestAnchorTime = latestEntryEventTime || tradeEvents[tradeEvents.length - 1]?.time || null;
-        const latestTradeEventIndex = latestAnchorTime
-          ? chart.timeScale().timeToIndex(latestAnchorTime, true)
+        const defaultWindowSize = timeframe === '1W' ? 80 : 90;
+        const latestVisibleEntryTime = showEntryMarkers
+          ? [...tradeEvents].reverse().find((event) => event.kind === 'ENTRY')?.time
           : null;
-        const rawAnchor = Number.isFinite(Number(latestTradeEventIndex))
-          ? Number(latestTradeEventIndex)
-          : candles.length - 1;
-        const anchor = Math.max(0, Math.min(candles.length - 1, rawAnchor));
-        const right = anchor + Math.max(8, Math.floor(windowSize * 0.2));
+        const latestVisibleExitTime = showExitMarkers
+          ? [...tradeEvents].reverse().find((event) => event.kind === 'EXIT')?.time
+          : null;
+        const latestEntryIndex = latestVisibleEntryTime
+          ? chart.timeScale().timeToIndex(latestVisibleEntryTime, true)
+          : null;
+        const latestExitIndex = latestVisibleExitTime
+          ? chart.timeScale().timeToIndex(latestVisibleExitTime, true)
+          : null;
+        const markerIndices = [latestEntryIndex, latestExitIndex]
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+          .map((value) => Math.max(0, Math.min(candles.length - 1, value)));
+
+        const focusStart = markerIndices.length ? Math.min(...markerIndices) : Math.max(0, candles.length - defaultWindowSize);
+        const focusEnd = markerIndices.length ? Math.max(...markerIndices) : candles.length - 1;
+        const focusSpan = Math.max(12, focusEnd - focusStart + 1);
+        const windowSize = Math.max(defaultWindowSize, focusSpan + Math.ceil(defaultWindowSize * 0.35));
+        const right = focusEnd + Math.max(6, Math.floor(windowSize * 0.12));
         chart.timeScale().setVisibleLogicalRange({
           from: Math.max(-1, right - windowSize),
           to: right
@@ -734,10 +875,9 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       if (rightResult) cleanups.push(rightResult.cleanup);
 
       if (leftResult && rightResult) {
+        const shouldSyncRanges = leftTimeframe === rightTimeframe;
         let syncing = false;
-        let activePane = 'left';
         const leftToRight = (param) => {
-          if (param?.point) activePane = 'left';
           if (syncing) return;
           if (!param?.time || !param?.point) {
             rightResult.chart.clearCrosshairPosition();
@@ -750,7 +890,6 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
           syncing = false;
         };
         const rightToLeft = (param) => {
-          if (param?.point) activePane = 'right';
           if (syncing) return;
           if (!param?.time || !param?.point) {
             leftResult.chart.clearCrosshairPosition();
@@ -767,17 +906,19 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
 
         const leftClickToRight = (param) => {
           if (syncing || !param?.time) return;
-          activePane = 'left';
           const price = getPriceFromEvent(param, leftResult.candleSeries);
           if (price === null) return;
           syncing = true;
-          ensureTimeVisible(rightResult.chart, param.time);
+          if (leftTimeframe === '1W' && rightTimeframe === '1D') {
+            focusTimeInViewport(rightResult.chart, param.time);
+          } else {
+            ensureTimeVisible(rightResult.chart, param.time);
+          }
           rightResult.chart.setCrosshairPosition(price, param.time, rightResult.candleSeries);
           syncing = false;
         };
         const rightClickToLeft = (param) => {
           if (syncing || !param?.time) return;
-          activePane = 'right';
           const price = getPriceFromEvent(param, rightResult.candleSeries);
           if (price === null) return;
           syncing = true;
@@ -788,60 +929,48 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         leftResult.chart.subscribeClick(leftClickToRight);
         rightResult.chart.subscribeClick(rightClickToLeft);
 
-        // Ensure both panes start aligned on the same date range.
-        const initialLeftRange = leftResult.chart.timeScale().getVisibleRange();
-        const initialRightRange = rightResult.chart.timeScale().getVisibleRange();
-        if (initialLeftRange) {
-          rightResult.chart.timeScale().setVisibleRange(initialLeftRange);
-        } else if (initialRightRange) {
-          leftResult.chart.timeScale().setVisibleRange(initialRightRange);
+        let leftRangeToRight = null;
+        let rightRangeToLeft = null;
+        if (shouldSyncRanges) {
+          const initialLeftRange = leftResult.chart.timeScale().getVisibleRange();
+          const initialRightRange = rightResult.chart.timeScale().getVisibleRange();
+          if (initialLeftRange) {
+            rightResult.chart.timeScale().setVisibleRange(initialLeftRange);
+          } else if (initialRightRange) {
+            leftResult.chart.timeScale().setVisibleRange(initialRightRange);
+          }
+
+          const areRangesEqual = (a, b) => {
+            if (!a || !b) return false;
+            const fromDiff = Math.abs(Number(a.from) - Number(b.from));
+            const toDiff = Math.abs(Number(a.to) - Number(b.to));
+            return fromDiff < 1e-6 && toDiff < 1e-6;
+          };
+          const syncVisibleRange = (sourceChart, targetChart) => {
+            if (syncing) return;
+            const sourceRange = sourceChart.timeScale().getVisibleRange();
+            if (!sourceRange) return;
+            const targetRange = targetChart.timeScale().getVisibleRange();
+            if (areRangesEqual(sourceRange, targetRange)) return;
+            syncing = true;
+            targetChart.timeScale().setVisibleRange(sourceRange);
+            syncing = false;
+          };
+          leftRangeToRight = () => syncVisibleRange(leftResult.chart, rightResult.chart);
+          rightRangeToLeft = () => syncVisibleRange(rightResult.chart, leftResult.chart);
+          leftResult.chart.timeScale().subscribeVisibleTimeRangeChange(leftRangeToRight);
+          rightResult.chart.timeScale().subscribeVisibleTimeRangeChange(rightRangeToLeft);
         }
-
-        const areRangesEqual = (a, b) => {
-          if (!a || !b) return false;
-          const fromDiff = Math.abs(Number(a.from) - Number(b.from));
-          const toDiff = Math.abs(Number(a.to) - Number(b.to));
-          return fromDiff < 1e-6 && toDiff < 1e-6;
-        };
-        const syncVisibleRange = (sourceChart, targetChart, sourcePane) => {
-          if (syncing || activePane !== sourcePane) return;
-          const sourceRange = sourceChart.timeScale().getVisibleRange();
-          if (!sourceRange) return;
-          const targetRange = targetChart.timeScale().getVisibleRange();
-          if (areRangesEqual(sourceRange, targetRange)) return;
-          syncing = true;
-          targetChart.timeScale().setVisibleRange(sourceRange);
-          syncing = false;
-        };
-        const leftRangeToRight = () => syncVisibleRange(leftResult.chart, rightResult.chart, 'left');
-        const rightRangeToLeft = () => syncVisibleRange(rightResult.chart, leftResult.chart, 'right');
-        leftResult.chart.timeScale().subscribeVisibleTimeRangeChange(leftRangeToRight);
-        rightResult.chart.timeScale().subscribeVisibleTimeRangeChange(rightRangeToLeft);
-
-        const leftContainer = leftChartRef.current;
-        const rightContainer = rightChartRef.current;
-        const setActiveLeft = () => {
-          activePane = 'left';
-        };
-        const setActiveRight = () => {
-          activePane = 'right';
-        };
-        leftContainer?.addEventListener('mouseenter', setActiveLeft);
-        leftContainer?.addEventListener('wheel', setActiveLeft, { passive: true });
-        rightContainer?.addEventListener('mouseenter', setActiveRight);
-        rightContainer?.addEventListener('wheel', setActiveRight, { passive: true });
 
         cleanups.push(() => {
           leftResult.chart.unsubscribeCrosshairMove(leftToRight);
           rightResult.chart.unsubscribeCrosshairMove(rightToLeft);
           leftResult.chart.unsubscribeClick(leftClickToRight);
           rightResult.chart.unsubscribeClick(rightClickToLeft);
-          leftResult.chart.timeScale().unsubscribeVisibleTimeRangeChange(leftRangeToRight);
-          rightResult.chart.timeScale().unsubscribeVisibleTimeRangeChange(rightRangeToLeft);
-          leftContainer?.removeEventListener('mouseenter', setActiveLeft);
-          leftContainer?.removeEventListener('wheel', setActiveLeft);
-          rightContainer?.removeEventListener('mouseenter', setActiveRight);
-          rightContainer?.removeEventListener('wheel', setActiveRight);
+          if (shouldSyncRanges) {
+            leftResult.chart.timeScale().unsubscribeVisibleTimeRangeChange(leftRangeToRight);
+            rightResult.chart.timeScale().unsubscribeVisibleTimeRangeChange(rightRangeToLeft);
+          }
         });
       }
     }
@@ -862,6 +991,10 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
 
   if (!open) return null;
 
+  const companyMeta = [companyProfile?.sector, companyProfile?.industry].filter(Boolean).join(' • ');
+  const companySummary = String(companyProfile?.summary || '').trim();
+  const hasCompanyProfile = Boolean(companyProfile?.companyName || companyMeta || companySummary);
+
   return (
     <div
       className="fixed inset-0 z-[90] bg-slate-950/70 p-3 backdrop-blur-[2px]"
@@ -876,12 +1009,27 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         <div className="flex items-center justify-between border-b border-slate-700/70 px-3 py-2">
           <div>
             <p className="text-sm text-slate-300">Trade Chart</p>
-            <h3 className="text-lg font-semibold text-white">
-              {trade?.symbol}{' '}
-              {displayResolvedSymbol && displayResolvedSymbol !== trade?.symbol
-                ? `(${displayResolvedSymbol})`
-                : ''}
-            </h3>
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <h3 className="text-lg font-semibold text-white">
+                {trade?.symbol}{' '}
+                {displayResolvedSymbol && displayResolvedSymbol !== trade?.symbol
+                  ? `(${displayResolvedSymbol})`
+                  : ''}
+              </h3>
+              {companyProfile?.companyName && (
+                <span className="text-sm font-medium text-slate-300">{companyProfile.companyName}</span>
+              )}
+            </div>
+            {showCompanyProfile && (companyMeta || companySummary) && (
+              <p
+                className="max-w-4xl text-xs text-slate-400"
+                title={[companyMeta, companyProfile?.summary].filter(Boolean).join(' — ')}
+              >
+                {companyMeta}
+                {companyMeta && companySummary ? ' — ' : ''}
+                {companySummary}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="inline-flex overflow-hidden rounded border border-slate-600">
@@ -894,10 +1042,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                   <button
                     key={layout.value}
                     type="button"
-                    onClick={() => {
-                      setLayoutMode(layout.value);
-                      if (layout.value === 'single') setSingleTimeframe('1D');
-                    }}
+                    onClick={() => handleLayoutModeChange(layout.value)}
                     className={`px-2.5 py-1 text-xs font-semibold transition-colors ${
                       active
                         ? 'bg-sky-500 text-white'
@@ -909,6 +1054,15 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                 );
               })}
             </div>
+            {hasCompanyProfile && (
+              <button
+                type="button"
+                className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-800"
+                onClick={() => setShowCompanyProfile((current) => !current)}
+              >
+                {showCompanyProfile ? 'Hide Profile' : 'Show Profile'}
+              </button>
+            )}
             {layoutMode === 'single' ? (
               <div className="inline-flex overflow-hidden rounded border border-slate-600">
                 {TIMEFRAME_OPTIONS.map((option) => {
@@ -944,9 +1098,9 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                             ? 'bg-violet-500 text-white'
                             : 'bg-slate-900 text-slate-200 hover:bg-slate-800'
                         }`}
-                        title="Left pane timeframe"
+                        title="Top pane timeframe"
                       >
-                        L:{option.label}
+                        T:{option.label}
                       </button>
                     );
                   })}
@@ -964,9 +1118,9 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                             ? 'bg-emerald-500 text-white'
                             : 'bg-slate-900 text-slate-200 hover:bg-slate-800'
                         }`}
-                        title="Right pane timeframe"
+                        title="Bottom pane timeframe"
                       >
-                        R:{option.label}
+                        B:{option.label}
                       </button>
                     );
                   })}
@@ -1034,7 +1188,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
               )}
             </div>
           ) : (
-            <div className="grid h-full grid-cols-2 gap-1">
+            <div className="grid h-full grid-rows-2 gap-1">
               {[
                 { key: 'left', ref: leftChartRef, tf: leftTimeframe },
                 { key: 'right', ref: rightChartRef, tf: rightTimeframe }

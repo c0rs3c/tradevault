@@ -1,0 +1,1220 @@
+{
+  "generatedAt": "2026-05-01T11:44:10.925Z",
+  "profiles": {
+    "3IINFOLTD": {
+      "symbol": "3IINFOLTD",
+      "companyName": "3i Infotech Limited",
+      "sector": "Technology",
+      "industry": "Information Technology Services",
+      "summary": "3i Infotech Limited provides IP based software solutions in India, the United States, the United Kingdom, the Middle East, Africa, South Asia, the Asia Pacific, and internationally. It operates through the Application, Automation, Analytics (AAA); Infrastructure services (IS); Business process services (BPS); and Others segments. The company offers infrastructure services, including digital infrastructure management services, cloud adoption in a box, and digital infrastructure consulting; data and analytics services; digital business process and RTA services; and human capital management services. It also provides application services comprising application; testing; automation services; NuRe Campus, an enterprise resource planning solution designed for higher education institutions; and enterprise governance risk and compliance solution. In addition, the company engages in digital media operations. It serves the insurance; banking and financial services; healthcare; education; manufacturing; telecom, media and entertainment; and government industries. 3i Infotech Limited was incorporated in 1993 and is headquartered in Navi Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.330Z"
+    },
+    "AADHARHFC": {
+      "symbol": "AADHARHFC",
+      "companyName": "AADHAR HOUSING FINANCE L",
+      "sector": "Financial Services",
+      "industry": "Mortgage Finance",
+      "summary": "Aadhar Housing Finance Limited, a housing finance company, engages in the housing finance business in India. The company offers loans for residential property; plot purchase and construction; home improvement and extension loans; commercial property construction and acquisition; and loans against residential properties. It also provides loans against property; and other property related services. It serves individuals, companies, corporations, societies, and association of persons. The company was formerly known as DHFL Vysya Housing Finance Limited and changed its name to Aadhar Housing Finance Limited in August 2017. Aadhar Housing Finance Limited was incorporated in 1990 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.329Z"
+    },
+    "ABCAPITAL": {
+      "symbol": "ABCAPITAL",
+      "companyName": "Aditya Birla Capital Limited",
+      "sector": "Financial Services",
+      "industry": "Financial Conglomerates",
+      "summary": "Aditya Birla Capital Limited, through its subsidiaries, provides various financial products and services in India and internationally. It operates through NBFC, Housing Finance, Life Insurance, Asset Management, General Insurance Broking, Stock and Securities Broking, Health Insurance, and Other Financial Services segments. The company offers housing loans, such as home extension, renovation, construction, plot and construction, lease rental discounting, and commercial property loans, as well as loan against property; personal and consumer, flexi, secured, unsecured business loan, and corporate loans; gold loan; and SME loans, including line of credit, working capital, and supply chain financing solutions. It also provides loan against shares, mutual funds, life insurance policies, IPO financings, and promoter fundings. Further, it offers corporate financing, such as project financing and term loans. In addition, it provides life insurance, such as term, retirement, saving, ULIP, children future, wealth protection, group life, general, and pension solutions; health and wellness, and super top-up health insurance plans; and motor insurance comprising bike and car insurances; and travel insurances. Further, the company offers pocket insurance, including eye, dental, hospicash, mental health and nutrition, and personal accident insurance. Additionally, it provides payment solutions and credit card products. The company also provides investment solutions in mutual funds, such as debt, equity, hybrid, retirement, exchange traded, fund of funds, and index funds; stock and securities, including equity, margin trading facilities, and bonds; fixed deposits; digital gold and silver; and tax planning. The company was incorporated in 2007 and is based in Mumbai, India. Aditya Birla Capital Limited is a subsidiary of Grasim Industries Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.116Z"
+    },
+    "AJMERA": {
+      "symbol": "AJMERA",
+      "companyName": "Ajmera Realty & Infra India Limited",
+      "sector": "Real Estate",
+      "industry": "Real Estate - Development",
+      "summary": "Ajmera Realty & Infra India Limited, together with its subsidiaries, engages in the real estate development business in India. The company constructs and develops residential and commercial projects, including apartments, schools, retail and malls, and office spaces, as well as land development projects. It serves individual homebuyers, families, corporate clients, institutional investors, and government agencies. The company was founded in 1968 and is based in Mumbai, India. Ajmera Realty & Infra India Limited is a subsidiary of Ariil Trust.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.329Z"
+    },
+    "ALEMBICLTD": {
+      "symbol": "ALEMBICLTD",
+      "companyName": "Alembic Limited",
+      "sector": "Real Estate",
+      "industry": "Real Estate - Development",
+      "summary": "Alembic Limited engages in real estate business in India and internationally. It operates through Active Pharmaceutical Ingredient (API) and Real Estate segments. The company constructs residential and commercial real estate projects; provides project management and marketing consultancy services; and leases commercial properties. It also manufactures and markets fermentation and chemistry based active pharmaceutical ingredient; and engages in research and development activities. In addition, it is involved in power generation through co-generation plants and wind power sources. The company serves individuals, entrepreneurs, corporates, business houses, HNIs, NRIs, and pharmaceutical companies. The company was incorporated in 1907 and is based in Vadodara, India. Alembic Limited is a subsidiary of Nirayu Pvt. Ltd.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.328Z"
+    },
+    "ANANTRAJ": {
+      "symbol": "ANANTRAJ",
+      "companyName": "Anant Raj Limited",
+      "sector": "Real Estate",
+      "industry": "Real Estate - Development",
+      "summary": "Anant Raj Limited is primarily engaged in the real estate and infrastructure development business in India. It develops and constructs residential townships, group housings, commercial developments, information and technology parks, malls, office complexes, affordable housings, data centres, hospitality, and serviced apartments. The company was formerly known as Anant Raj Industries Limited and changed its name to Anant Raj Limited in October 2012. The company was founded in 1969 and is headquartered in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.329Z"
+    },
+    "APOLLO": {
+      "symbol": "APOLLO",
+      "companyName": "Apollo Micro Systems Limited",
+      "sector": "Industrials",
+      "industry": "Aerospace & Defense",
+      "summary": "Apollo Micro Systems Limited designs, develops, and assembles electronic and electromechanical solutions in India. The company offers DSP, missile hardware simulators, integrated avionics modules, generic PCM encoders and decoders, DSSS de-modulators, seeker electronics, RPF and signal processing systems, turret control and power units, missile interface units, launcher controllers, launcher interface units, tiger sharc DSP-signal processors, quad actuator controllers, fault tolerant and system relay boxes, and DSP controllers; ESM-eagle kit, embedded arss, PSU, and auxiliary controllers; and integrated payload checkout systems, satellite data simulators, high speed frame synchronizers, time code readers/generators, bit synchronizers, monopulse tracking receivers, PCIE-HSDR, PCM-two channel decommutators, PCIe based two channel data acquisition cards, and PCI-X based two channel serial data acquisition cards. It also provides avionics and transportation solutions; public address display systems, warning systems, vehicle tracking solutions and command control solutions, minemaster, weight-in-motion systems, tyre care, passenger information systems, and station announcement systems; ethernet, base band modules, converters, USB/Ethernet protocol converters, dual data bus couplers, data bus solutions, and various formulas; and solar smart street lighting, CCTV surveillance, vehicle tracking, boom barrier, RFID fleet management, UAV detecting and jamming, GSM interception, Wi-Fi and lawful interception, and portable x-ray inspection systems, as well as passenger information displays, wall radar, reactive convoy and stationary jammers, and portable and stationary bomb jammers. In addition, the company offers electronic manufacturing, hardware design, IT and software, and electronic and mechanical CAD services. Apollo Micro Systems Limited was incorporated in 1985 and is based in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.330Z"
+    },
+    "ARROWGREEN": {
+      "symbol": "ARROWGREEN",
+      "companyName": "Arrow Greentech Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Packaging & Containers",
+      "summary": "Arrow Greentech Limited, together with its subsidiaries, engages in the manufacture and sale of water-soluble films, bio-compostable products, and other green products in India and internationally. It operates through the Green Products and High-Tech Products segments. The company also offers packaging films for agro chemicals, liquid detergents, seed tapes, laundry bags, toilet blocks, and powder detergents. In addition, it provides embroidery films, mold release films, and water transfer printing films for the decoration of a range of products. Furthermore, the company offers plasticizer-free thermoplastic and transparent materials. Additionally, it provides security based and pharmaceutical products, and deals in anti-counterfeit solutions, IPRs, and other high-tech products, as well as intellectual property based products. Arrow Greentech Limited was formerly known as Arrow Coated Products Limited and changed its name to Arrow Greentech Limited in May 2016. The company was incorporated in 1992 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.329Z"
+    },
+    "ATGL": {
+      "symbol": "ATGL",
+      "companyName": "Adani Total Gas Limited",
+      "sector": "Utilities",
+      "industry": "Utilities - Regulated Gas",
+      "summary": "Adani Total Gas Limited engages in the city gas distribution (CGD) business in India. The company supplies piped natural gas and compressed natural gas to the domestic, commercial, industrial, and transportation sectors. It also provides biogas, biofuel, biomass, LCNG, HCNG, EV, and hydrogen. In addition, the company manufactures various equipment; and offers value-added services related to the CGD business. The company was formerly known as Adani Gas Limited and changed its name to Adani Total Gas Limited in January 2021. Adani Total Gas Limited was founded in 2004 and is based in Ahmedabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.328Z"
+    },
+    "ATHERENERG": {
+      "symbol": "ATHERENERG",
+      "companyName": "Ather Energy Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Manufacturers",
+      "summary": "Ather Energy Limited, an electric vehicle company, engages in the design, development, and sale of electric two-wheelers, and associated product ecosystem. The company also offers vehicle architecture and chassis; battery packs and battery management system; vehicle control unit; touchscreen dashboard; motor controller; transmission; signal harness; and fast charging system. In addition, it provides charging infrastructure, software and accessories. The company was incorporated in 2013 and is headquartered in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.330Z"
+    },
+    "AVALON": {
+      "symbol": "AVALON",
+      "companyName": "Avalon Technologies Limited",
+      "sector": "Technology",
+      "industry": "Electronic Components",
+      "summary": "Avalon Technologies Limited, together with its subsidiaries, provides integrated electronic manufacturing services in India, the United States, and internationally. Its capabilities include printed circuit board assemblies; custom cables and wire harness assemblies; magnetic assemblies; sheet metal fabrication and assemblies, as well as contract services; aerospace sheet metal fabrication; precision injection molding for plastic parts; new product introduction, including prototype building services; design for manufacturing implementation; product engineering; volume production; life cycle management; system integration; machining; and supply chain and logistics. The company also offers electro-mechanical systems and racks; box builds for railway signaling systems; machined components for aerospace, such as commercial engines, seating, and cargo systems; precision-machined components for specialized locomotive braking systems; and magnetic components, including transformers, inductors, and chokes. It serves the clean energy, mobility, communication, and industrial sectors. Avalon Technologies Limited was founded in 1995 and is based in Chennai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.328Z"
+    },
+    "AZAD": {
+      "symbol": "AZAD",
+      "companyName": "AZAD ENGINEERING LIMITED",
+      "sector": "Industrials",
+      "industry": "Specialty Industrial Machinery",
+      "summary": "Azad Engineering Limited manufactures and sells precision-engineered components in India and internationally. The company offers aerospace, including airfoils/blades for aircraft engines and APUs, body valve, housing mount, housing compressor, fan blisk, mixed flow impeller, housing fan, shell and housing, air frames, aero structure, turbine wheel, nozzle, unison ring, lever arm, hydraulic, fuel inerting, flight control, actuating system, and other products, as well as aerospace standard fluid distribution parts. It provides plate butterfly, sealer, shaft, bearing rod, piston, plate, and sealing ring; aft and fore End Skirt, BB2KP Base, B1 Igniter Body1, and B1 Igniter Body-2; last stage airfoil/blade rotary and welding chamfers and last stage airfoil/ blade stationary components for use in nuclear power turbine solution; and fixed, moving, and stage airfoil/blade rotating for thermal power turbines. In addition, the company offers aerospace actuator systems, such as covers, actuators, housings, guides, poppets, nipples, adapters, tees, elbows; and slips, drill bits, hatch covers, frames, and bonnets for oil and gas up and mid-stream sub-systems. The company also offers 3D rotating airfoil portions of turbine engines and other key products for combustion, hydraulics, flight control, propulsion and actuation which power defence and civil aircraft, spaceships, defence missiles, nuclear power, hydrogen, gas power, oil and thermal power. It serves the aerospace, defense, energy, and oil and gas industries. The company was incorporated in 1983 and is based in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.330Z"
+    },
+    "BALUFORGE": {
+      "symbol": "BALUFORGE",
+      "companyName": "Balu Forge Industries Limited",
+      "sector": "Industrials",
+      "industry": "Metal Fabrication",
+      "summary": "Balu Forge Industries Limited manufactures and sells crankshafts in India and internationally. The company also offers railway wheels, under carriages, transmission and clutches, chassis, hydraulic motors, brake parts, lifting hooks, towing accessories, turbine blades, empty shells, and forged components as well as oil and gas, and flow control products. It supplies crankshafts to original equipment manufacturers. The company serves the agriculture tractor and harvester; defense; oil and gas pump compressor; heavy duty truck, bus, and trailer automotive; generator industrial, standby home backup, and portable; refrigeration compressor industrial; railway; aerospace; marine; locomotive; off road and on road motorcycle, cart, and jet ski; racing; earth-moving equipment; and e-mobility industries. Balu Forge Industries Limited is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.436Z"
+    },
+    "BANCOINDIA": {
+      "symbol": "BANCOINDIA",
+      "companyName": "Banco Products (India) Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Banco Products (India) Limited, together with its subsidiaries, engages in the manufacture and sale of heat exchangers/cooling systems in India and internationally. The company offers engine cooling systems, such as radiators, charge air coolers, oil coolers, transmission and hydraulic type, condensers, fuel coolers, battery coolers, inverter coolers configurations and accessories, expansion tanks, fan motor assembly, fan shroud and guard, and miscellaneous mounting plumbing accessories. It also provides precision-engineered sealing solutions, including cylinder head gaskets, peripheral gaskets, heat shields, compressed fibre gaskets, industrial and jointing gaskets, rubber/cork gaskets, exhaust manifold and ring gaskets, oil pan and valve cover gaskets, as well as intake manifold, water/oil pump, and transmission gaskets. The company's products are used in passenger cars; light, medium, and heavy commercial vehicles; agricultural tractors and harvesters; high-performance motorcycles; construction equipment; material handling equipment; mining machinery; traction locomotives; industrial air compressors; and standalone gensets and backup power systems for data centres. The company was incorporated in 1961 and is based in Vadodara, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.328Z"
+    },
+    "BBOX": {
+      "symbol": "BBOX",
+      "companyName": "Black Box Limited",
+      "sector": "Technology",
+      "industry": "Software - Application",
+      "summary": "Black Box Limited provides information and communications technology solutions in India, the United States, and internationally. It operates through System Integration, Technology Product Solution, and Others segments. The company's product portfolio includes data centers, digital workplace, and connected buildings; keyboard, video and mouse (KVM), cables, Internet of Things (IoT), and audio video products; and IP-led hardware offerings under the Black Box brand, including KVM switches, OEM-distributed equipment, and contract-manufactured solutions. It also provides connectivity infrastructure, including fiber connectivity, physical security, surveillance, passive infrastructure, and structured cabling; enterprise networking with local and wide area, cloud, and wireless and private LTE networks; customer and employee experience, and advisory services; and cybersecurity solutions. In addition, the company offers application development and integration, field and dispatch, project and deployment, training, and consulting and design services; and managed services, such as staff augmentation, support, service desk, and X-as-a-service. It serves broadcast, data center, education, finance, government, healthcare, manufacturing and industrial, retail, transportation, utilities, power, oil and gas, workspaces, entertainment and leisure venues, military and defense, and public safety industries under the AlertWerks, Boxilla, ControlBridge, DKM 4K, Emerald, Freedom II KM, iCompel, MCX AVoIP 10G 4K, MediaCento AVoIP 1G HD/4K, Radian, and VideoPlex4000 brands. The company was formerly known as AGC Networks Limited and changed its name to Black Box Limited in November 2021. Black Box Limited was founded in 1976 and is based in Navi Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.330Z"
+    },
+    "BBTC": {
+      "symbol": "BBTC",
+      "companyName": "The Bombay Burmah Trading Corporation Limited",
+      "sector": "Consumer Defensive",
+      "industry": "Packaged Foods",
+      "summary": "The Bombay Burmah Trading Corporation Limited, engages in the tea and coffee plantations, auto electric components, healthcare, and real estate businesses in India and internationally. It operates through six segments: Plantation- Tea, Health Care, Auto Electric Components, Investments, Horticulture, Food -Bakery & Dairy Products, and Others. The company produces and trades in tea, coffee, timber, cardamom, and pepper; and manufactures and trades in dental products. It also manufactures solenoids, switches, valves, and slip rings for automobile and other industries; and invests in various listed and unlisted securities primarily on a long-term basis. In addition, the company manufactures and trades in analytical, precision balances, and weighing scales; and engages in the property development activities. Further, the company deals with decorative plants and landscaping services; and offers bakery and dairy products. The Bombay Burmah Trading Corporation Limited was incorporated in 1863 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.327Z"
+    },
+    "BDL": {
+      "symbol": "BDL",
+      "companyName": "Bharat Dynamics Limited",
+      "sector": "Industrials",
+      "industry": "Aerospace & Defense",
+      "summary": "Bharat Dynamics Limited manufactures and sells guided missiles, underwater weapons, air-borne products, and allied defense equipment in India. It offers light and heavy-weight torpedoes, unified launcher, fagot launcher adapted to Milan equipment, Konkurs launcher test equipment, Akash and Astra weapon systems, Konkurs missile test equipment, medium-range surface-to-air missile, quick reaction surface-to-air missile, and multi-influential ground mines. The company also sells vertically launched-short range surface-to-air missile, anti-submarine warfare suite, counter measures dispensing system, smart anti-airfield weapon, anti-torpedo decoy launching system, Helina, Amogha  III, man portable anti-tank guided missile (ATGM), NAG ATGM, invar (3 UBK 20) anti-tank guided missile, Konkurs-M ATGM, and Milan2T ATGM, as well as Dishani, an air-deployed ASW sensor system. Bharat Dynamics Limited was incorporated in 1970 and is headquartered in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.092Z"
+    },
+    "BEML": {
+      "symbol": "BEML",
+      "companyName": "BEML Limited",
+      "sector": "Industrials",
+      "industry": "Conglomerates",
+      "summary": "BEML Limited provides products and services to the mining and construction, rail and metro, power, and defense and aerospace sectors in India. The company offers high mobility vehicles, combat mobility vehicles, 1500 horsepower engines, aggregates for combat vehicles, aircraft towing tractors, aircraft weapon loaders, ground support and handling equipment, tank transportation trailers, milrail wagons, rocket motor casings for missiles, airborne structures and assemblies, and construction equipment for the defense and aerospace industries. It also provides bulldozers, dump trucks, excavators, shovels/walking dragline, water sprinklers, motor graders, loaders, pipe layers, wheeled dozers, and tyre handlers to the mining and construction industries. In addition, the company offers metro cars, electrical multiple units, maintenance vehicles, passenger trains, steel and aluminum wagons, and treasury vans to the rail and metro industries. It also exports its products. The company was formerly known as Bharat Earth Movers Limited. BEML Limited was incorporated in 1964 and is based in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.114Z"
+    },
+    "BEPL": {
+      "symbol": "BEPL",
+      "companyName": "Bhansali Engineering Polymers Limited",
+      "sector": "Basic Materials",
+      "industry": "Chemicals",
+      "summary": "Bhansali Engineering Polymers Limited operates a petrochemical company in India and internationally. The company manufactures and sells acrylonitrile butadiene styrene (ABS) and styrene acrylate (SAN) resins. Its products include general purpose, heat resistant, flame retardant, and extrusion ABS resins for automotive, home appliances, stationery and toys, kitchenware, packaging, electronics, healthcare, and electrical, as well as construction applications. The company also provides general purpose, heat resistant, weather resistant, and direct metalizing acrylonitrile styrene acrylate (ASA) resins for automotive, pillar garnish, mirror housing, and construction applications; and heat resistant, extrusion, and paintable polycarbonate-ABS resins for automotive, electronics, household, healthcare, packaging, and construction applications. In addition, it offers specialized grade tailor made products for metallic specialty, pearl specialty, low and high gloss specialty, ASA/PMMA, and ABS/PMMA applications. Further, the company engages in trading activities. Bhansali Engineering Polymers Limited was incorporated in 1984 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.327Z"
+    },
+    "BHARATWIRE": {
+      "symbol": "BHARATWIRE",
+      "companyName": "Bharat Wire Ropes Limited",
+      "sector": "Basic Materials",
+      "industry": "Steel",
+      "summary": "Bharat Wire Ropes Limited manufactures and sells steel wire ropes in India. It offers wire ropes; slings, including mechanically spliced slings, hand spliced slings, and socketed slings; galvanized steel wire strands, such as earth wires, stay wires, and structural strands; and galvanized and ungalvanized steel wires. The company's products are used in general engineering, fishing, elevators, cranes, material handling, power transmission, suspension bridges, onshore / offshore oil exploration, ports and shipping, mining, defense, and railways and allied industries. The company was formerly known as Bharat Ropes Limited and changed its name to Bharat Wire Ropes Limited in July 1996. Bharat Wire Ropes Limited was incorporated in 1986 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.329Z"
+    },
+    "BSE": {
+      "symbol": "BSE",
+      "companyName": "BSE Limited",
+      "sector": "Financial Services",
+      "industry": "Financial Data & Stock Exchanges",
+      "summary": "BSE Limited, together with its subsidiaries, provides a platform for trading in equities, currencies, capital-raising, debt instruments, derivatives, mutual funds, and other securities in India and internationally. It offers securities, data dissemination, index, repository, and depository services. The company also provides clearing and settlement, IT support, training, exchange related, and investment services, as well as engages in the corporate social responsibility activities. In addition, it undertakes administration and supervision of SEBI registered investment advisers; and operates a platform for trading in equities of small-and-medium enterprises, as well as offers insurance broking services; and electronic platform for agricultural commodity. The company was formerly known as Bombay Stock Exchange Limited and changed its name to BSE Limited in July 2011. BSE Limited was founded in 1875 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.437Z"
+    },
+    "CDSL": {
+      "symbol": "CDSL",
+      "companyName": "Central Depository Services (India) Limited",
+      "sector": "Financial Services",
+      "industry": "Capital Markets",
+      "summary": "Central Depository Services (India) Limited, together with its subsidiaries, provides depository services in India. It operates through Depository; Data Entry and Storage; and Repository segments. The Depository segment offers various services to investors, such as dematerialisation, rematerialisation, holding, transfer, and pledge of securities in electronic form; and e-voting services to companies. Its Data Entry and Stroage segment provides centralized record keeping of KYC document of capital market investors. The Repository segment offers policyholders/warehouse receipt holders a facility to keep insurance policies/warehouse receipts in electronic form and to undertake changes, modifications, and revisions in the policy/receipt. It also provides account opening, processing delivery and receipt instructions, pledging, nomination, transmission of securities, change in address, bank account details, and SMS services for depository participants (DPs). In addition, the company offers various services, such as electronic access to security information, electronic access to security information and execution of secured transaction, SMS alerts related to transactions, electronic consolidated account statements, and virtual annual general meetings; Myeasi mobile application; application programming interfaces for DPs, electronic delivery instruction slip, and electronic margin pledge; and electronic foreign investment monitoring, electronic system driven disclosure services, and electronic notices, as well as e-locker services. Further, it provides KYC registration agency, eKYC, electronic signature service, tax filing, stamp duty calendar, electronic negotiable warehouse receipts and electronic non-negotiable warehouse receipts, and electronic insurance account. The company serves market participants, exchanges, clearing corporations, DPs, issuers, and investors. Central Depository Services (India) Limited was incorporated in 1997 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.866Z"
+    },
+    "CENTUM": {
+      "symbol": "CENTUM",
+      "companyName": "Centum Electronics Limited",
+      "sector": "Technology",
+      "industry": "Electronic Components",
+      "summary": "Centum Electronics Limited designs, manufactures, exports, and sells electronic products in India, the United Kingdom, Canada, France, Belgium, Europe, North America, and internationally. The company offers embedded computers and power converters, test tools, LRU and data recorders, and satellite bus systems for the aerospace and space industries. It provides onboard computer systems, receiver and seeker electronics, transmit receive modules, high power RF amplifiers, vibration hardened oscillators, power converters and systems, digital receivers, digital sequencer and payload controllers, power conditioning and processing units, and radar finger printing systems for the defense industry. In addition, the company offers industrial equipment diagnosis and circuit breaker control systems, solar energy power cabinets, and HIL test simulator turbo alternator regulation products for the industrial and energy sectors; and base station equipment and RF filters for the communication industry. Further, it provides medical devices and equipment that include digital radiography systems, automated pumps for drug injection, ultrasound equipment, patient monitoring devices, customized room controls for operation theaters, and others; and railway automation system gateways, railway embedded controllers and computer boards, and railway energy storage systems and modules, as well as specialist engineering and manufacturing services for the transportation sector. Additionally, the company offers assisted car navigation-passive rollover avoidance systems, automatic telematics modules, automotive flexray demonstrators, automotive elec boards for solar roofs, and power steering encoder acquisition systems for the automotive industry. The company was formerly known as Solectron Centum Electronics Limited and changed its name to Centum Electronics Limited in December 2007. The company was incorporated in 1993 and is based in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.655Z"
+    },
+    "CHENNPETRO": {
+      "symbol": "CHENNPETRO",
+      "companyName": "Chennai Petroleum Corporation Limited",
+      "sector": "Energy",
+      "industry": "Oil & Gas Refining & Marketing",
+      "summary": "Chennai Petroleum Corporation Limited produces and supplies petroleum products in India. The company offers liquefied petroleum gas, naphtha, motor gasoline and spirit, kerosene, aviation turbine fuel, automotive high-speed and high flash diesel, light diesel oil, and bunker and non-bunker fuel oil. It also provides lube products, such as paving bitumen, lube oil base stocks, and extracts. In addition, the company offers paraffin wax, mineral turpentine oil, food grade and pharma grade hexane, petrochemical feedstocks, micro crystalline wax, sulphur, pet-coke, propylene, poly butene feedstock (PBFS), methyl ethyl ketone feedstock, and kerosene supply. Further, it provides asphalt, linear alkyl benzene feedstock, butene-2, lean butene, lean PBFS, furnace oil, isrosene, ISRO naphtha, propylene glycol and polyols, poly iso-butylene, NATO diesel, JP-5 fuel for fighter jets, and missile fuels. The company was formerly known as Madras Refineries Limited and changed its name to Chennai Petroleum Corporation Limited in June 2000. The company was incorporated in 1965 and is based in Chennai, India. Chennai Petroleum Corporation Limited is a subsidiary of Indian Oil Corporation Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.866Z"
+    },
+    "CRIZAC": {
+      "symbol": "CRIZAC",
+      "companyName": "CRIZAC LIMITED",
+      "sector": "Consumer Defensive",
+      "industry": "Education & Training Services",
+      "summary": "Crizac Limited provides educational consultancy services in India and internationally. The company offers student recruitment solutions to global institutions of higher education in the United Kingdom, Canada, Republic of Ireland, Australia, and New Zealand. It also provides marketing, brand management, and admission office management services. The company was incorporated in 2011 and is based in Kolkata, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.654Z"
+    },
+    "DBREALTY": {
+      "symbol": "DBREALTY",
+      "companyName": "Valor Estate Limited",
+      "sector": "Real Estate",
+      "industry": "Real Estate - Development",
+      "summary": "Valor Estate Limited, together with its subsidiaries, operates as a real estate construction and development company in India. It operates in two segments: Real Estate Business and Hospitality Business. The company develops and sells residential, commercial, retail, and other projects, such as mass housing and cluster redevelopment, as well as hospitality projects. The company was formerly known as D B Realty Limited and changed its name to Valor Estate Limited in March 2024. Valor Estate Limited was incorporated in 2007 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.865Z"
+    },
+    "DCXINDIA": {
+      "symbol": "DCXINDIA",
+      "companyName": "DCX Systems Limited",
+      "sector": "Industrials",
+      "industry": "Aerospace & Defense",
+      "summary": "DCX Systems Limited, together with its subsidiaries, manufactures and sells electronic systems and cable harnesses in India and Internationally. It offers cable and harness, fine wire cable, flex flat cable, backplane, and conduit assemblies; and EMI shield cable harnesses, wired enclosures, diagnostic test sets, and special/customized connectors. The company also provides electronic manufacturing services, including printed circuit board and electro-mechanical assemblies, design for manufacturability analysis, conformal coating and special processes, flashing/burning of programmable ICs and FPGAs, in-circuit and functional level testing, burn-in/environmental stress screening vibration testing, and repair and revision upgrading services. In addition, it offers aerospace, defense, and industrial automation equipment; subsystem assembly; and integration and testing services, as well as kitting services. The company serves aerospace, land and naval defense systems, and satellites and civil aviation sectors. The company was formerly known as DCX Cable Assemblies Pvt. Ltd. and changed its name to DCX Systems Limited. DCX Systems Limited was incorporated in 2011 and is based in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.655Z"
+    },
+    "DEEPAKFERT": {
+      "symbol": "DEEPAKFERT",
+      "companyName": "Deepak Fertilisers And Petrochemicals Corporation Limited",
+      "sector": "Basic Materials",
+      "industry": "Chemicals",
+      "summary": "Deepak Fertilisers And Petrochemicals Corporation Limited engages in the manufacture, trade, and sale of bulk chemicals in India. It operates through the Chemicals, Bulk Fertilisers, and Realty segments. The company offers chemicals, including ammonia, methanol, dilute nitric acid, concentrated nitric acid, carbon dioxide, technical ammonium nitrate, iso-propyl alcohol, propane, and bulk and speciality chemicals; and bulk fertilisers, such as nitro phosphate, mutriate of potash, diammonium phosphateap, ammonium sulphate, mixtures, single super phosphate, sulphur, micronutrients, SSF, and bio fertilisers. It is involved in the real estate business. In addition, the company provides consultancy and value-added services to mining companies. Further, it engages in agriculture produce; brand management, online sale of products, leasing of furniture and home improvement products, and development of an E-Commerce platform; and construction and operations of design centers, shopping malls, complexes, and retailing outlets and other allied activities. Deepak Fertilisers And Petrochemicals Corporation Limited was incorporated in 1979 and is headquartered in Pune, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.327Z"
+    },
+    "DEEPINDS": {
+      "symbol": "DEEPINDS",
+      "companyName": "Deep Industries Limited",
+      "sector": "Energy",
+      "industry": "Oil & Gas E&P",
+      "summary": "Deep Industries Limited provides oil and gas field and related support services in India. The company offers gas compression, drilling and workover rigs, natural gas dehydration, conditioning, processing, integrated project management services, and rental and chartered hire of equipment and services. The company was formerly known as Deep CH4 Limited and changed its name to Deep Industries Limited in September 2020. Deep Industries Limited was founded in 1991 and is based in Ahmedabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.655Z"
+    },
+    "DLF": {
+      "symbol": "DLF",
+      "companyName": "DLF Limited",
+      "sector": "Real Estate",
+      "industry": "Real Estate - Development",
+      "summary": "DLF Limited, together with its subsidiaries, engages in the business of colonization and real estate development in India. The company offers real estate development activities, including identification and acquisition of land, and planning, execution, construction, and marketing of projects. The company also develops and sells residential housing projects; and operates and maintains commercial office spaces, including under-construction projects, as well as retail properties, such as malls, shopping complexes, recreational spaces, and hotels and clubs. In addition, the company engages in leasing, maintenance, power generation, and recreational activities. It owns and operates The Lodhi Hotel and the Hilton Garden Inn. DLF Limited was founded in 1946 and is headquartered in Gurugram, India. DLF Limited operates as a subsidiary of Rajdhani Investments and Agencies Private Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.335Z"
+    },
+    "DODLA": {
+      "symbol": "DODLA",
+      "companyName": "Dodla Dairy Limited",
+      "sector": "Consumer Defensive",
+      "industry": "Food Distribution",
+      "summary": "Dodla Dairy Limited, together with its subsidiaries, engages in the production and sale of milk and value-added dairy products in India and internationally. The company offers toned, standardized, full cream, ultrahigh temperature processed (UHT)-toned, UHT cow, and UHT-double toned milk; and milk products, such as butter milk, sweet and mango lassi, ghee, paneer, cheese, curd, flavored milk, yoghurt, butter, ice cream, and sweets. It also engages in agricultural activities, such as farming and seed crushing activities; dealing of groundnuts, sesame seeds, and cotton; and production and sale of cattle feed. The company was incorporated in 1995 and is based in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.335Z"
+    },
+    "EDELWEISS": {
+      "symbol": "EDELWEISS",
+      "companyName": "Edelweiss Financial Services Limited",
+      "sector": "Financial Services",
+      "industry": "Financial Conglomerates",
+      "summary": "Edelweiss Financial Services Limited provides financial products and services to corporations, institutions, and individuals in India. It offers retail credit products, such as home, small and medium-sized enterprise, and business loans; and investment banking services. The company also provides asset management, mutual funds, asset reconstruction, asset reconstruction, and housing finance products and services. In addition, it offers life and general insurance products and advisory services, as well as being involved in the lending, investment, and trading activities. The company was formerly known as Edelweiss Capital Limited and changed its name to Edelweiss Financial Services Limited in August 2011. Edelweiss Financial Services Limited was incorporated in 1995 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.092Z"
+    },
+    "EIEL": {
+      "symbol": "EIEL",
+      "companyName": "ENVIRO INFRA ENGINEERS L",
+      "sector": "Industrials",
+      "industry": "Engineering & Construction",
+      "summary": "Enviro Infra Engineers Limited engages in the design, construction, operation, and maintenance of water and wastewater treatment plants (WWTPs) and water supply scheme projects (WSSPs) for government authorities and bodies in India. Its WWTPs include sewage treatment plants with sewage network schemes and common effluent treatment plants; and WSSPs comprise water treatment plants with pumping stations and laying of pipelines for water supply. Enviro Infra Engineers Limited was incorporated in 2009 and is based in Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.668Z"
+    },
+    "ELLEN": {
+      "symbol": "ELLEN",
+      "companyName": "ELLENBARRIE INDUS GASES L",
+      "sector": "Basic Materials",
+      "industry": "Chemicals",
+      "summary": "Ellenbarrie Industrial Gases Limited manufactures and supplies industrial gases in India and internationally. The company operates in two segments, Sale of Gases and Project Engineering Services. It offers oxygen, nitrogen, argon, helium, hydrogen, carbon dioxide, nitrous oxide, acetylene, and specialty gases for steel, pharma, shipbuilding, fabrication, food processing, and healthcare sectors. The company also provides project engineering services, including design, engineering, supply, installation, and commissioning of tonnage. In addition, it engages in the supply, installation, and commissioning of medical gas pipeline systems; and supply of medical equipment to healthcare facilities. Further, it supplies medical equipment, such as emergency and transport ventilators; central sterilisation system; lung function testing systems; and electro-cardiograph machines. The company was incorporated in 1973 and is headquartered in Kolkata, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:56.866Z"
+    },
+    "FIEMIND": {
+      "symbol": "FIEMIND",
+      "companyName": "Fiem Industries Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Fiem Industries Limited manufactures and supplies automotive lighting and signaling equipment, rear view mirrors, prismatic mirror, plastic moulded parts, bank angle sensor, canister, and sheet metal components for motorized vehicles in India and internationally. The company operates through Automotive and Others segments. It offers LED and conventional head, tail, blinker, fog lamps, warning triangles, and interior lamps. In addition, the company manufactures and supplies plastic finished parts for two-wheelers, including front and rear fenders, floor panels, side covers, handlebars, seat bases, and others; and sheet metal parts, canisters, bank angle sensors, moulds, etc., as well as front and rear mudguards for motorcycles and mopeds. Further, it offers LED luminaries comprising of indoor and outdoor lighting, display panels, and integrated passengers information system. The company serves original equipment manufacturers. Fiem Industries Limited was incorporated in 1989 and is headquartered in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.334Z"
+    },
+    "FSL": {
+      "symbol": "FSL",
+      "companyName": "Firstsource Solutions Limited",
+      "sector": "Technology",
+      "industry": "Information Technology Services",
+      "summary": "Firstsource Solutions Limited provides tech-enabled business processes in India, the United Kingdom, the United States, the United Arab Emirates, and internationally. It operates through Healthcare; Banking and Financial Services; Communication, Media and Technology; and Diverse Industries segments. The company offers various banking and financial services and solutions, including customer acquisition, onboarding, transaction processing and payments, disputes and complaints, servicing, bereavement and power of attorney, fraud and financial crime, and account closure; lending services, such as origination, post-closing, title, settlement, and quality control and due diligence services; and collections. It also provides health plan services comprising claims operations, enrollment and billing, customer service, care coordination, credential provider, data and network management, benefit coding, maintenance, coverage, Medicaid enrollment, prior authorization, medical coding, denial management and prevention, patient billing and collections, and receivables management; and communication services, such as sales and retention, tech ops, receivables and collections management, and generative AI. In addition, it offers media/edtech solutions, such as content development and enrichment, learner support, student pre-registration and enrollment, and digital collections; and other services for retention and loyalty, meter-to-cash operations, crisis/contingency management, smart meter conversions, debt management, and complaints handling industries; and consulting services. It serves banking and financial services, healthcare, communications, media and technology, retail, energy, and utilities sectors. The company was formerly known as ICICI Onesource Limited and changed its name to Firstsource Solutions Limited in November 2006. The company was incorporated in 2001 and is based in Mumbai, India. Firstsource Solutions Limited is a subsidiary of RPSG Ventures Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.636Z"
+    },
+    "GANECOS": {
+      "symbol": "GANECOS",
+      "companyName": "Ganesha Ecosphere Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Textile Manufacturing",
+      "summary": "Ganesha Ecosphere Limited primarily manufactures and sells recycled polyester staple fiber in India. The company offers recycled PET (rPET) fibre comprising solid, hollow, conjugated, flame retardant, short-cut, micro, and trilobal fibers. It also provides yarns; rPET flakes; and rPET chips for bottle grade and textile/sheet grade. In addition, the company offers fiber filling, non-wovens, spun yarn and dyed texturized yarn. Its products are used in manufacturing of t-shirts, body warmers, non-woven air filter fabrics, geo textiles, carpets, car upholstery products, pillows, duvets, toys, etc.; and various applications, including curtains, furniture covering, table clothes/place mats, public contracts, liners, protective clothing, workwear, covering, filters, and netting. The company serves geo-textiles, medical and packaging, textiles, FMCG, automobile, spinning mills, and beverage industries. It also exports its products. The company was formerly known as Ganesh Polytex Ltd. and changed its name to Ganesha Ecosphere Limited in September 2011. Ganesha Ecosphere Limited was incorporated in 1987 and is based in Kanpur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.641Z"
+    },
+    "GENUSPOWER": {
+      "symbol": "GENUSPOWER",
+      "companyName": "Genus Power Infrastructures Limited",
+      "sector": "Industrials",
+      "industry": "Electrical Equipment & Parts",
+      "summary": "Genus Power Infrastructures Limited, together with its subsidiaries, provides smart metering solutions in India and internationally. The company offers various electricity meters, including residential, commercial, and industrial meters; prepayment and smart meters; distribution transformer metering products; non-utility business or segment meters, such as panel, net, and ABT meters; and open access/grid meters. It also provides smart grid products, such as smart meters; smart city, including smart group metering products and smart streetlight management systems; advanced metering infrastructure service providers; and communication devices comprising optical probes, cellular modems, communication modules, and smart gateways, as well as renewable metering products; gas meters, which include smart and meter interface unit intellilog (g-Setu); ultrasonic water meter (SALIL); and data loggers. In addition, the company undertakes turnkey power projects for switchyard/substations, distribution/transmission lines, and rural electrification; and offers software solutions, including work force management, base computer software, smart meter mobile application, head end system, meter data management system, and prepared vending software. Further, it provides hybrid microcircuits for a wide range of applications, such as telecommunication, consumer, IT products, power electronics, automotive, industrial, R-networks, and other applications. The company exports its products to Burundi, Malaysia, Nigeria, Australia, Singapore, Nepal, and the United States. Genus Power Infrastructures Limited was incorporated in 1992 and is based in Jaipur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.642Z"
+    },
+    "GMBREW": {
+      "symbol": "GMBREW",
+      "companyName": "G.M. Breweries Limited",
+      "sector": "Consumer Defensive",
+      "industry": "Beverages - Wineries & Distilleries",
+      "summary": "G.M. Breweries Limited manufactures and sells alcoholic beverages in India. The company offers Indian made foreign liquor and country liquor. It offers its products under the G.M.SANTRA, G.M.DOCTOR, G.M.LIMBU PUNCH, and G.M.DILBAHAR SOUNF brand names. The company was incorporated in 1981 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.092Z"
+    },
+    "GMDCLTD": {
+      "symbol": "GMDCLTD",
+      "companyName": "Gujarat Mineral Development Corporation Limited",
+      "sector": "Energy",
+      "industry": "Thermal Coal",
+      "summary": "Gujarat Mineral Development Corporation Limited engages in mining and mineral processing business in India. The company operates through two segments, Mining and Power. It explores for lignite, bauxite, fluorspar, manganese, silica sand, limestone, bentonite, and ball clay. The company's products used in the textiles, chemicals, ceramics, bricks and captive power. Its products are also used in the electricity and synthetic natural gas generation, agriculture, mining and refining, transportation, hydrofluoric acid, refrigerant gas, flux in metallurgical, tableware, quick and hydrated lime, limestone tile and slab, wall cladding, vanity top, and synthetic foundry moulding catalyst sectors. The company also generates power using thermal, wind, and solar resources. Gujarat Mineral Development Corporation Limited was incorporated in 1963 and is based in Ahmedabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.668Z"
+    },
+    "GOLDIAM": {
+      "symbol": "GOLDIAM",
+      "companyName": "Goldiam International Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Luxury Goods",
+      "summary": "Goldiam International Limited, together with its subsidiaries, manufactures and sells gold/silver/platinum and diamond studded jewelry products in India. It operates in two segments, Jewellery Manufacturing Activity and Investment Activity. The company offers engagement and anniversary rings, wedding bands, bridal sets, earrings, pendants, and necklaces. It also exports its products to the United States, the Middle East, Europe, Australia, and Canada. The company offers its products to retailers, departmental stores, and wholesalers through e-commerce drop shipments and B2B website. Goldiam International Limited was incorporated in 1986 and is headquartered in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.681Z"
+    },
+    "GOODLUCK": {
+      "symbol": "GOODLUCK",
+      "companyName": "Goodluck India Limited",
+      "sector": "Basic Materials",
+      "industry": "Steel",
+      "summary": "Goodluck India Limited manufactures and supplies precision engineering and steel products in India. The company provides electric resistance welded and cold drawn welded tubes, custom forgings, power and telecom towers, solar structures, ERW hot dip galvanized pipes, black pipes, black and GI hollow sections, cold formed profile, road safety products, galvanized plain, corrugated sheets, CR coils, CRCA sheets and pipes, forgings and flanges, telecom and transmission line towers, substation structure, road and railways bridge, and road safety equipment. It offers two-wheeler frame, hydraulic cylinder, boiler, crash bumper, engine mounting, and exhaust tubes; CBQ pressure outers; TFF-front fork; drive shaft; rear axles; sections; control arms; fuel lines; furniture; section pipes; and cycle frame, forks, and hub tubes. In addition, the company provides stub-ends/collors, spectacle blind, valve/SRN nozzle, and tube sheet for oil and gas applications; forged body, block, bars, and shape forging; valve forging, ICV, MSV valve, nonstandard, and strainers; and flush ring, nut NPT, nipple, taper union, nut, assembly, and hygiene flange. Further, it offers overhead electrification and substation structure; and fabricated structures for railway and road bridges, roads and expressways, building structures, launching girder, boiler structure, and defense fabrication. The company serves clients from public and private sector OEMs, and central and state government entities. It also exports its products to the United Kingdom, the United States, South Africa, the United Arab Emirates, Germany, and France. The company was formerly known as Good Luck Steel Tubes Limited and changed its name to Goodluck India Limited in June 2016. Goodluck India Limited was incorporated in 1986 and is headquartered in Ghaziabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.670Z"
+    },
+    "GPIL": {
+      "symbol": "GPIL",
+      "companyName": "Godawari Power & Ispat Limited",
+      "sector": "Basic Materials",
+      "industry": "Steel",
+      "summary": "Godawari Power & Ispat Limited, together with its subsidiaries, engages in the mining of iron ores in India. It manufactures and sells iron ore pellets, sponge iron, steel billets, MS rounds, wire rods, HB wires, and ferro alloys with generation of electricity, as well as silico manganese. The company was formerly known as Ispat Godawari Ltd. Godawari Power & Ispat Limited was incorporated in 1999 and is based in Raipur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.638Z"
+    },
+    "GRAVITA": {
+      "symbol": "GRAVITA",
+      "companyName": "Gravita India Limited",
+      "sector": "Industrials",
+      "industry": "Metal Fabrication",
+      "summary": "Gravita India Limited manufactures and recycles lead metal, lead products, aluminium alloys, and plastic granules in India, the United Arab Emirates, South Korea, and internationally. It operates through Lead Processing, Aluminium Processing, Turn-Key Solutions, and Plastic Manufacturing segments. The company engages in smelting of lead battery scrap/lead concentrate to produce secondary lead metal, such as pure lead, specific lead alloy, lead oxides, and lead products like lead sheets, lead powder, lead shot, etc.; granules, including polypropylene, polycarbonate, HDPE, and ABS; trading of taint tabor and tense aluminium scraps; and manufacture of alloy from melting of aluminium scrap. It also offers consultancy services for recycling operations; turnkey solutions for recycling processes and solutions; procures raw materials which include battery, aluminium, plastic, and rubber scrap; and extended producer responsibility recycler and compliance services. The company also exports its products. Gravita India Limited was incorporated in 1992 and is based in Jaipur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.640Z"
+    },
+    "HEG": {
+      "symbol": "HEG",
+      "companyName": "HEG Limited",
+      "sector": "Industrials",
+      "industry": "Electrical Equipment & Parts",
+      "summary": "HEG Limited manufactures and sells graphite electrodes in India and internationally. The company operates through two segments, Graphite Electrodes and Power Generation segments. It provides ultra-high power and high power electrodes; graphite electrodes and nipples; blocks and rounds; graphite and carbon specialties; mini-rods; flux and heat exchanger tubes; custom machined components; and activated carbon fabric products. The company operates thermal power plants and a hydroelectric power facility. HEG Limited was incorporated in 1972 and is headquartered in Noida, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.668Z"
+    },
+    "HOMEFIRST": {
+      "symbol": "HOMEFIRST",
+      "companyName": "Home First Finance Company India Limited",
+      "sector": "Financial Services",
+      "industry": "Mortgage Finance",
+      "summary": "Home First Finance Company India Limited operates as a housing finance company in India. The company offers home, self-construction, renovation, mortgage, shop, and resale, as well as top-up loans. It also provides loans through mobile applications. It serves salaried professionals, self-employed individuals, and small business owners, as well as corporates. Home First Finance Company India Limited was incorporated in 2010 and is headquartered in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.639Z"
+    },
+    "HONDAPOWER": {
+      "symbol": "HONDAPOWER",
+      "companyName": "Honda India Power Products Limited",
+      "sector": "Industrials",
+      "industry": "Specialty Industrial Machinery",
+      "summary": "Honda India Power Products Limited engages in the manufacture, marketing, and sale of portable generators, water pumps, general purpose engines, lawn mowers, brush cutters, hand tools, portable gensets, tillers, and marine engines in India and internationally. It also markets fishery products comprising long tail outboard motors. In addition, it provides agriculture products, including reapers, HTP sprayers, and power weeder; and ploughs, manure spreaders, seeders, and harrows, as well as other machineries for soil preparation, planting, and fertilizing, harvesting, and threshing; and power weeder. In addition, the company offers light construction products, such as concrete cutter and vibrator, plate and reversible plate compactor, power trowel, and welder. Further, it provides generator synchronization and AMF panel, power generators, motor generator sets, engines, turbines, pumps, compressors, taps, valves, and chargeover and remote switches. The company was formerly known as Honda Siel Power Products Limited and changed its name to Honda India Power Products Limited in July 2020. Honda India Power Products Limited was incorporated in 1985 and is headquartered in Gautam Buddha Nagar, India. Honda India Power Products Limited is a subsidiary of Honda Motor Co., Ltd.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.670Z"
+    },
+    "HPL": {
+      "symbol": "HPL",
+      "companyName": "HPL Electric & Power Limited",
+      "sector": "Industrials",
+      "industry": "Electrical Equipment & Parts",
+      "summary": "HPL Electric & Power Limited manufactures and sells electric equipment under the HPL brand in India. It offers digital panel and energy, multi-function, load managers, demand controllers, power quality, projection, dual source energy, HTCT, and keypad based prepaid energy meters; power factor control and regulators; meter cover boxes; and data acquisition and billing solutions. The company also provides edeno, smarts, tuff modular switches; LED lighting products, including bulbs, tube lights, panel lights, downlights, spotlights, strip, street lights, floodlights, and decorative lights, as well as boilers and petrol pump, high bay, box type LED, weatherproof, and well glass lights; and smarter accessories, such as angle and batten holder, multi plug, ceiling rose, plug top, extension cord, power strip and spike guards, door bells, O-protect, and DP switches, as well as sockets and support modules. In addition, it offers air circuit breakers, MCCB products, automatic transfer switches, changeover switches, control and fuse gears, motor starters, isolators, SFU and offload changeover, panels and enclosures, visual cutoff switch, and fuses and fuse base; and MCB, RCCB, RCBO, MCB changeover, ACCL 1 phase and 3 phase, and distribution boards. Further, the company provides domestic and industrial wires; specialty cables, including data networking, CCTV, fire alarm, low induction, instrumentation, and hybrid cables; power cables such as multi core telephone, networking, and fire survival; and control cables, such as submersible and ZHFR. Additionally, it offers ceiling, portable, ventilation, and farata fans; and solar products. It serves institutional, commercial, and residential customers; power utilities; and government agencies through dealers and distributors. The company also exports its products to approximately 42 countries. HPL Electric & Power Limited was incorporated in 1992 and is based in Sonipat, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.669Z"
+    },
+    "HSCL": {
+      "symbol": "HSCL",
+      "companyName": "Himadri Speciality Chemical Limited",
+      "sector": "Basic Materials",
+      "industry": "Specialty Chemicals",
+      "summary": "Himadri Speciality Chemical Limited manufactures and sells carbon materials and chemicals in India and internationally. The company operates through Carbon Materials and Chemicals and Power segments. It also offers anode materials, LFP cathodes, and recycling materials. In addition, the company offers SDS, TDS, ASTM, and carbon black; tyre, plastics, ink, and coatings; refined naphthalene, coal tar pitch, specialty oils, clean energy, and anti-corrosion products. It serves lithium-ion batteries, paints, plastics, tires, aluminum, graphite electrodes, agrochemicals, defense, and construction chemicals. Himadri Speciality Chemical Limited was formerly known as Himadri Chemicals & Industries Limited and changed its name to Himadri Speciality Chemical Limited in July 2016. The company was incorporated in 1987 and is based in Kolkata, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.640Z"
+    },
+    "HUDCO": {
+      "symbol": "HUDCO",
+      "companyName": "Housing and Urban Development Corporation Limited",
+      "sector": "Financial Services",
+      "industry": "Credit Services",
+      "summary": "Housing and Urban Development Corporation Limited provides loans and financing for housing and urban development projects in India. The company offers term loans for state government agencies and their parastatals, such as development authorities, housing boards, urban local bodies, water supply, sewerage boards, and roads and bridges development corporations, as well as implementing agencies comprising state government bodies, co-operative societies, corporate borrowers, joint sectors, and retail. It also provides financing for infrastructure projects in the sectors of water supply; sewerage; drainage; solid waste management; roads and transport; power generation, transmission, distribution, and renovation; emerging sector; smart city; and social infrastructure projects, as well as commercial infrastructure projects, including office buildings spaces, business/trade centres, shopping malls, market complexes, theatres/multiplexes/entertainment centres, hotels, guest houses, terminal markets, multilevel parking, tourist centres, etc. In addition, the company offers research and training services, such as training capacity; research facilitation; partnership and networking; and documentation, dissemination, and publication. The company was incorporated in 1970 and is headquartered in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.014Z"
+    },
+    "HYUNDAI": {
+      "symbol": "HYUNDAI",
+      "companyName": "HYUNDAI MOTOR INDIA LTD",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Manufacturers",
+      "summary": "Hyundai Motor India Limited engages in the manufacture and sale of passenger vehicles and parts in India and internationally. The company offers passenger vehicle models across sedans, hatchbacks, sports-utility vehicles (SUVs) and battery electric vehicles (EVs). The company provides motor vehicles, engine, and transmission and other parts, as well as provides related after-sales activities, and engineering services. It also exports its products to Latin America, Africa, the Middle East, and Europe. The company was incorporated in 1996 and is based in Gurugram, India. Hyundai Motor India Limited is a subsidiary of Hyundai Motor Company.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.563Z"
+    },
+    "IDEA": {
+      "symbol": "IDEA",
+      "companyName": "Vodafone Idea Limited",
+      "sector": "Communication Services",
+      "industry": "Telecom Services",
+      "summary": "Vodafone Idea Limited, together with its subsidiaries, provides mobile telecommunication services in India. The company offers voice services, such as 4G VoLTE and Voice over WIFI calling; broadband data services on 3G, 4G, and 5G platforms; content and digital products and services; value-added services, including over-the-top paid subscription, digital advertising, gaming, digital marketplace, and utility bill payment app, as well as voice and short messaging services; and long distance and internet service provider services. It also engages in renting of passive infrastructure to telecommunication service providers; outsourcing backend IT support, data centre operations, and hosting; and provision of high speed broadband internet access through cable network and high bandwidth internet broadband, and manpower services. In addition, the company trades in mobile handsets, data cards, and related accessories and services; outsources finance and accounts, human resources, supply chain management, credit and collection support, and customer support, as well as caters to the information technology (IT) needs for data consolidation. Further, it offers technology, software, hardware, VAS, application software, and contents and related products and services, which facilitate and develop access to IT enabled VAS products and services on single or multiple platforms or operating systems; and data centre related services and IT solutions, including E-SIMs activation, as well as prepaid and postpaid plans. The company was formerly known as Idea Cellular Limited and changed its name to Vodafone Idea Limited in August 2018. Vodafone Idea Limited was incorporated in 1995 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.667Z"
+    },
+    "IFCI": {
+      "symbol": "IFCI",
+      "companyName": "IFCI Limited",
+      "sector": "Financial Services",
+      "industry": "Credit Services",
+      "summary": "IFCI Limited provides non-banking financial services to the public sector in India. The company offers project finance for the power sector, telecommunications, roads, oil and gas, ports, airports, basic metals, chemicals, pharmaceuticals, electronics, textiles, real estate, smart cities, urban infrastructure, etc. It also provides corporate finance, such as balance sheet funding, loan against shares, lease rental discounting, promoter funding, long-term working capital requirement, capital expenditure, and regular maintenance capex services, as well as short term loans, including bridge financing and short-term working capital to small, mid, and large corporates. In addition, the company offers syndication and advisory services, which include financial, ESG, and other project advisory for government and corporate sectors; structured debt/mezzanine products; and assistance in sponsor and acquisition financing, pre-IPO financing, off-balance sheet structured solutions, and others. Further, it provides sales and resolution services for non-performing assets; ESG services; real estate and infrastructure services; risk capital schemes; and post trading and custodial services, as well as acts as debenture trustee for debenture issues. Additionally, the company offers stock broking, depository participant services, merchant banking, insurance corporate agency, mutual fund products distribution, and corporate advisory services. Again, it provides financial support services for airports, roads, telecom, power, real estate, manufacturing, and services sectors, as well as other allied industries. The company was formerly known as Industrial Finance Corporation of India and changed its name to IFCI Limited in October 1999. IFCI Limited was founded in 1948 and is headquartered in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.204Z"
+    },
+    "INDIAGLYCO": {
+      "symbol": "INDIAGLYCO",
+      "companyName": "India Glycols Limited",
+      "sector": "Basic Materials",
+      "industry": "Chemicals",
+      "summary": "India Glycols Limited, a green petrochemical company, manufactures and sells industrial chemicals in India. It operates through Bio-based Specialities and Performance Chemicals, Potable Spirits, and Ennature Biopharma segments. The company offers bio mono ethylene, di ethylene, and tri ethylene glycols; ethyl/butyl glycol ethers and acetates, and brake fluids; bio-polymers comprising guar and natural gums; biofuels; specialty chemicals, such as plasticisers, oil fields chemicals, bio-amines, methyl soyate, MDEA and MDEA derivatives, bio-potash granules, and C-Smart specialty products; molasses and grain based extra neutral alcohol; and specialty gases, including industrial and medical oxygen, food grade and industrial carbon dioxide, liquid argon and nitrogen, ethylene oxide, and bio ethylene oxide. It also provides Indian made foreign liquor, such as whiskey under Soulmate Blu and Single Reserve brands; vodka under Amazing brand; and rum under Zumba and Beach House XXX brands, as well as economy spirits under Bunty brand, and branded country liquor. In addition, the company offers natural active pharmaceutical ingredients, nutraceuticals, standardized botanical extracts, and nicotine derivatives. Further, its products find applications in pharma and healthcare; textiles; automotive; personal care; industrial and manufacturing; paints and coatings; oil and gas; food ingredients; packaging; potable spirits; and other various industries. The company also exports its products. The company was formerly known as UP Glycols Limited and changed its name to India Glycols Limited in August 1986. India Glycols Limited was incorporated in 1983 and is headquartered in Noida, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:57.670Z"
+    },
+    "INDRAMEDCO": {
+      "symbol": "INDRAMEDCO",
+      "companyName": "Indraprastha Medical Corporation Limited",
+      "sector": "Healthcare",
+      "industry": "Medical Care Facilities",
+      "summary": "Indraprastha Medical Corporation Limited provides hospital services in India. The company offers services primarily in the areas of sugar, genomic medicine, elder care, anesthesiology, bariatric and metabolic surgery, bone marrow transplant, dental and cosmetic clinic, dermatology, dietetics and clinical nutrition, vascular and endovascular surgery, endocrinology, ENT, fetal medicine, general and laparoscopic surgery, gynecology and obstetrics, hyperbaric oxygen therapy, IVF, neonatology, nephrology, nuclear medicine, ophthalmology, pediatric sciences, urology, and plastic surgery, as well as pediatric urology and surgery, physiotherapy and rehabilitation, psychiatry and clinical psychology, radiology and radio diagnosis, respiratory, rheumatology, spine surgery, urology and andrology, cardiology, oncology, emergency, gastroenterology, neuroscience, critical care, orthopedics, robotic surgery, and organ transplant, as well as laboratory services, interventional medicine, preventive medicine, and sleep medicine. Indraprastha Medical Corporation Limited was founded in 1983 and is based in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.074Z"
+    },
+    "INDUSTOWER": {
+      "symbol": "INDUSTOWER",
+      "companyName": "Indus Towers Limited",
+      "sector": "Communication Services",
+      "industry": "Telecom Services",
+      "summary": "Indus Towers Limited, a telecom infrastructure company, engages in the operation and maintenance of wireless communication towers and related infrastructures for various telecom service providers in India, Nigeria, Uganda, and Zambia. It offers ground base towers, smart poles, rooftop tower, ground-based mast, microsites, fiberized connectivity solutions, feather sites, small cells, etc.; and energy supply to telecom equipment, as well as acquires the requisite space from residential and commercial property owners and landlords for placing passive infrastructure at strategic locations. The company also provides smart digital infrastructure, which includes smart poles LED lights, CCTV cameras, variable digital messaging board, environment sensors, and city public Wi-Fi services, including fiber backbone. In addition, it offers telecom infra and related services, and business support services and scrap handling for telecom. The company was formerly known as Bharti Infratel Limited and changed its name to Indus Towers Limited in December 2020. Indus Towers Limited was incorporated in 2006 and is based in Gurugram, India. Indus Towers Limited operates as a subsidiary of Bharti Airtel Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.074Z"
+    },
+    "INOXGREEN": {
+      "symbol": "INOXGREEN",
+      "companyName": "Inox Green Energy Services Limited",
+      "sector": "Utilities",
+      "industry": "Utilities - Renewable",
+      "summary": "Inox Green Energy Services Limited provides operation and maintenance services, and common infrastructure facilities for wind turbine generators in India. The company operates through Operation & Maintenance; Erection, Procurement & Commissioning; Power Generation; and Trading Income segments. It offers operational services, including remote monitoring and control through supervisory control and data acquisition system; daily generation reports to the customers; and wind farm maintenance services. The company was formerly known as Inox Wind Infrastructure Services Limited and changed its name to Inox Green Energy Services Limited in October 2021. The company was incorporated in 2012 and is based in Noida, India. Inox Green Energy Services Limited operates as a subsidiary of Inox Wind Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.073Z"
+    },
+    "INOXWIND": {
+      "symbol": "INOXWIND",
+      "companyName": "Inox Wind Limited",
+      "sector": "Industrials",
+      "industry": "Specialty Industrial Machinery",
+      "summary": "Inox Wind Limited engages in the manufacture and sale of wind turbine generators and components for independent power producers, utilities, public sector undertakings, businesses, and private investors in India. It provides wind turbine generator components, including nacelles, hubs, rotor blade, and tubular towers. The company offers various services, such as wind resource assessment, site acquisition, infrastructure development, erection, procurement and commissioning, and long-term operations and maintenance services for wind power projects. Inox Wind Limited was incorporated in 2009 and is based in Noida, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.857Z"
+    },
+    "INTERARCH": {
+      "symbol": "INTERARCH",
+      "companyName": "Interarch Building Solutions Limited",
+      "sector": "Industrials",
+      "industry": "Engineering & Construction",
+      "summary": "Interarch Building Solutions Limited provides pre-engineered steel construction solutions in India. It offers pre-engineered steel building (PEB) systems; and roofing and cladding system; non industrial buildings; and suspended ceiling systems. The company also provides turnkey project management; logistics and delivery; and customized value addition. The company also provides metal false ceiling and light gauge framing system. The company was formerly known as Interarch Building Products Limited and changed its name to Interarch Building Solutions Limited in March 2025. Interarch Building Solutions Limited was incorporated in 1983 and is based in Noida, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:59.407Z"
+    },
+    "IOLCP": {
+      "symbol": "IOLCP",
+      "companyName": "IOL Chemicals and Pharmaceuticals Limited",
+      "sector": "Healthcare",
+      "industry": "Drug Manufacturers - Specialty & Generic",
+      "summary": "IOL Chemicals and Pharmaceuticals Limited manufactures and sells pharmaceutical and chemical products in India and internationally. The company operates through, Chemical and Pharmaceutical segments. The Chemical segment offers ethyl acetate, iso butyl benzene, acetyl chloride, mono chloro acetic acid, and acetic anhydride to food processing, flexible packaging, pharmaceuticals, textiles, ink, paint, pesticides, and chemical intermediates industries. The Pharmaceutical segment provides active pharmaceutical ingredients, such as ibuprofen, metformin, fenofibrate, lamotrigine, clopidogrel bisulphate, pantoprazole sodium, ursodeoxycholic acid, losartan potassium, gabapentin, levetiracetam, and paracetamol. Its active pharmaceutical ingredients are used for the treatment of anti-inflammatory, analgesic and antipyretic, anti-diabetic, anti- platelet, anti-cholesterol, anti- convulsant, anti-epileptic, anti-hypertensive, and anti-cholelithic, as well as proton pump inhibitor. IOL Chemicals and Pharmaceuticals Limited was incorporated in 1986 and is based in Ludhiana, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.203Z"
+    },
+    "IONEXCHANG": {
+      "symbol": "IONEXCHANG",
+      "companyName": "Ion Exchange (India) Limited",
+      "sector": "Industrials",
+      "industry": "Pollution & Treatment Controls",
+      "summary": "Ion Exchange (India) Limited, together with its subsidiaries, provides water and environmental management solutions in India and internationally. It operates through Engineering, Chemicals, and Consumer Products segments. The company offers raw water, process, post, and drinking water treatment; waste water, water recycling, and zero liquid discharge systems; sludge dewatering and waste to energy systems; ion exchange process, membrane process, ion exchange membrane process, and 3D modelling systems; and resin, incudes water purification equipment; and catalyst grade, adsorbent grade, chemical and special process, pharma grade, nuclear grade, hydrometallurgy, food and beverage, bio diesel, and sugar refining resins. It also provides membranes, such asnano filtration, ultra-filtration, low pressure and seawater RO, fouling resistant, and brackish resistant membranes; and specialty chemical treatment programmes, including cooling and boiler water treatment products, fireside treatment products, coagulants, flocculants, membrane cleaning chemicals, and water testing kits. In addition, the company offers INDION online controllers and transmitters, water quality monitoring instruments, water quality measuring indicators, remote monitoring systems, and online effluent monitoring systems; and consultancy, operator training, design engineering, project financing, and operations and maintenance services, as well as installation, commissioning, rehabilitation, and plant automation services. It serves automotive, cement, chemicals, electronics, food and beverage, fertilizers, paper and pulp, pharma, power, refinery and petrochemicals, steel and metallurgy, mining and minerals, sugar, and textiles industries; educational, hospitality, hospital, laboratory, railway, and defense institutions; communities and municipalities; and residential and commercial establishments industries. The company was incorporated in 1964 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.074Z"
+    },
+    "IRCON": {
+      "symbol": "IRCON",
+      "companyName": "Ircon International Limited",
+      "sector": "Industrials",
+      "industry": "Engineering & Construction",
+      "summary": "Ircon International Limited, together with its subsidiaries, engages in the provision of construction services. It undertakes construction of new railway lines; rehabilitation/conversion of existing lines, station buildings and facilities, and bridges; construction of railway bridges, tunnels, and signaling and telecommunication networks; railway electrification works; wet leasing of locomotives; and setting up of production units for manufacture rolling stock, maintenance depots/workshops, concrete sleepers, and track components on turn-key basis. The company is also involved in the construction of roads and highways; bridges and flyovers; and commercial, institutional, industrial, and residential and multifunctional complexes, as well as airport hangars and runways, airport terminal buildings, station buildings and facilities, hospitals, business centers, and workshops/warehouses; and provision of HVAC, electrification, plumbing, firefighting, and hanger maintenance services. In addition, it engages in the railway, industrial, workshop, and power supply electrification works; renewable solar energy works; and distribution network works, as well as offers turnkey project management services, including design, supply, erection, testing, and commissioning services. Further, it provides turnkey solutions for signaling and communication projects. The company operates in India, Iraq, Iran, Saudi Arabia, the United Kingdom, Jordan, Turkey, Indonesia, Malaysia, Algeria, Bangladesh, Nepal, Afghanistan, Nigeria, Liberia, Syria, Tanzania, Zambia, Brazil, Mozambique, Ethiopia, Sri Lanka, South Africa, Bhutan, and Myanmar. The company was formerly known as Indian Railway Construction Company Limited. Ircon International Limited was incorporated in 1976 and is headquartered in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.857Z"
+    },
+    "IREDA": {
+      "symbol": "IREDA",
+      "companyName": "Indian Renewable Energy Development Agency Limited",
+      "sector": "Financial Services",
+      "industry": "Credit Services",
+      "summary": "Indian Renewable Energy Development Agency Limited, a non-banking financial company, provides financial products and services in the renewable energy and energy efficiency sectors in India. The company promotes, develops, and extends financial assistance for setting up projects relating to new and renewable sources of energy and energy efficiency/conservation. It also generates solar, wind, hydro, biomass, biofuels, and waste to energy power. The company was incorporated in 1987 and is based in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:58.856Z"
+    },
+    "ITCHOTELS": {
+      "symbol": "ITCHOTELS",
+      "companyName": "ITC HOTELS LIMITED",
+      "sector": "Consumer Cyclical",
+      "industry": "Resorts & Casinos",
+      "summary": "ITC Hotels Limited owns, operates, and manages hotels and resorts in India and internationally. It operates under the ITC Hotels, Mementos, Storii, Welcomhotel, Fortune, and WelcomHeritage brands. The company was founded in 1975 and is based in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.199Z"
+    },
+    "IXIGO": {
+      "symbol": "IXIGO",
+      "companyName": "LE TRAVENUES TECHNOLOGY L",
+      "sector": "Consumer Cyclical",
+      "industry": "Travel Services",
+      "summary": "Le Travenues Technology Limited operates online travel agency (OTA) platforms in India. Its OTA platforms allow travelers to book train tickets, flight tickets, bus tickets, hotels and cabs; provide travel utility tools and services, including PNR status updates, flight status updates, LIVE bus tracking, train seat availability alerts, train running status updates and delay predictions, pricing and availability alerts, deal discovery, destination content, personalized recommendations, instant fare alerts for flights and automated customer support services. The company also offers Siri shortcuts ancillary services, including travel insurance, car rentals, and visa processing; hotel booking and food delivery; and software development and maintenance services. In addition, the company operates OTA platforms through its websites and mobile applications under ixigo, Confirmtkt, and AbhiBus brand names. Le Travenues Technology Limited was incorporated in 2006 and is based in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:43:59.410Z"
+    },
+    "JAICORPLTD": {
+      "symbol": "JAICORPLTD",
+      "companyName": "Jai Corp Limited",
+      "sector": "Basic Materials",
+      "industry": "Specialty Chemicals",
+      "summary": "Jai Corp Limited primarily engages in the plastic processing business in India and internationally. The company operates through five segments: Steel, Plastic Processing, Spinning, Asset Management Activity, and Real Estate. It offers polypropylene and polyethylene woven products, including discharge, filling, lift loop, liner, and stites type flexible intermediate bulk containers and woven sacks; and fabrics, such as geo-textiles, industrial fabrics, and landscape textiles, as well as open, duffel, rigid standalone loop, and customized bags. The company also produces, processes, and trades in steel products comprising galvanized coils, and plain and corrugated sheets. In addition, it produces yarn in blends that consists of polyester, polyester/viscose, viscose, acrylic, polyester/acrylic, and polyester/viscose/acrylic for various applications comprising apparel, home furnishings, carpets, industrial applications, etc. Further, the company engages in the special economic zone development, infrastructure, venture capital, land and buildings development, and investment advisory activities; and provision of masterbatches. It also exports its products. The company was incorporated in 1985 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.158Z"
+    },
+    "JASH": {
+      "symbol": "JASH",
+      "companyName": "Jash Engineering Limited",
+      "sector": "Industrials",
+      "industry": "Specialty Industrial Machinery",
+      "summary": "Jash Engineering Limited manufactures, trades in, and sells various engineering products for general engineering, water and wastewater, power plant, and bulk solids handling industries in India and internationally. The company offers water control gates, such as slide/penstock, open channel, weir, and flap gates, as well as stop logs; heavy fabricated gates, including bulkhead, rollers, crest, butterfly, radial/tainter, bonneted, tilting weir, swing, and mitre gates; and screening equipment comprising manual bar, trash rack with flat bars, trash rack with wire mesh, J-type trash rack, suspended grab trash rake, multi-rake bar, step, pre-scalators, travelling band, drum, and static screens. It also provides jet breaker and screw conveyor wash compactors, and flat belt conveyors; unidirectional values and bidirectional valves; water hammer control devices, such as zero velocity, vacuum breaker air cushion, and energy dissipating valves, as well as air vessels/surge vessels compressor type and bladder type; archimedean crew pumps; and hydro power equipment. In addition, the company offers agitators, clarifiers, clariflocculators, detritors, surface aerotors, and thickeners; disc filters; and bulk solids handling valves, including slide gate, swing gate, double flap, casted square port, and fabricated valves. Its products are used in raw water and sea water intake systems, water and waste water pumping stations and treatment plants, storm water pumping stations, flood prevention and mitigation schemes, water transmission lines and also for power, steel, cement, paper and pulp, petrochemicals, chemical, and fertilizers and other process plants. The company was founded in 1948 and is headquartered in Indore, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.160Z"
+    },
+    "JAYAGROGN": {
+      "symbol": "JAYAGROGN",
+      "companyName": "Jayant Agro-Organics Limited",
+      "sector": "Basic Materials",
+      "industry": "Specialty Chemicals",
+      "summary": "Jayant Agro-Organics Limited, an oleochemical company, engages in manufacturing and trading of castor oil and its derivatives in India and internationally. The company operates through three segments: Castor Oil, Derivatives, and Power Generation. It offers dehydrated, hydrogenated, and cold pressed castor oil; and ethoxylates, pragati, hydrogenated castor oil fatty acid, 2-octanol PAC, Jagroflow-13, Jagroflow-15, sebacic acid, dehydrated castor oil fatty acid, and 2-octanone, as well as pharma grade castor oil. The company also provides Jagrocos, Jagromul, Dermcare, Jagroil COCG series, Jagrolatum, Jagrowax CHS, Jagrosorb, and Jagrocid products. In addition, it engages in the power generation business. The company serves agriculture, cosmetics, electronics, lubricants, paints, perfumeries, pharmaceuticals, polymers and plastics, textiles, and rubber and construction industries. The company was incorporated in 1992 and is based in Mumbai, India. Jayant Agro-Organics Limited is a subsidiary of Jayant Finvest Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.159Z"
+    },
+    "JGCHEM": {
+      "symbol": "JGCHEM",
+      "companyName": "J.G.CHEMICALS LIMITED",
+      "sector": "Basic Materials",
+      "industry": "Other Industrial Metals & Mining",
+      "summary": "J.G. Chemicals Limited engages in the manufacture and sale of zinc oxide and zinc sulphate in India. The company sells its products under the Luxmi brand name. It serves various industries, including rubber, ceramics, paints, pharmaceuticals and cosmetics, electronics and batteries, specialty chemicals, sanitaryware, adhesives, surface treatment chemicals, varistors, semiconductors, catalysts, agrochemicals, lubricants, oil and gas, and animal feed. J.G. Chemicals Limited was incorporated in 1975 and is headquartered in Kolkata, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.227Z"
+    },
+    "JINDRILL": {
+      "symbol": "JINDRILL",
+      "companyName": "Jindal Drilling & Industries Limited",
+      "sector": "Energy",
+      "industry": "Oil & Gas Equipment & Services",
+      "summary": "Jindal Drilling & Industries Limited engages in providing drilling and related services to the oil and gas exploration companies in India. It also offers offshore drilling, horizontal and directional drilling, measurement while drilling, and mud logging services. The company was incorporated in 1983 and is headquartered in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.200Z"
+    },
+    "JINDWORLD": {
+      "symbol": "JINDWORLD",
+      "companyName": "Jindal Worldwide Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Textile Manufacturing",
+      "summary": "Jindal Worldwide Limited, together with its subsidiaries, engages in the manufacture and sale of textile products in India and internationally. The company offers denim products, bottom weight fabrics, shirting fabrics, yarn dyed fabrics, and bed sheets. It also engages in the electric two-wheeler business. The company was incorporated in 1986 and is headquartered in Ahmedabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.202Z"
+    },
+    "JTEKTINDIA": {
+      "symbol": "JTEKTINDIA",
+      "companyName": "JTEKT India Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "JTEKT India Limited engages in the manufacture and sale of steering systems and auto components for the passenger car and utility vehicle manufacturers in the automobile sector in India. It offers steering systems, including column and gear; driveline, such as driveshaft and HUB unit; bearing solutions, including SBB (single ball bearings) and TRB (tapered roller bearings); and machine tools, such as grinders, machining centers, and mechatronics. The company exports its precision products to the United States, Europe, and Japan. JTEKT India Limited was formerly known as Sona Koyo Steering Systems Limited and changed its name to JTEKT India Limited in April 2018. The company was incorporated in 1984 and is headquartered in Gurugram, India. JTEKT India Limited is a subsidiary of JTEKT Corporation.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.160Z"
+    },
+    "JUBLINGREA": {
+      "symbol": "JUBLINGREA",
+      "companyName": "Jubilant Ingrevia Limited",
+      "sector": "Basic Materials",
+      "industry": "Specialty Chemicals",
+      "summary": "Jubilant Ingrevia Limited engages in life science products and solutions in India, the United States, Europe, China and internationally. The company operates in three segments: Specialty Chemicals, Nutrition & Health Solutions, and Chemical Intermediates. The Specialty Chemicals segment offers bio-pyridine and -picolines, fine chemicals, agro chemicals, custom development and manufacturing services, and microbial control solutions. The Nutrition & Health Solutions segment provides nutrition and health ingredients; and animal and human nutrition health solutions. The Chemical intermediates segment offers acetyls and specialty ethanol. In addition, it provides vitamins, mineral premixes, stress regulator, amino acid, herbal choline, herbal non-antibiotic growth promoter and egg quality enhancer, toxin binder, acidifiers, and enzymes and emulsifiers. The company serves pharmaceutical, nutrition, agrochemical, consumer, and industrial sectors. The company was formerly known as Jubilant LSI Limited and changed its name to Jubilant Ingrevia Limited in October 2020. Jubilant Ingrevia Limited was incorporated in 2019 and is headquartered in Noida, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.159Z"
+    },
+    "JYOTICNC": {
+      "symbol": "JYOTICNC",
+      "companyName": "Jyoti CNC Automation Limited",
+      "sector": "Industrials",
+      "industry": "Specialty Industrial Machinery",
+      "summary": "Jyoti CNC Automation Limited manufactures and sells metal cutting computer numerical control (CNC) machines in India, rest of Asia, Europe, the Middle East, North America, South America, and Africa. Its product portfolio includes CNC turning centers, CNC turn mill centers, CNC vertical machining centers, CNC horizontal machining centers, CNC 5 axis machining centers, and CNC multi-tasking machines. The company also provides 7th Sense, an intelligent digital suite for real-time monitoring of machine health, tool life, and productivity; and PreciProtect, an artificial intelligence-driven system for preventing machine collisions. It serves aerospace, agriculture, automobile, diamond and jewellery, die and mould, electronics manufacturing services, general engineering, tele-communication, infrastructure, medical, oil and gas, power, pumps and valves, and railway industries. The company was incorporated in 1989 and is based in Rajkot, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.226Z"
+    },
+    "KALYANKJIL": {
+      "symbol": "KALYANKJIL",
+      "companyName": "Kalyan Jewellers India Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Luxury Goods",
+      "summary": "Kalyan Jewellers India Limited, together with its subsidiaries, engages in the manufacture and retail of various gold and precious stone studded jewelry products. It offers gold, diamond, silver, platinum, gemstone, and white and rose gold jewelries, including wedding, staple regional, aspirational, studded, and other jewelries. The company also provides chains, necklaces, bangles, bracelets, nose studs, choker, jewelry, and moti sets, daily wear, vaddanam, rings, earrings, pendants, anklets, pearls, studs, jhumka, lockets, harams, kadas, payals, and second studs. It offers its products under MUDHRA, NIMAH, ANOKHI, RANG, TEJASVI, ZIAH, LAYA, GLO, CANDERE, VEDHA, APOORVA, HERA, and MUHURAT brand names. In addition, the company operates showrooms in India and the Middle East, as well as My Kalyan Grassroots stores. Further, it sells its products through an online platform, candere.com. Kalyan Jewellers India Limited was founded in 1993 and is headquartered in Thrissur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.226Z"
+    },
+    "KFINTECH": {
+      "symbol": "KFINTECH",
+      "companyName": "KFin Technologies Limited",
+      "sector": "Technology",
+      "industry": "Software - Application",
+      "summary": "KFin Technologies Limited operates as a corporate registrar and transfer agency in India, the United States, Canada, and internationally. The company offers digital onboarding & KYC services, investor service centres, distributor services, investor and distributor engagement tools, compliance and regulatory reporting, infrastructure support, call centre support, mail back, SMS, chatbot services, and front-office services, SaaS based end-to-end transaction management, channel management, compliance solutions, and data analytics services. It also provides fund administration and accounting, order management system, cloud-powered data aggregation and analytics platform, automated cloud-based reporting solution, virtual branch platform, distributor-initiated transaction, risk monitoring solution, IT infrastructure services, web hosting, mobility solutions, and branch support services. In addition, the company offers issuer solutions, including folio creation and maintenance, corporate actions processing, compliance/regulatory reporting, recordkeeping, MIS/decision support, e-Voting, e-AGM, e-Vault, Insider trading compliance, AML / PML screening, check, and other platform solutions, as well as KYC Solutions. The company was incorporated in 2017 and is headquartered in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.199Z"
+    },
+    "KIOCL": {
+      "symbol": "KIOCL",
+      "companyName": "KIOCL Limited",
+      "sector": "Basic Materials",
+      "industry": "Steel",
+      "summary": "KIOCL Limited engages in the iron ore mining, beneficiation, and production of pellets in India and internationally. The company operates through two segments, Pellet and Pig Iron. It produces and sells iron ore pellets, pig iron, and iron ore fines. The company also provides operation and maintenance services, as well as mineral exploration services. It serves steel and metallurgy, automotive and transportation, mining and mineral resources, infrastructure and construction, and energy and power industries. The company was formerly known as Kudremukh Iron Ore Company Limited. KIOCL Limited was incorporated in 1976 and is headquartered in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.228Z"
+    },
+    "KIRIINDUS": {
+      "symbol": "KIRIINDUS",
+      "companyName": "Kiri Industries Limited",
+      "sector": "Basic Materials",
+      "industry": "Specialty Chemicals",
+      "summary": "Kiri Industries Limited manufactures and sells dyes, dye intermediates, and basic chemicals in India and internationally. It provides reactive dyes, acid dyes, direct dyes, and disperse dyes; and basic chemicals comprising sulphuric acid, chloro sulhponic acid, oleum, spent sulphuric acid, and thionyl chloride. The company also offers dye intermediates, such as sulpho J.acid, sulpho tobias acid, sulpho gama acid, and para nitro toluene ortho sulfonic acid, vinyl sulphone, as well as H-Acid, naphthalene, and aniline based intermediates. It sells its products to chemical, dyes, dyes intermediates, pharma, paper and textile industries through dealers and distributors. The company was formerly known as Kiri Dyes and Chemicals Limited and changed its name to Kiri Industries Limited in March 2011. Kiri Industries Limited was incorporated in 1998 and is based in Ahmedabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.227Z"
+    },
+    "KRN": {
+      "symbol": "KRN",
+      "companyName": "KRN HEAT EXCHANGE N REF L",
+      "sector": "Technology",
+      "industry": "Electronic Components",
+      "summary": "KRN Heat Exchanger and Refrigeration Limited manufactures and sells heat exchangers, evaporators, and condensers to original equipment manufacturers in the heat, ventilation, air conditioning, and refrigeration industries. It offers condenser coils, evaporator units and coils, header/copper parts, fluid and steam coils, condensing and air-cooling units, sheet metal parts, aluminum/copper fins and copper tubes, bar and plate, and other components. The company operates in India, the rest of Asia, Europe, North America, South America, and Oceania. The company was incorporated in 2017 and is based in Neemrana, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.226Z"
+    },
+    "LGBBROSLTD": {
+      "symbol": "LGBBROSLTD",
+      "companyName": "L.G. Balakrishnan & Bros Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "L.G. Balakrishnan & Bros Limited manufactures and sells chains, sprockets, and metal formed parts for automotive and industrial applications in India and internationally. The company operates through Transmission and Metal Forming segments. It offers transmission products; sprockets and gears; sealed and standard, silent, bush and roller, and special application chains; mechanical, hydraulic, between chain, and compact tensioners, as well as guides; scooter, 4 wheelers and tractors, cogged V, poly V, and timing belts; scooter components, such as clutch weight roller, clutch slider piece, face comp movable drive, 5G tech belts, cushion bush kit, pivot arm set, and starter pinion gear drive; and rubber products, brake shoes, fine blanked components, and precision machined parts. The company also provides metal forming products consisting of fine blanking for precision sheet metal parts, and machined components, as well as wire drawing products for other chain manufacturing plants, spring steel suppliers, and umbrella manufacturers. It markets its products under the Rolon brand. L.G. Balakrishnan & Bros Limited was founded in 1937 and is based in Coimbatore, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.223Z"
+    },
+    "LLOYDSME": {
+      "symbol": "LLOYDSME",
+      "companyName": "Lloyds Metals and Energy Limited",
+      "sector": "Basic Materials",
+      "industry": "Steel",
+      "summary": "Lloyds Metals and Energy Limited manufactures and sells sponge iron and iron ore in India. The company operates in four segments: Sponge Iron, Mining, Power, and Pellet Trading. It offers wire rods and TMT rebars, as well as flat products. The company is also involved in the generation of power; and trading of pellets. Lloyds Metals and Energy Limited was incorporated in 1977 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.227Z"
+    },
+    "LTFOODS": {
+      "symbol": "LTFOODS",
+      "companyName": "LT Foods Limited",
+      "sector": "Consumer Defensive",
+      "industry": "Packaged Foods",
+      "summary": "LT Foods Limited, an FMCG company, operates in the specialty rice and rice-based food business in India. The company operates through Consumer (B2C), Institutional (B2B), and Convenience segments. It provides basmati and other specialty rice; organic food and ingredients; and ready to eat and ready-to-cook products. The company sells its products under the DAAWAT, Royal, Golden Star, Heritage, Elephant, Devaaya, Ecolife, indus valley, Leev, Kari Kari, and other brands in approximately 80 countries, including India, the United States, Europe, the United Kingdom, the Middle East, the Far East, and internationally. LT Foods Limited was incorporated in 1990 and is based in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.233Z"
+    },
+    "LUMAXIND": {
+      "symbol": "LUMAXIND",
+      "companyName": "Lumax Industries Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Lumax Industries Limited manufactures and sells automotive components for in India. The company offers automotive lighting systems, including LED light, headlamps, tail lamps, fog lamps, and auxiliary lamps, as well as electronic components. It serves passenger cars, commercial vehicles, four-wheelers, two-wheelers, and tractors in farm equipment segment catering to original equipment manufacturers. Lumax Industries Limited was founded in 1945 and is headquartered in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.225Z"
+    },
+    "LUMAXTECH": {
+      "symbol": "LUMAXTECH",
+      "companyName": "Lumax Auto Technologies Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Lumax Auto Technologies Limited, together with its subsidiaries, manufactures and sells automotive components in India. The company offers advanced plastics, such as cockpit and consoles, door panels, air intake systems, urea and plastic fuel tanks, headliners, trims, louvers, head lamps, tail lamps, and front and rear fenders; mechatronics, including power window switches, oxygen sensors, telematics control units, shark fin antennas, telematics antennas, LF antennas, and throttle position sensors; structures and control systems comprising gear shifter, control housing, monostable e-shifter, frames, swing arms, and seating structure; aftermarket products, such as lighting, horns, wiper blades, filters, engine oils and lubricants, car care products, gear knob, mirrors, and door visor; and alternate fuels consists of pre-bend tubes, electronic pressure regulator, CNG manifold, NGV filling valve, H2 receptacle, CNG cylinder and cylinder valve, H2 re-fueling panel, and safety kit. It also sells various automotive parts and components, as well as moulds and tools for PV, CV and two/three-wheelers. The company serves two, three, and four-wheeler commercial vehicles; and original equipment manufacturers. It also exports its products. The company was formerly known as Dhanesh Auto Electricals Limited and changed its name to Lumax Auto Technologies Limited in 2006. Lumax Auto Technologies Limited was incorporated in 1981 and is based in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.220Z"
+    },
+    "MANAPPURAM": {
+      "symbol": "MANAPPURAM",
+      "companyName": "Manappuram Finance Limited",
+      "sector": "Financial Services",
+      "industry": "Credit Services",
+      "summary": "Manappuram Finance Limited, a gold loan non-banking financial company, provides fund-based and fee-based financial services in India. It offers loans, such as gold, doorstep gold, online gold, vehicle, business, digital personal, and corporate loans; financing products, including two-wheeler finance, and micro home finance. The company also provides foreign exchange money transfer, digital wallet, and other services, such as depository services, demat account, and pan card services. In addition, it offers financing services for construction equipment and farm equipment. The company was formerly known as Manappuram General Finance and Leasing Limited and changed its name to Manappuram Finance Limited in 2011. Manappuram Finance Limited was founded in 1949 and is based in Thrissur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.228Z"
+    },
+    "MARATHON": {
+      "symbol": "MARATHON",
+      "companyName": "Marathon Nextgen Realty Limited",
+      "sector": "Real Estate",
+      "industry": "Real Estate - Development",
+      "summary": "Marathon Nextgen Realty Limited engages in the construction, development, and sale of commercial and residential real estate projects in India. The company was founded in 1969 and is based in Mumbai, India. Marathon Nextgen Realty Limited is a subsidiary of Marathon Realty Pvt. Ltd.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.221Z"
+    },
+    "MOREPENLAB": {
+      "symbol": "MOREPENLAB",
+      "companyName": "Morepen Laboratories Limited",
+      "sector": "Healthcare",
+      "industry": "Drug Manufacturers - Specialty & Generic",
+      "summary": "Morepen Laboratories Limited develops, manufactures, markets, and sells active pharmaceutical ingredients (APIs), branded and generic formulations, and home health products in India, the United States, and internationally. The company offers APIs for anti-histaminic, anti-asthmatic, anti-lipemic, anti-hypertensive, anti-diabetic, anti-coagulant, anti-ulcerative, and anti-depressant drugs; and home diagnostic products, such as air purifiers, sphygmomanometers, blood glucose test strips, blood pressure monitors, breathe free vaporizers, stethoscopes, digital thermometers, blood glucose monitors, nebulizers, heat belts, and pulse oximeters. It also provides OTC and healthcare products, including fever X for fever; Pain X for pain; Fiber-X for constipation; sat isabgol; Acidity X for acidity; Burnol, a first degree/minor burns cream; and formulations for nutrition and probiotics, gastroenterology, antibiotics, gynecology, anti-allergic, and central nervous system, as well as cardiology, diabetology, and nutraceuticals. The company offers over the counter products under the Dr. Morepen brand name. Morepen Laboratories Limited was incorporated in 1984 and is based in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.376Z"
+    },
+    "MOSCHIP": {
+      "symbol": "MOSCHIP",
+      "companyName": "MOSCHIP TECHNOLOGIES LTD",
+      "sector": "Technology",
+      "industry": "Semiconductor Equipment & Materials",
+      "summary": "MosChip Technologies Limited, a semiconductor and system design company, designs, develops, manufactures, and sells system on chip technologies and Internet on Things solutions in India, North America, and the Asia Pacific. It operates through Semiconductor and Software & System Design segments. The company offers silicon engineering solutions comprising semiconductor design solutions; ASIC platforms and design solutions; OSAT solutions; digital, verification, and mixed-signal semiconductor IP blocks for design and verification; and IP solutions. It also provides product engineering solutions, including hardware design and system engineering; embedded system and device engineering; multimedia and vision engineering; mobility and digital engineering; quality and automation engineering; and connectivity and network engineering solutions for wired and wireless networks. In addition, the company offers artificial intelligence (AI) engineering solutions, such as computer vision, generative AI, ML lifecycle management, cognitive computing, and AI/FPGA acceleration solutions. It serves the telecommunications, automotive, aerospace and aviation, medical and healthcare, industrial automation, defense, consumer electronics, energy and utility, multimedia, computer vision, security and surveillance, wearable, and data center industries. The company was formerly known as MosChip Semiconductor Technology Limited and changed its name to MosChip Technologies Limited in March 2019. MosChip Technologies Limited was founded in 1999 and is headquartered in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.227Z"
+    },
+    "MOTILALOFS": {
+      "symbol": "MOTILALOFS",
+      "companyName": "Motilal Oswal Financial Services Limited",
+      "sector": "Financial Services",
+      "industry": "Capital Markets",
+      "summary": "Motilal Oswal Financial Services Limited offers financial services in India. It operates through Wealth Management, Capital Markets, Asset and Private Wealth Management, Home Finance, and Treasury Investments segments. The company offers broking and distribution services, such as equities, derivatives, commodities, currencies, mutual funds, and insurance products, as well as depository, portfolio management, and asset management services. It also provides private wealth management services, such as equity, alternate, credit, estate planning, and property advisory services; and home finance. In addition, the company offers institutional broking services, including cash and derivatives; private equity services; and investment banking services, including international capital markets, private equity funds, structured finance syndication, mergers and acquisitions advisory, and financial restructuring advisory. It serves high net worth individuals; and mutual funds, foreign institutional investors, financial institutions, and corporate clients. Motilal Oswal Financial Services Limited was founded in 1987 and is headquartered in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.219Z"
+    },
+    "MUNJALAU": {
+      "symbol": "MUNJALAU",
+      "companyName": "Munjal Auto Industries Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Munjal Auto Industries Limited manufactures and sells auto components for motor vehicles in India. It operates through Auto Components and Composite Products & Moulds segments. The company offers cross bars, exhaust systems, steel and spoke wheel rim, and accessories; and complete assembly including BIW parts, B&C pillars, cross car beam, battery tray, control arm, and tie end bars, as well as accelerator, brake, and clutch assemblies. It also provides fuel tank and BIW assemblies; and sheet metal components, such as mild and stainless steel parts, welded and tri-nickel chrome plated components, liquid painted oven baked and heat resistant painted parts, tubular components, and roll formed parts. Munjal Auto Industries Limited was incorporated in 1985 and is based in Gurugram, India. Munjal Auto Industries Limited is a subsidiary of Thakurdevi Investments Private Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.375Z"
+    },
+    "NAVINFLUOR": {
+      "symbol": "NAVINFLUOR",
+      "companyName": "Navin Fluorine International Limited",
+      "sector": "Basic Materials",
+      "industry": "Chemicals",
+      "summary": "Navin Fluorine International Limited manufactures and sells specialty fluorochemicals in India and internationally. The company offers refrigerants for various applications, including window and split room air conditioners, chillers, packaged air conditioners, commercial and industrial refrigeration units, intermediate for active pharmaceutical ingredients, fluoropolymer resins, domestic and industrial refrigerators, and mobile air conditioning under the Mafron brand for original equipment manufacturer, service technicians, and equipment owners. It also provides inorganic fluoride products, such as ammonium bifluoride, potassium fluoride, sodium fluoride, potassium fluorotitanate, potassium fluoroborate, hexafluorophosphoric acid, and hydrofluo pyridine and hydrofluo urea complex products for oil and gas, stainless steel, pharmaceutical and agrochemicals, abrasives, electronics, and solar energy industries. In addition, the company offers various value added specialty fluoro intermediates consist of boron trifluoride gas and related adducts for pharmaceutical industry, as well as crop protection, hydrocarbon, and fragrance applications; and contract development and contract manufacturing services, such as basic research, library syntheses, process development, scale up, and small and batch manufacturing for custom chemical syntheses of fluorinated compounds in the pharmaceuticals, agro chemicals, and specialty chemicals industries. Navin Fluorine International Limited was founded in 1967 and is headquartered in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.218Z"
+    },
+    "NELCO": {
+      "symbol": "NELCO",
+      "companyName": "Nelco Limited",
+      "sector": "Technology",
+      "industry": "Communication Equipment",
+      "summary": "Nelco Limited provides solutions in the areas of very small aperture terminals (VSAT) connectivity, satellite communication (Satcom) projects, and integrated security and surveillance solutions in India. The company offers VSAT satellite communication services for bank atm, bank branches, renewable energy, enterprise, and maritime and aero, as well as oil, energy, and gas areas; installation and annual maintenance services; network management; and satellite communication and internet services. It also designs, supplies, installs, and maintains customized and integrated security and surveillance solutions for application in industrial plants, power stations, broadcasting stations, telecommunications stations, airports, railways, seaports, and borders. In addition, the company is involved in the sale and rental of VSATs; and maintenance of private hubs and hybrid networks. It serves enterprise and government customers. The company was incorporated in 1940 and is based in Navi Mumbai, India. Nelco Limited is a subsidiary of The Tata Power Company Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.219Z"
+    },
+    "NETWEB": {
+      "symbol": "NETWEB",
+      "companyName": "Netweb Technologies India Limited",
+      "sector": "Technology",
+      "industry": "Computer Hardware",
+      "summary": "Netweb Technologies India Limited designs, manufactures, and sells high-end computing solutions in India. The company offers supercomputing systems; private cloud and hyperconverged infrastructure, including private cloud, hybrid cloud, cloud tools, and cloud native storage; artificial intelligence (AI) systems and enterprise workstations; high performance storage solutions; data centre servers; and enterprise grade network switches and software. It also provides cloud migration, managed cloud, Openstack cloud, high performance computing on cloud, managed kubernetes, AI and machine learning, strategic consultation, migration/implementation, optimization advice, and technical support services. In addition, the company provides solutions, such as AI and big data, HPC, cloud, kubernetes, surveillance, and unified storage solutions. It sells its products under the Tyrone brand name. The company serves information technology and enabled services, entertainment and media, banking, financial and insurance, national data centres, government, defense, education, and research institutions. The company was formerly known as Netweb Technologies India Private Limited and changed its name to Netweb Technologies India Limited. Netweb Technologies India Limited was incorporated in 1999 and is based in Faridabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.820Z"
+    },
+    "NIITLTD": {
+      "symbol": "NIITLTD",
+      "companyName": "NIIT Limited",
+      "sector": "Consumer Defensive",
+      "industry": "Education & Training Services",
+      "summary": "NIIT Limited engages in providing learning and knowledge solutions to individuals, enterprises, and various institutions internationally. The company offers a variety of training programs, certifications, and solutions for career seekers and working professionals. The company also offers a program portfolio such as AI/ML, generative AI, data science, full-stack product engineering, 5g, cloud technologies, cybersecurity, and game development, along with programs in digital marketing, business development, banking, insurance and finance, and virtual relationship management for digital enterprises. In addition, the company provides NIIT Digital, a platform that enables distinctive learning experiences for corporate and individual learners; the Institute of Finance Banking & Insurance (IFBI), a provider of learning services for early careers; NIIT StackRoute, a digital transformation partner for corporates to build multi-skilled full-stack professionals in advanced technologies; RPS Consulting, a provider of training programs on digital technologies; Talent Pipeline as a Service (TPaaS), helps organizations in hiring skilled talent; and Sales & Service Excellence (SSE) that helps businesses in creating an ecosystem for talent development. The company was incorporated in 1981 and is based in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.219Z"
+    },
+    "ONGC": {
+      "symbol": "ONGC",
+      "companyName": "Oil and Natural Gas Corporation Limited",
+      "sector": "Energy",
+      "industry": "Oil & Gas Integrated",
+      "summary": "Oil and Natural Gas Corporation Limited, together with its subsidiaries, engages in the exploration, development, production, and distribution of crude oil, natural gas, and value-added products in India and internationally. It operates through Exploration and Production, Refining & Marketing, and Petrochemicals segments. The company engages in the refining and marketing of petroleum products; liquefied natural gas supply; pipelines for transportation of petroleum products; SEZ development; helicopter services; and production of ethanol, sugar, petrochemicals, liquefied petroleum gas, naphtha, ethane, propane, butane, kerosene oil, low sulphur heavy stock, residual crude oil, mineral turpentine oil, aviation turbine fuel, and high speed diesel. It also generates wind power through a total installed capacity of 153.9 MW; and solar power through a total installed capacity of 39.96 MW. The company also exports its products. Oil and Natural Gas Corporation Limited was founded in 1955 and is based in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.428Z"
+    },
+    "OSWALGREEN": {
+      "symbol": "OSWALGREEN",
+      "companyName": "Oswal Greentech Limited",
+      "sector": "Financial Services",
+      "industry": "Asset Management",
+      "summary": "Oswal Greentech Limited develops real estate projects in India. It operates through the Real Estate and Investment segments. The company is also involved in the trading of real estate assets. In addition, it invests in equity instruments and other securities; and extends in the form of intercorporate deposits. The company was formerly known as Oswal Chemicals & Fertilizers Limited. Oswal Greentech Limited was incorporated in 1981 and is headquartered in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.224Z"
+    },
+    "PGEL": {
+      "symbol": "PGEL",
+      "companyName": "PG Electroplast Limited",
+      "sector": "Technology",
+      "industry": "Electronic Components",
+      "summary": "PG Electroplast Limited provides electronic manufacturing services for original equipment manufacturers in India and internationally. The company manufactures and/or assembles various consumer electronic components and finished products, such as kitchen appliances, air conditioners sub-assemblies, air cooler, washing machines, mobile handsets, and LEDs for third parties. It also offers automotive components; printed circuit board assemblies; LED televisions; bathroom fittings; and consumer electronics components. In addition, the company provides plastic moulding and other component, as well as engages in sheet metal parts and advanced tool manufacturing. PG Electroplast Limited was founded in 1977 and is based in Greater Noida, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.526Z"
+    },
+    "PLATIND": {
+      "symbol": "PLATIND",
+      "companyName": "Platinum Industries Limited",
+      "sector": "Basic Materials",
+      "industry": "Specialty Chemicals",
+      "summary": "Platinum Industries Limited engages in the manufacture and sale of poly vinyl chloride (PVC) stabilizers, chlorinated polyvinyl chloride (CPVC), lubricants, stearates, and speciality chemicals in India and internationally. The company offers lead based and non-lead-based stabilisers; CPVC additives; and metallic soaps, such as calcium, zinc, barium, and aluminium stearates. It also provides CPVC compounds and add packs; and lubricants, such as PE and OPE waxes, and lubpacks. The company's products are used in plumbing pipes and fittings, profiles, fittings, foam boards, floor tiles, rigid films, and mica and roofing sheets, as well as in wires/cables, shoes, hose and medical tubes, films and sheets, disposable oxygen masks, PVC floorings, plastisols, soft profiles, soft injection moulded articles, and blood bags applications. Platinum Industries Limited was incorporated in 2016 and is headquartered in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.387Z"
+    },
+    "PREMIERENE": {
+      "symbol": "PREMIERENE",
+      "companyName": "PREMIER ENERGIES LIMITED",
+      "sector": "Technology",
+      "industry": "Solar",
+      "summary": "Premier Energies Limited manufactures and sells integrated solar cells and modules in India. It offers bifacial monocrystalline PERC cells; monofacial solar modules; and bifacial transparent back sheet and dual glass modules, as well as custom made panels for specific applications. The company provides engineering, procurement, and construction services for ground-mounted and rooftop solar power projects; upgradation services for transmission line and substation; and solar photo voltaic cells and solar products, such as solar water pumps, lanterns, lighting system, and solar e-vehicles. In addition, it operates a solar power project as project developer. The company was incorporated in 1995 and is based in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.937Z"
+    },
+    "PRESTIGE": {
+      "symbol": "PRESTIGE",
+      "companyName": "Prestige Estates Projects Limited",
+      "sector": "Real Estate",
+      "industry": "Real Estate - Diversified",
+      "summary": "Prestige Estates Projects Limited, together with its subsidiaries, engages in the development and leasing of real estate properties in India. It develops residential projects, including townships, apartments, villas, plotted developments, as well as develops and operates retail and commercial projects. The company also develops and owns hospitality properties, which include hotels, resorts, convention centres, service apartments, and golf resorts. In addition, it provides real estate services comprising fit-out, interior design and execution, facilities and property management, and project and construction management services. The company was incorporated in 1986 and is based in Bengaluru, India. Prestige Estates Projects Limited is a subsidiary of Razack Family Trust.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.383Z"
+    },
+    "PRICOLLTD": {
+      "symbol": "PRICOLLTD",
+      "companyName": "Pricol Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Pricol Limited, together with its subsidiaries, manufactures and sells instrument clusters and other allied automobile components to original equipment manufacturers and replacement markets in India and internationally. The company provides driver information solutions, including LCD, TFT, and hybrid display clusters; connected vehicle solutions, such as display and infotainment solutions and telematics; reed and TFR type sensors; and battery management systems. It also offers actuation, control, and fluid management systems, such as cabin tilting system, disc brake, fuel pump, electrical oil pump, oil pump, electrical coolant pump, coolant pump, and electronic purge valve, as well as precision products. The company provides its products for two wheelers, three wheelers, passenger vehicles, tractors, commercial vehicles, and industrial and off-road vehicles. The company was formerly known as Pricol Pune Limited and changed its name to Pricol Limited in November 2016. Pricol Limited was founded in 1975 and is headquartered in Coimbatore, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.937Z"
+    },
+    "RCF": {
+      "symbol": "RCF",
+      "companyName": "Rashtriya Chemicals and Fertilizers Limited",
+      "sector": "Basic Materials",
+      "industry": "Agricultural Inputs",
+      "summary": "Rashtriya Chemicals and Fertilizers Limited manufactures, markets, and sells fertilizers and industrial chemicals in India. The company operates through Fertilizers, Industrial Chemicals, and Trading segments. It offers various fertilizers, including Suphala 15:15:15, a NPK fertilizer; Urea, a nitrogenous fertilizer; Biola, a bio-fertilizer; Sujala, a water-soluble fertilizers; Microla micronutrients fertilizer; Vipula, a suspension NPK fertilizers; and Geola, a revolutionary biofertilizer product with NPK bacterial consortia in lyophilized form, as well as water pH balancer, soluble silicon fertilizer, organic growth stimulant, phosphate rich organic manure, and PDM-Potash. The company also provides industrial chemicals, such ammonium nitrate melt, ammonia, ammonium, ammonium bicarbonate, dilute nitric acid, nitric acid, methylamines, sulphuric acid, argon, nitrogen, dimethyl acetamide, phosphoric acid, sodium nitrate/nitrite, methanol, gypsum, chalk, etc., as well as mono, die, and tri methyl amine. In addition, it involved in agriculture extension activities, such as soil sample analysis and farmer training services; printing and distribution of RCF Sheti Patrika for farmers; and development of drone hubs. Further, the company organize broadcasting of farming related community radio programs, including Samrudha Shetitun Vikasit Bharat. Rashtriya Chemicals and Fertilizers Limited was incorporated in 1978 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.145Z"
+    },
+    "REFEX": {
+      "symbol": "REFEX",
+      "companyName": "Refex Industries Limited",
+      "sector": "Energy",
+      "industry": "Thermal Coal",
+      "summary": "Refex Industries Limited engages in handling and disposal of fly ash in India. It provides refills hydrofluorocarbons, which is used in air conditioners, refrigerators, and refrigeration systems. The company engages in solar power generation and related activities; coal trading; and providing coal yard management services and power trading solutions. It also owns and operates electric vehicles. The company was formerly known as Refex Refrigerants Limited and changed its name to Refex Industries Limited in November 2013. The company was incorporated in 2002 and is based in Chennai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.534Z"
+    },
+    "RICOAUTO": {
+      "symbol": "RICOAUTO",
+      "companyName": "Rico Auto Industries Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Rico Auto Industries Limited, an engineering company, manufactures and supplies high precision fully machined aluminum, and ferrous components and assemblies to original equipment manufacturers worldwide. Its integrated services include the design, development, tooling, casting, machining, and assembly of aluminum and ferrous products. The company offers oil pump assemblies, fuel system parts, lube oil filter heads, exhaust manifolds, turbine housings, center housings, back plates, crank cases and covers, cylinder head covers, oil pans, intake manifold covers, front covers, valve covers, side covers, balance shafts assemblies, gear housings, and main bearing caps, as well as water, air connections, and pressure plates. In addition, it provides flywheels, timing cases, oil filter adaptors, engine brackets, cylinder blocks, cylinder heads, clutch assemblies, automatic transmission bracket assemblies, differential case housings, gear shifts forks, wheel hubs assemblies, brake panel assemblies, brake discs, and drums. Further, the company offers tank track shoe, fuze body, and fuze assembly products, and aluminum alloy wheels, as well as engineering and assembly logistics management, warehousing, just in time delivery, and customer support and services. Rico Auto Industries Limited was incorporated in 1983 and is based in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.806Z"
+    },
+    "RKFORGE": {
+      "symbol": "RKFORGE",
+      "companyName": "Ramkrishna Forgings Limited",
+      "sector": "Industrials",
+      "industry": "Metal Fabrication",
+      "summary": "Ramkrishna Forgings Limited engages in the manufacture and sale of forged components for automobiles, railway wagons and coaches, and engineering parts in India and internationally. It operates in two segments, Forging Components and Others. The company's products portfolio includes beam, knuckle, steering arm, tie-rod-arm, sector shaft, front hub, crankshaft, camshaft, connecting rod, piston, pitman arm, BC lever assembly, mounting bracket, yoke, UJ cross, transmission gear and shaft, crown wheel, pinion, differential case and case cover, differential gear and pinion, spindle, rear axle shaft, spider, helical gear, tube flange and shaft, and tube yoke products. It also offers bucket, backhoe bucket, shovel, track line and roller, bucket tooth, pivot pin, prop shaft, and bearing centre products; and wing nut, valve bonet, T-bolt socket joint, and tooth crusher hammer products. In addition, the company provides bogie frame and bolster, screw coupling, hanger, draw gear assembly, anti roll bar assembly, control arm support, center pivot pin, centering disc, traction center, and guide products. Further, it offers tractor-trailer products, such as trailer axle, air and mechanical suspension, landing leg, and bolton and weldable king pin products; as well as engages in the sanitization and cargo, and tour and travel businesses. The company offers its products for various industries and sectors, including automotive, earth moving and mining, farm equipment, power, construction, general engineering, railways, and oil and gas, as well as for original equipment manufacturers. Ramkrishna Forgings Limited was incorporated in 1981 and is headquartered in Kolkata, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.384Z"
+    },
+    "RKSWAMY": {
+      "symbol": "RKSWAMY",
+      "companyName": "R K SWAMY LIMITED",
+      "sector": "Communication Services",
+      "industry": "Advertising Agencies",
+      "summary": "R K Swamy Limited, together with its subsidiaries, provides integrated marketing services in India and internationally. The company engages in the business of advertising in various media, such as television, newspaper, radio, outdoor, and strategic media planning and buying; undertakes market research activities, including research and analytics solutions, and customer analytics; and develops and manages campaigns in the space of creative services and promotions through media and other services. It also provides advertising creative, digital marketing, brand activation and consulting, branding and design, health care, and content at scale services; quantitative, qualitative, and syndicated market research services; and data analytics and martech solutions, such as CX measurements, CRM, and customer experience center services. The company serves the banking, financial services and insurance, automotive, fast-moving consumer goods, consumer durables, retail, and e-commerce industries, as well as the rural and social/advocacy, and media and entertainment sectors. R K Swamy Limited was incorporated in 1973 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.527Z"
+    },
+    "ROSSTECH": {
+      "symbol": "ROSSTECH",
+      "companyName": "Rossell Techsys Limited",
+      "sector": "Industrials",
+      "industry": "Aerospace & Defense",
+      "summary": "Rossell Techsys Limited provides engineering and manufacturing solutions for the global aerospace and defense industry in India and internationally. The company provides electrical wiring interconnection system (EWIS) services to rotary and fixed wing military platforms, commercial platforms, weapon systems, avionics, land systems, and marine and space systems, as well as EWIS installation services. The company also offers custom electronics assemblies for data acquisition and control, power management, signal conditioning interfaces and high-fidelity processing, instrumentation, control systems, communication systems, avionics systems, and electronic systems; and test systems and solutions, as well as fully automatic, semi-automatic, and manual test equipment. In addition, it provides aftermarket services. Further, it provides televisions, wireless apparatus such as radio receivers and transmitters, tape recorders, broadcast relay and reception equipment, phonographs, and other audiovisual communication devices; and motion systems and various apparatus and equipment, including electromagnetic waves for radiotelegraphic or radiotelephonic communication, telephone equipment, photocopiers, electronic lighting controls, and other related products. The company was founded in 2011 and is based in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.880Z"
+    },
+    "RPEL": {
+      "symbol": "RPEL",
+      "companyName": "Raghav Productivity Enhancers Limited",
+      "sector": "Basic Materials",
+      "industry": "Chemicals",
+      "summary": "Raghav Productivity Enhancers Limited manufactures, trades in, and sells ramming mass and other quartz related items in India and internationally. It offers silica ramming mass and refractory products for use in creating linings for furnaces, incinerators, kilns, and reactors. The company also exports its products. It serves recycled steel manufacturers, as well as foundry, steel, and incineration industries. The company was formerly known as Raghav Ramming Mass Limited and changed its name to Raghav Productivity Enhancers Limited in November 2017. Raghav Productivity Enhancers Limited was incorporated in 2009 and is based in Jaipur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.525Z"
+    },
+    "RTNINDIA": {
+      "symbol": "RTNINDIA",
+      "companyName": "RattanIndia Enterprises Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Internet Retail",
+      "summary": "RattanIndia Enterprises Limited, together with its subsidiaries, engages in the retail business in India and internationally. It operates through Retail-E-commerce Business, EV (E-Motorcycles), Investments, and Others segments. The company engages in the retail trade of apparel, shoes, wire accessories, office products, musical instruments, eyewear, handbags, and books through online e-commerce platforms; and everyday fashion, denims, athleisure, and performance wear. It also manufactures electric motorcycles; and operates Wefin, a fintech platform for personal and two-wheeler loans, and credit cards. In addition, the company provides drone products and services; enterprise, defence, and delivery drone hardware and software; and drone logistics. Further, it is involved in manpower/human resource supply and consultancy; management support services; payroll management; dealership of Revolt products and after sale services; monetary intermediation activities; insurance broking business; and management consultancy and project management. The company was formerly known as RattanIndia Infrastructure Limited and changed its name to RattanIndia Enterprises Limited in March 2021. RattanIndia Enterprises Limited was incorporated in 2010 and is based in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.072Z"
+    },
+    "SANDUMA": {
+      "symbol": "SANDUMA",
+      "companyName": "The Sandur Manganese & Iron Ores Limited",
+      "sector": "Basic Materials",
+      "industry": "Steel",
+      "summary": "The Sandur Manganese & Iron Ores Limited, together with its subsidiary, engages in the mining of manganese and iron ores in Deogiri village of Ballari District, Karnataka. It operates through three segments: Mining, Ferroalloys, and Coke and Energy. The company also manufactures and sells ferroalloys and coke. In addition, it generates power through a 32-megawatt thermal power plant. The company serves steel manufacturers and ferroalloy producers. It also exports its products. The company was incorporated in 1954 and is based in Bengaluru, India. The Sandur Manganese & Iron Ores Limited is a subsidiary of Skand Private Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.849Z"
+    },
+    "SANSERA": {
+      "symbol": "SANSERA",
+      "companyName": "Sansera Engineering Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Sansera Engineering Limited engages in the manufacture and sale of precision engineered components for automotive and non-automotive sectors in India, Europe, the United States, and internationally. The company offers automotive components, such as connecting rods, rocker arms, finger followers, balancer shafts, gear shifter forks, suspension and steering parts, assembly components, aluminum parts, drivetrain and rotar parts, sprockets, adapters, rocker shafts, housing shift lever shafts, lever and arm shifts, shaft propellers, spacer input gears, shaft controls, braking system parts, tans axle parts, generator shafts, valve bridges, braking assembly parts, transmission parts, and chassis parts for two- wheelers, passenger vehicles, four-wheelers, and commercial vehicles, as well as crank shafts. It also provides products for off-road vehicles; industrial and stationery engines; agriculture; aerospace; and medical implants. In addition, the company offers forging and other related services. Sansera Engineering Limited was incorporated in 1981 and is headquartered in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.373Z"
+    },
+    "SHARDACROP": {
+      "symbol": "SHARDACROP",
+      "companyName": "Sharda Cropchem Limited",
+      "sector": "Basic Materials",
+      "industry": "Agricultural Inputs",
+      "summary": "Sharda Cropchem Limited, a crop protection chemical company, provides various formulations and generic active ingredients worldwide. It offers agrochemical products, including insecticides, fungicides, herbicides, veterinary drugs, plant growth regulators, fumigants, regulators, rodenticides, metalaxyl, propiconazole, phenthoate, pendimethalin, and dithianon; and biocides. The company also provides conveyor belts, such as textile ply, rough top, steel cord, chevron/pattern, elevator, sidewall, pipe, and PVC/PVG solid woven conveyor belts, as well as cotton transmission belts, PVC and polyurethane light duty belting products, and V-belts. In addition, it offers industrial chemicals used in water treatment, food and food ingredients, and other industrial applications; and dyes and dye intermediates, as well as general chemicals. Further, the company supplies and distributes pharmaceuticals and intermediates products, including prothioconazole, azoxystrobin, P-nitrophenol - parathion-methyl, 2,4-dichloroacetophenone - propiconazole, cyclopropanecarboxylic acid - trinexapac-ethyl, and P-fluorobenzaledehyde - cyfluthrin. Sharda Cropchem Limited was founded in 1987 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.013Z"
+    },
+    "SHIVALIK": {
+      "symbol": "SHIVALIK",
+      "companyName": "Shivalik Rasayan Limited",
+      "sector": "Basic Materials",
+      "industry": "Agricultural Inputs",
+      "summary": "Shivalik Rasayan Limited produces and sells chemicals for the protection of plants in India. The company offers Dimethoate technical used in the preparation of formulations for use in the control of various insects and mites; and Malathion technical, an organophosphorus based contact insecticide used in the agricultural production of various food/feed crops. It also provides insecticides, such as CHLORANTRANILIPROLE, CHLOREFENAPYR, PYMETROZINE, NOVALURON, and BIFENTHRIN; and fungicides, including AZOXYSTROBIN, TRIFLOXYSTOBIN, and KRESOXIM-METHYL products. It also manufactures organophosphorus-based insecticides and chemicals. In addition, it develops and manufactures active pharmaceutical ingredients in oncology, ARVs, cardiovascular, metabolic disorders, and immunology; and manufactures oncology and non-oncology products. Further, the company offers custom manufacturing of chemicals. The company was incorporated in 1979 and is based in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.498Z"
+    },
+    "SKIPPER": {
+      "symbol": "SKIPPER",
+      "companyName": "Skipper Limited",
+      "sector": "Industrials",
+      "industry": "Engineering & Construction",
+      "summary": "Skipper Limited manufactures and sells transmission and distribution structures, telecom towers, and fasteners in India. The company operates through three segments: Engineering Products, Infrastructure Projects, and Polymer Products. The Engineering Products segment offers power transmission towers, telecom towers, tower accessories, fasteners, angles, channels, high mast and swaged poles, solar power systems, railway structures, etc., as well as power distribution poles, transmission lines, monopoles, and mild steel and high tensile angles. The Infrastructure Projects segment provides horizontal direct drilling and coating services, as well as engineering, procurement, and construction services. The Polymer Products segment offers PVC, HDPE, CPVC, UPVC, SWR pipes and fittings, water tanks, bath fittings, and other related products, as well as agriculture pipes, borewell pipes and fittings, and CPVC solvent cement. The company also exports its products to approximately 40 countries covering South America, North America, Europe, Africa, the Middle East, South and Southeast Asia, and Australia. The company was incorporated in 1981 and is based in Kolkata, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.585Z"
+    },
+    "SOUTHBANK": {
+      "symbol": "SOUTHBANK",
+      "companyName": "The South Indian Bank Limited",
+      "sector": "Financial Services",
+      "industry": "Banks - Regional",
+      "summary": "The South Indian Bank Limited provides various banking products and services in India. It operates through Treasury, Corporate/Wholesale Banking, Retail Banking, and Other Banking Operations segments. The company's personal banking products and services include savings and current accounts, term deposits, and unclaimed deposits/inoperative accounts; personal, car, home, gold, educational, property, and other loans; loans against securities; one time settlement scheme for micro and small enterprises sector; wealth and mutual funds. It also offers insurance products, such as life, health, and various credit risk insurance, as well as general insurance products comprising fire, liability, marine, motor, personal accident, and travel insurance products. In addition, the company provides money transfer services; various cards; and value added services, including SIB rewardz, KYC certification of mutual fund investors, SIB e-academia, 3-in-one trading KIT, green pin, SIB feebook, branch banking, FX-retail, KYC updation, NETC FASTag, sovereign gold bonds, credit and debit cards, ATM cum shopping card, mobile and internet banking, demat, pension system, online trading, NPS lite, SIB collect, SIB travel card, PAN service agency, cash management, direct debit, tax payment and savings investments, and safe deposit locker services, as well as distributes capital gain bonds and tax free bonds. Its NRI banking services comprise NRE and NRO rupee accounts, and foreign currency deposits; e-services; remittances and payments; money transfers; and value-added services, as well as portfolio investment schemes. The company's business banking services include normal and premium accounts, SIB merchant plus, and trader smart current accounts; working capital, long term, non-fund based, supply chain, and SIB commercial vehicle loans; international finance; and merchant acquiring services. It operates through a network of branches and ATMs/CRMs. The South Indian Bank Limited was incorporated in 1929 and is headquartered in Thrissur, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.388Z"
+    },
+    "SRF": {
+      "symbol": "SRF",
+      "companyName": "SRF Limited",
+      "sector": "Industrials",
+      "industry": "Conglomerates",
+      "summary": "SRF Limited manufactures, purchases, and sells technical textiles, chemicals, packaging films, and other polymers. It operates through Technical Textiles Business, Chemicals Business, Performance Films and Foil Business, and Others segments. The company offers polyester and nylon tyre cord, belting, coated, and laminated fabrics; and industrial and polyester industrial yarns. It also provides fluorochemicals, such as refrigerants for room air-conditioner, automobile air-conditioner, refrigerator, and chillers under the FLORON brand; pharma propellants under the Dymel brand; industrial chemicals used in various applications comprising solvents in pharma, feedstock for agrochemicals, metal de-greasing, etching of stainless steel and glass, foam blowing agents, and dry-cleaning; and fluoropolymers, such as PTFE resins for automotive, chemical processing/plant construction, construction, electrical/electronic engineering, semiconductor, and pharma and medical applications under the Flonio brand. In addition, the company offers advanced intermediates for the agrochemical and pharmaceutical applications; and bi-axially oriented polyethylene terephthalate and bi-axially oriented polypropylene films under the PETLAR and OPLAR brands. Further, it engages in the acquisition and renting of real estate; and manufacture of aluminum foil. The company operates in India, Germany, the United States, South Africa, the United Kingdom, Italy, Indonesia, the United Arab Emirates, South Korea, Thailand, Hungary, Switzerland, Belgium, and internationally. The company was formerly known as Shri Ram Fibres and changed its name to SRF Limited in 1990. SRF Limited was incorporated in 1970 and is headquartered in Gurugram, India. SRF Limited operates as a subsidiary of KAMA Holdings Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.374Z"
+    },
+    "STAR": {
+      "symbol": "STAR",
+      "companyName": "Strides Pharma Science Limited",
+      "sector": "Healthcare",
+      "industry": "Drug Manufacturers - Specialty & Generic",
+      "summary": "Strides Pharma Science Limited develops, manufactures, and sells pharmaceutical products in Africa, Australia, North America, Europe, Asia, and internationally. The company offers pharma generics in various forms, such as tablets, hard and soft gelatin capsules, sachets, and liquids, as well as nasal spray, gels, powders, solids, ointments, and creams. It also develops branded generics products for the treatment of chronic therapies, including women's health, central nervous system, cardiovascular, diabetes, dermatology, and probiotics under the Renerve, Unibrol, Combiart, Duotab, and Vitafer brands; and anti-retroviral, anti-malarial, anti-tuberculosis, Hepatitis, and other infectious disease drug segments for institutional business. The company was formerly known as Strides Shasun Limited and changed its name to Strides Pharma Science Limited in July 2018. The company was incorporated in 1990 and is based in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.828Z"
+    },
+    "SUMMITSEC": {
+      "symbol": "SUMMITSEC",
+      "companyName": "Summit Securities Limited",
+      "sector": "Financial Services",
+      "industry": "Capital Markets",
+      "summary": "Summit Securities Limited, a non-banking financial company, engages in investment and financial activities. The investments of the firm are typically long term in nature and predominantly in the equity markets. The firm typically invests in companies in real estate sector. Summit Securities Limited was formerly known as RPG Itochu Finance Limited. The company was incorporated on January 30, 1997 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.218Z"
+    },
+    "SUZLON": {
+      "symbol": "SUZLON",
+      "companyName": "Suzlon Energy Limited",
+      "sector": "Industrials",
+      "industry": "Specialty Industrial Machinery",
+      "summary": "Suzlon Energy Limited, together with its subsidiaries, manufactures and sells wind turbine generators and related components in India and internationally. It operates through the WTG, Foundry & Forging, O&M services, and Others segments. The company also provides operation and maintenance services for wind turbine generators, as well as project execution, procurement, marketing, and shared service center-related services. In addition, it is involved in the sale/sub-lease of land; manufacture and sale of forging rings and casting articles, as well as power generation and evacuation infrastructure facilities. The company was incorporated in 1995 and is headquartered in Pune, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.071Z"
+    },
+    "SYRMA": {
+      "symbol": "SYRMA",
+      "companyName": "Syrma SGS Technology Limited",
+      "sector": "Technology",
+      "industry": "Electronic Components",
+      "summary": "Syrma SGS Technology Limited provides turnkey electronic manufacturing services in India, the United States, Germany, and internationally. The company offers product engineering services, that includes design and development, and verification and validation; phototype manufacturing and platform/ system integration; and original design and manufacturing services. Its product portfolio comprises printed circuit board assemblies; box build, electromechanical assembly, and full-systems integration services, that includes firmware, software loading, validation, testing, and commercial or custom packing, as well as offers products, such as  scanning antenna, transceiver, transponder, disk drives, memory modules, power supplies / adapters, fiber optic assemblies, magnetic induction coils and RFID products, and other electronic products, as well as line tester development services. In addition, the company provides custom magnetic services, including brushless DC motor module for fan consists of brushless DC motor, driver circuit, and control system; electro-mechanicals; critical communication solutions; RFID tags and inlays; and magnetic products comprising custom magnetic chokes, magnetic inductors, and magnetic transformers. It serves automotive, consumer, industrial, healthcare, railways, and IT industries. Syrma SGS Technology Limited was founded in 1978 and is based in Chennai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.304Z"
+    },
+    "TDPOWERSYS": {
+      "symbol": "TDPOWERSYS",
+      "companyName": "TD Power Systems Limited",
+      "sector": "Industrials",
+      "industry": "Specialty Industrial Machinery",
+      "summary": "TD Power Systems Limited, together with its subsidiaries, manufactures and sells AC generators and electric motors in India, Japan, the United States, Europe, and Turkey. The company offers steam turbine, gas turbine, hydro turbine, wind turbine, gas engine, and diesel engine generators; induction, traction, and synchronous motors; and spare parts. It also provides design and manufacturing services; spares and refurbishment services; and after sales services. The company serves the renewable energy industry comprising water, geothermal energy, wind, heat recovery, biomass, and waste-to-energy; sugar and ethanol industry; oil and gas industry; pulp, paper, and textiles industry; marine industry; steel industry; and thermal energy industry. TD Power Systems Limited was incorporated in 1999 and is headquartered in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.723Z"
+    },
+    "TENNIND": {
+      "symbol": "TENNIND",
+      "companyName": "TENNECO CLEAN AIR INDIA L",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Parts",
+      "summary": "Tenneco Clean Air India Limited operates as a manufacturer and supplier of clean air and powertrain solutions. The company operates in two segments, clean air and powertrain solutions; and advanced ride technologies. The company designs, manufactures, and sells exhaust aftertreatment systems, such as catalytic converters, mufflers, and exhaust pipes; engine bearings, sealing systems, and ignition products, such as spark plugs and ignition coils; and shock absorbers, struts, and suspension systems. Its products are used in passenger vehicles, commercial trucks, off-highway vehicles, generator sets, small commercial vehicles, two wheelers and three wheelers. Tenneco Clean Air India Limited was founded in 1979 and is based in Gurugram, India. Tenneco Clean Air India Limited operates as a subsidiary of Tenneco Mauritius Holdings Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.868Z"
+    },
+    "THANGAMAYL": {
+      "symbol": "THANGAMAYL",
+      "companyName": "Thangamayil Jewellery Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Luxury Goods",
+      "summary": "Thangamayil Jewellery Limited operates a chain of retail jewelry stores in India. The company offers gold, diamond, silver, precious stones, and platinum jewelries, as well as silver articles and gold coins. It also involved in the manufacture and sale of jewelry, and other accessories and products. In addition, the company offers gold saving schemes. It provides its products through online. Thangamayil Jewellery Limited was founded in 1947 and is headquartered in Madurai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.465Z"
+    },
+    "TI": {
+      "symbol": "TI",
+      "companyName": "Tilaknagar Industries Ltd.",
+      "sector": "Consumer Defensive",
+      "industry": "Beverages - Wineries & Distilleries",
+      "summary": "Tilaknagar Industries Ltd. engages in the manufacture and sale of Indian made foreign liquor and its related products in India. The company offers brandy under the Mansion House and Courier Napoleon brands; rum under the Madiraa brand; whisky under the Mansion House and Senate Royale brands; and gin under the Blue Lagoon brand, as well as extra neutral alcohol and cocktails. It also exports its products in Africa, the Middle East, East and South-East Asia, and Europe. The company was incorporated in 1933 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.713Z"
+    },
+    "TMCV": {
+      "symbol": "TMCV",
+      "companyName": "TATA MOTORS LIMITED",
+      "sector": "Consumer Cyclical",
+      "industry": "Auto Manufacturers",
+      "summary": "Tata Motors Limited engages in the manufacturing of commercial vehicles. It offers utility vehicles, pick-ups, trucks, and buses. The company operates in India and South Korea, as well as international presence across Africa, the Middle East, Latin America, Southeast Asia, and SAARC countries. The company was formerly known as TML Commercial Vehicles Limited and changed its name to Tata Motors Limited in October 2025. Tata Motors Limited was incorporated in 2024 and is based in Mumbai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.526Z"
+    },
+    "UJJIVANSFB": {
+      "symbol": "UJJIVANSFB",
+      "companyName": "Ujjivan Small Finance Bank Limited",
+      "sector": "Financial Services",
+      "industry": "Banks - Regional",
+      "summary": "Ujjivan Small Finance Bank Limited provides various banking and financial services in India. The company operates through Treasury, Retail Banking, and Corporate/Wholesale Banking segments. It provides current, savings, salary, TACS savings and current, and NRI accounts; and fixed, recurring, TASC fixed, NRI and NRO fixed, and tax saver fixed deposits. The company's loan products include home and micro mortgages, including home purchase and home construction, composite home, home improvement, and home equity loans; micro mortgages, business loan, and loan against property; vehicle loans, such as two-wheeler loan, electric three-wheeler loan, and dealer trade advance; micro loans, including group and individual loans; agricultural loans; micro, small, and medium enterprises loans and overdrafts; and gold and staff loans. In addition, it provides mobile, personal net, SMS and missed call, phone, video, and WhatsApp banking; ATMs and cash deposit machines; statements services; life, health, and general insurances; credit and debit cards; and safe deposit lockers. Additionally, the company is involved in retail forex and trade services. Ujjivan Small Finance Bank Limited was incorporated in 2016 and is headquartered in Bengaluru, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.014Z"
+    },
+    "URBANCO": {
+      "symbol": "URBANCO",
+      "companyName": "Urban Company Limited",
+      "sector": "Technology",
+      "industry": "Software - Application",
+      "summary": "Urban Company Limited operates an online services marketplace that helps consumers to book various home and beauty services and solutions in India, the Kingdom of Saudi Arabia, Singapore, and the United Arab Emirates. It operates through three segments: India consumer services; Native; and International business. The company offers home services, which includes cleaning and pest control; appliance servicing and repair; electrical, plumbing, and carpentry; and painting and wall decor. It also provides beauty services, such as women's skincare and hair grooming; men's grooming; and spa and massage therapies for men and women. In addition, the company sells water purifiers and electronic door locks under the Native brand name. Further, it provides training and certification, such as new service professional training, new product launch training, customized re-training, and upskill training, as well as products, consumables, and tools. The company provides an e-commerce platform through its online portal www.urbancompany.com and its UC mobile application. The company was formerly known as UrbanClap Technologies India Limited and changed its name to Urban Company Limited in April 2025. The company was incorporated in 2014 and is headquartered in Gurugram, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.891Z"
+    },
+    "VMM": {
+      "symbol": "VMM",
+      "companyName": "VISHAL MEGA MART LIMITED",
+      "sector": "Consumer Cyclical",
+      "industry": "Department Stores",
+      "summary": "Vishal Mega Mart Limited engages in the wholesale, trading, and retail of apparel, fast moving consumer goods, and general merchandise in India. Its apparel product portfolio includes a range of t-shirts, shirts, denims, athletic and leisure wear, night wear, innerwear, western wear, formal wear, and ethnic wear for men, women, children, and infants; and general merchandize products comprises home appliances, crockeries and utensils, home products and furnishings, toys, stationery products, travel products and footwear, and other products. The company's fast-moving consumer goods include food products, such as biscuits, savoury snacks, noodles, and tea and coffee products; staples, such as mustard oil, soya oil, clarified butter, and spices; and non-food products comprising baby diapers, hair oil, sanitary pads, handwash, and other products. It sells its products through its stores, mobile application, and website under third party and its brand names. The company was incorporated in 2018 and is based in Gurugram, India. Vishal Mega Mart Limited is a subsidiary of Samayat Services LLP.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.072Z"
+    },
+    "WABAG": {
+      "symbol": "WABAG",
+      "companyName": "VA Tech Wabag Limited",
+      "sector": "Industrials",
+      "industry": "Engineering & Construction",
+      "summary": "VA Tech Wabag Limited, together with its subsidiaries, engages in the design, supply, installation, construction, operation, and maintenance of drinking water, waste and industrial water treatment, and desalination plants in India and internationally. The company offers sewage treatment, effluent treatment, water treatment, water reclamation, water recycling and reuse, desalination, wastewater treatment, energy recovery, and sludge treatment services for municipal and industrial users; and engineering, procurement, construction, and operation and maintenance services, as well as operation of water and wastewater projects. It serves oil and gas, power plants, steel, fertilizer, food and beverage, industrial park, and other industries. The company was formerly known as Balcke Durr and Wabag Technologies Limited and changed its name to VA Tech Wabag Limited in April 2000. VA Tech Wabag Limited was incorporated in 1995 and is headquartered in Chennai, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.454Z"
+    },
+    "WEL": {
+      "symbol": "WEL",
+      "companyName": "Wonder Electricals Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Furnishings, Fixtures & Appliances",
+      "summary": "Wonder Electricals Limited engages in the manufacture and supply of ceiling, exhaust, pedestal, and TPW and BLDC fans in India. It also exports its products. The company was formerly known as Wonder Fibromats Limited and changed its name to Wonder Electricals Limited in December 2022. Wonder Electricals Limited was founded in 2003 and is based in New Delhi, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.122Z"
+    },
+    "WINDLAS": {
+      "symbol": "WINDLAS",
+      "companyName": "Windlas Biotech Limited",
+      "sector": "Healthcare",
+      "industry": "Drug Manufacturers - Specialty & Generic",
+      "summary": "Windlas Biotech Limited, a contract development and manufacturing organization, manufactures and trades in pharmaceutical products in India. The company offers contract manufacturing; customized formulations; contract research and manufacturing services; customized formulation; and regulatory services. It also manufactures tablets, capsules, oral solids, modified-release formulations, chewable and dispersible tablets, customized generics, and complex generics and multi-drug combinations, as well as injectables, including liquid vials, lyophilized vials, and ampoules. In addition, the company offers generic drugs for respiratory, anti-diabetic, gastroenterology, cardiovascular and multivitamin, neuro anti-psychotic, diabetic care, nutraceuticals, nutritional supplement, urology, pain management, and injectable therapies. It also exports generic medicines, health supplements, and custom-branded formulations. Windlas Biotech Limited was incorporated in 2001 and is headquartered in Dehradun, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.014Z"
+    },
+    "YATRA": {
+      "symbol": "YATRA",
+      "companyName": "Yatra Online Limited",
+      "sector": "Consumer Cyclical",
+      "industry": "Travel Services",
+      "summary": "Yatra Online Limited provides reservation and booking services related to transport, travel, tours, and tourism in India and internationally. It offers flight reservation, hotel booking and holiday packages, ground transportation, train and bus tickets, cab booking, car rental, visa and passport, travel insurance, and freight forwarding services. It serves its products through internet, mobile, call center, and retail lounges. The company was incorporated in 2005 and is based in Gurugram, India. Yatra Online Limited operates as a subsidiary of THCL Travel Holding Cyprus Limited.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.098Z"
+    },
+    "ZENSARTECH": {
+      "symbol": "ZENSARTECH",
+      "companyName": "Zensar Technologies Limited",
+      "sector": "Technology",
+      "industry": "Information Technology Services",
+      "summary": "Zensar Technologies Limited, a digital solutions and technology services company, provides technology consulting and system integration services in India, the Americas, Europe, Africa, and internationally. It operates through Digital and Application Services, and Cloud Infrastructure Services segments. The company offers experience services, including product/experience research, strategy, and design; product and experience engineering; and creative, content, brand, and campaign services, as well as advanced engineering services, such as generative (gen) artificial intelligence (AI) engineering, digital experience and platform, digital product engineering, and cloud modernization and transformation services. It also provides data engineering and analytics services comprising accelerated gen AI, Google gen AI, data engineering, AI and machine learning, automation, and visualization and analytics; and application services, such as application management, quality engineering, enterprise change management, Oracle, salesforce, and SAP. In addition, the company offers cloud infrastructure and security solutions, such as cloud, hybrid infrastructure, digital workplace, enterprise system management, and security; AI solutions; and brand strategy and design, consulting, and marketing and insights solutions. It serves manufacturing, retail, media, technology and telecom, consumer service, banking and financial service, insurance, healthcare and life sciences, and utilities industries. Zensar Technologies Limited was incorporated in 1963 and is headquartered in Pune, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.196Z"
+    },
+    "ZENTEC": {
+      "symbol": "ZENTEC",
+      "companyName": "Zen Technologies Limited",
+      "sector": "Industrials",
+      "industry": "Aerospace & Defense",
+      "summary": "Zen Technologies Limited, together with its subsidiaries, engages in the design, development, manufacture, and sale of training simulators in India and internationally. The company provides anti-drone systems; training and simulation live ranges, comprising smart and multi-functional target systems, tank targets, master control station for live-firing ranges, air-to-ground firing range scoring system, containerized tubular and indoor shooting range, shoot house for live and simulated indoor tactical training, special purpose adapter for hand guns, cornershot weapon system, tank zeroing system, and containerized small arms firing range; armour combat training, indoor tracking, hand grenade simulator, and tactical engagement simulation systems; advanced weapon, medium machine gun, automatic grenade launcher, mortar integrated and carrier mortar tracked integrated, anti-tank guided missile, combat and infantry weapons training, artillery forward observers, integrated air defence, UAV mission, rotary wing, infantry combat vehicle driving, crew gunnery, gunnery, driving, BMP II integrated missile, driving training, automated driving, and bus and tatra driving simulators; and driving aptitude testing system. It serves police, paramilitary, armed, and security forces; government departments comprising transport, mining, and infrastructure; and the civilian markets. Zen Technologies Limited was incorporated in 1993 and is headquartered in Hyderabad, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:01.736Z"
+    },
+    "ZOTA": {
+      "symbol": "ZOTA",
+      "companyName": "Zota Health Care Limited",
+      "sector": "Healthcare",
+      "industry": "Biotechnology",
+      "summary": "Zota Health Care Limited develops, manufactures, and markets pharmaceutical products in India and internationally. The company offers generic drugs, health supplements, over-the-counter products, wellness and ayurvedic products, and nutraceutical products. It provides various medicines for chronic ailments, such as diabetes, cardiac, and thyroid disorders. The company operates its retail stores under the DAVAINDIA name. Zota Health Care Limited was founded in 1995 and is headquartered in Surat, India.",
+      "source": "yfinance",
+      "lastFetchedAt": "2026-05-01T11:44:02.071Z"
+    }
+  }
+}

@@ -69,7 +69,11 @@ const normalizeQuote = (quote) => {
     price: Number(quote.price),
     currency: quote.currency || null,
     asOf: quote.asOf || null,
-    source: quote.source || null
+    source: quote.source || null,
+    companyName: quote.companyName ? String(quote.companyName).trim() : null,
+    sector: quote.sector ? String(quote.sector).trim() : null,
+    industry: quote.industry ? String(quote.industry).trim() : null,
+    summary: quote.summary ? String(quote.summary).trim() : null
   };
 };
 

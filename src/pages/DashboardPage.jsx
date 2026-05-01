@@ -36,7 +36,7 @@ const pnlTextClass = (value) => {
 
 const monthLabel = (monthKey) => {
   if (!monthKey) return '';
-  const parsed = new Date(`${monthKey}-01T00:00:00`);
+  const parsed = new Date(`${monthKey}-01T00:00:00.000Z`);
   if (Number.isNaN(parsed.getTime())) return monthKey;
   return new Intl.DateTimeFormat('en-IN', {
     month: 'short',

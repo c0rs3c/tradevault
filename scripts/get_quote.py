@@ -30,6 +30,10 @@ def main():
     price = None
     currency = None
     as_of = None
+    company_name = None
+    sector = None
+    industry = None
+    summary = None
 
     try:
         fast = ticker.fast_info or {}
@@ -45,6 +49,19 @@ def main():
             price = info.get("regularMarketPrice")
             currency = currency or info.get("currency")
             as_of = as_of or to_iso(info.get("regularMarketTime"))
+            company_name = info.get("longName") or info.get("shortName")
+            sector = info.get("sector")
+            industry = info.get("industry")
+            summary = info.get("longBusinessSummary") or info.get("description")
+        except Exception:
+            pass
+    else:
+        try:
+            info = ticker.info or {}
+            company_name = info.get("longName") or info.get("shortName")
+            sector = info.get("sector")
+            industry = info.get("industry")
+            summary = info.get("longBusinessSummary") or info.get("description")
         except Exception:
             pass
 
@@ -75,6 +92,10 @@ def main():
         "currency": currency,
         "asOf": as_of or datetime.now(timezone.utc).isoformat(),
         "source": "yfinance",
+        "companyName": company_name,
+        "sector": sector,
+        "industry": industry,
+        "summary": summary,
     }
     print(json.dumps(result))
 
