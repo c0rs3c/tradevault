@@ -126,6 +126,7 @@ const Layout = ({ children }) => {
                 <NavItem href="/dashboard" label="Dashboard" />
                 <NavItem href="/trades" label="Trades" exact />
                 <NavItem href="/trades/new" label="New Trade" exact />
+                <NavItem href="/position-sizing" label="Position Sizing" exact />
                 <NavItem href="/trades/import" label="Import Trade" exact />
                 <NavItem href="/settings" label="Settings" />
                 {sessionUsername ? (
@@ -188,6 +189,7 @@ const Layout = ({ children }) => {
               <NavItem href="/dashboard" label="Dashboard" />
               <NavItem href="/trades" label="Trades" exact />
               <NavItem href="/trades/new" label="New Trade" exact />
+              <NavItem href="/position-sizing" label="Position Sizing" exact />
               <NavItem href="/trades/import" label="Import Trade" exact />
               <NavItem href="/settings" label="Settings" />
               {sessionUsername ? (
