@@ -51,6 +51,33 @@ const realizedPnlPercent = (trade) => {
   return (realized / basis) * 100;
 };
 
+const unrealizedPnlValue = (trade, livePrice = null) => {
+  const openQty = Number(trade?.metrics?.openQty || 0);
+  const avgEntryPrice = Number(trade?.metrics?.avgEntryPrice || 0);
+  if (!openQty || !avgEntryPrice) return null;
+
+  const marketPrice =
+    livePrice !== null && livePrice !== undefined ? Number(livePrice) : Number(trade?.metrics?.unrealizedPnL);
+
+  if (livePrice !== null && livePrice !== undefined && Number.isFinite(marketPrice)) {
+    return trade?.side === 'SHORT'
+      ? openQty * (avgEntryPrice - marketPrice)
+      : openQty * (marketPrice - avgEntryPrice);
+  }
+
+  const metricValue = Number(trade?.metrics?.unrealizedPnL);
+  return Number.isFinite(metricValue) ? metricValue : null;
+};
+
+const unrealizedPnlPercent = (trade, livePrice = null) => {
+  const unrealized = unrealizedPnlValue(trade, livePrice);
+  const avgEntryPrice = Number(trade?.metrics?.avgEntryPrice || 0);
+  const openQty = Number(trade?.metrics?.openQty || 0);
+  const basis = avgEntryPrice * openQty;
+  if (unrealized === null || !basis) return null;
+  return (unrealized / basis) * 100;
+};
+
 const capitalAllocated = (trade) => {
   const avgEntryPrice = Number(trade?.metrics?.avgEntryPrice || 0);
   const totalEntryQty = Number(trade?.metrics?.totalEntryQty || 0);
@@ -123,7 +150,7 @@ const TradesPage = () => {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [sortBy, setSortBy] = useState('entryDateAsc');
+  const [sortBy, setSortBy] = useState('entryDateDesc');
   const [liveLoading, setLiveLoading] = useState(false);
   const [editingBase, setEditingBase] = useState(null);
   const [editingPyramid, setEditingPyramid] = useState(null);
@@ -560,7 +587,7 @@ const TradesPage = () => {
               onClick={() => {
                 setSearch('');
                 setStatusFilter('ALL');
-                setSortBy('entryDateAsc');
+                setSortBy('entryDateDesc');
               }}
             >
               Reset Filters
@@ -582,6 +609,7 @@ const TradesPage = () => {
               <th className="px-3 py-2">Current Price</th>
               <th className="px-3 py-2">Risk (Rs / %)</th>
               <th className="px-3 py-2">Realized P&L</th>
+              <th className="px-3 py-2">Unrealized P&L</th>
               <th className="px-3 py-2">R Multiple</th>
               <th className="px-3 py-2">Holding Days</th>
               <th className="px-3 py-2">Actions</th>
@@ -594,9 +622,15 @@ const TradesPage = () => {
               const computedRMultiple = tradeRMultipleBySl(trade);
               const holdingDays = tradeHoldingDays(trade);
               const isOpenTrade = trade.metrics?.status === 'OPEN';
+              const livePrice = quotesByTradeId[trade._id]?.price;
+              const unrealizedPnL = unrealizedPnlValue(trade, livePrice);
+              const unrealizedPercent = unrealizedPnlPercent(trade, livePrice);
+              const rowClassName = isOpenTrade
+                ? 'table-row-hover bg-emerald-50/70 dark:bg-emerald-950/20'
+                : 'table-row-hover';
               return (
               <Fragment key={trade._id}>
-                <tr className="table-row-hover">
+                <tr className={rowClassName}>
                   <td className="px-3 py-2 font-medium text-slate-600 dark:text-slate-300">{index + 1}</td>
                   <td className="px-3 py-2 font-medium">
                     <button
@@ -641,6 +675,11 @@ const TradesPage = () => {
                   </td>
                   <td className={`px-3 py-2 ${pnlTextClass(trade.metrics.realizedPnL)}`}>
                     {money(trade.metrics.realizedPnL)} ({realizedPnlPercent(trade).toFixed(2)}%)
+                  </td>
+                  <td className={`px-3 py-2 ${pnlTextClass(unrealizedPnL)}`}>
+                    {isOpenTrade && unrealizedPnL !== null
+                      ? `${money(unrealizedPnL)} (${Number(unrealizedPercent || 0).toFixed(2)}%)`
+                      : '-'}
                   </td>
                   <td className={`px-3 py-2 ${pnlTextClass(computedRMultiple)}`}>
                     {computedRMultiple.toFixed(2)}
@@ -789,7 +828,7 @@ const TradesPage = () => {
                 </tr>
                 {expandedTradeIds[trade._id] && (
                 <tr className="border-b-2 border-slate-300 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/70">
-                  <td colSpan={12} className="px-3 py-2 text-xs">
+                  <td colSpan={13} className="px-3 py-2 text-xs">
                     <div className="space-y-3">
                       <div className="rounded border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
                         <div className="mb-1 flex items-center justify-between gap-2">
@@ -1246,7 +1285,7 @@ const TradesPage = () => {
             })}
             {!filtered.length && (
               <tr>
-                <td className="px-3 py-6 text-center text-slate-600 dark:text-slate-400" colSpan={12}>
+                <td className="px-3 py-6 text-center text-slate-600 dark:text-slate-400" colSpan={13}>
                   No trades found.
                 </td>
               </tr>

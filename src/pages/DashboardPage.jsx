@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
+import { saveSettings } from '../api/settings';
 import { fetchDashboard, fetchTrade } from '../api/trades';
 import SummaryCard from '../components/SummaryCard';
 import TradeChartOverlay from '../components/TradeChartOverlay';
@@ -96,10 +97,11 @@ const MonthlyPnlTooltip = ({ active, payload, label }) => {
 };
 
 const DashboardPage = () => {
-  const { theme } = useSettings();
+  const { theme, settings, setSettings } = useSettings();
   const [data, setData] = useState(dashboardCache.data);
   const [loading, setLoading] = useState(!dashboardCache.data);
   const [error, setError] = useState('');
+  const [excludedOpenPositionIds, setExcludedOpenPositionIds] = useState([]);
   const [expandedGroups, setExpandedGroups] = useState({});
   const [hiddenGroups, setHiddenGroups] = useState({});
   const [showAllWinningTrades, setShowAllWinningTrades] = useState(false);
@@ -163,6 +165,9 @@ const DashboardPage = () => {
     setSelectedMonth(tradeMonthOptions[0]);
     setHasInitializedMonth(true);
   }, [tradeMonthOptions, hasInitializedMonth]);
+  useEffect(() => {
+    setExcludedOpenPositionIds(settings?.dashboardExcludedOpenPositions || []);
+  }, [settings?.dashboardExcludedOpenPositions]);
   const filteredWinningTrades = useMemo(
     () =>
       selectedMonth === 'ALL'
@@ -253,11 +258,26 @@ const DashboardPage = () => {
       })
       .sort((a, b) => new Date(a.earliestEntryDate) - new Date(b.earliestEntryDate));
   }, [openTrades, totalCapital]);
-  const totalCapitalAtRisk = groupedOpenTrades.reduce(
+  const includedGroupedOpenTrades = useMemo(
+    () => groupedOpenTrades.filter((group) => !excludedOpenPositionIds.includes(group.id)),
+    [groupedOpenTrades, excludedOpenPositionIds]
+  );
+  const totalCapitalAtRiskIncluded = includedGroupedOpenTrades.reduce(
     (acc, group) => acc + Number(group.capitalAtRisk || 0),
     0
   );
-  const totalCapitalAtRiskPercent = totalCapital ? (totalCapitalAtRisk / totalCapital) * 100 : 0;
+  const totalCapitalAtRiskPercent = totalCapital ? (totalCapitalAtRiskIncluded / totalCapital) * 100 : 0;
+  const totalPositionSize = includedGroupedOpenTrades.reduce(
+    (acc, group) => acc + Number(group.positionSizeValue || 0),
+    0
+  );
+  const totalPositionSizePercent = totalCapital ? (totalPositionSize / totalCapital) * 100 : 0;
+  const totalUnrealizedPnL = includedGroupedOpenTrades.reduce(
+    (acc, group) => acc + Number(group.unrealizedPnL || 0),
+    0
+  );
+  const hasKnownUnrealizedPnL = includedGroupedOpenTrades.some((group) => group.unrealizedPnL !== null);
+  const dashboardCards = settings?.dashboardCards || {};
 
   if (loading) return <p>Loading dashboard...</p>;
   if (error) return <p className="text-red-600">{error}</p>;
@@ -278,6 +298,27 @@ const DashboardPage = () => {
       alert(err.response?.data?.message || 'Failed to refresh CMP');
     } finally {
       setRefreshingCmp(false);
+    }
+  };
+  const toggleDashboardPosition = async (groupId) => {
+    const nextExcluded = excludedOpenPositionIds.includes(groupId)
+      ? excludedOpenPositionIds.filter((id) => id !== groupId)
+      : [...excludedOpenPositionIds, groupId];
+    setExcludedOpenPositionIds(nextExcluded);
+    setSettings((prev) => (
+      prev
+        ? {
+            ...prev,
+            dashboardExcludedOpenPositions: nextExcluded
+          }
+        : prev
+    ));
+    try {
+      const updatedSettings = await saveSettings({ dashboardExcludedOpenPositions: nextExcluded });
+      setExcludedOpenPositionIds(updatedSettings?.dashboardExcludedOpenPositions || []);
+      setSettings(updatedSettings);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update dashboard position setting');
     }
   };
   const openChartForTrade = async (tradeSummary) => {
@@ -331,37 +372,67 @@ const DashboardPage = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <SummaryCard
-          label="Total Realized P&L"
-          value={money(summary.totalRealizedPnL)}
-          valueClassName={pnlTextClass(summary.totalRealizedPnL)}
-        />
-        <SummaryCard
-          label={`Monthly P&L${monthlyLabel}`}
-          value={money(summary.monthlyRealizedPnL)}
-          valueClassName={pnlTextClass(summary.monthlyRealizedPnL)}
-        />
-        <SummaryCard
-          label="Total Capital at Risk"
-          value={`${money(totalCapitalAtRisk)} (${totalCapitalAtRiskPercent.toFixed(2)}%)`}
-          className="border border-amber-300/80 bg-amber-50/70 shadow-sm dark:border-amber-500/50 dark:bg-amber-950/20"
-          valueClassName="text-amber-700 dark:text-amber-300"
-        />
-        <SummaryCard label="Avg R" value={summary.avgR} />
-        <SummaryCard label="Avg Holding Days" value={`${summary.avgHoldingDays || 0} days`} />
-        <SummaryCard label="Win Rate" value={`${summary.winRate}%`} />
-        <SummaryCard
-          label="Avg Winner / Loser"
-          value={`${money(summary.avgWinner)} / ${money(summary.avgLoser)}`}
-        />
-        <SummaryCard label="Profit Factor" value={summary.profitFactor} />
-        <SummaryCard label="Max Drawdown" value={money(summary.maxDrawdown)} />
-        <SummaryCard
-          label="Trades / Open"
-          value={`${summary.tradesCount} / ${summary.openTradesCount}`}
-        />
-      </div>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Data at a glance</h2>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {dashboardCards.totalRealizedPnl !== false && (
+            <SummaryCard
+              label="Total Realized P&L"
+              value={money(summary.totalRealizedPnL)}
+              valueClassName={pnlTextClass(summary.totalRealizedPnL)}
+            />
+          )}
+          {dashboardCards.monthlyPnl !== false && (
+            <SummaryCard
+              label={`Monthly P&L${monthlyLabel}`}
+              value={money(summary.monthlyRealizedPnL)}
+              valueClassName={pnlTextClass(summary.monthlyRealizedPnL)}
+            />
+          )}
+          {dashboardCards.totalCapitalAtRisk !== false && (
+            <SummaryCard
+              label="Total Capital at Risk"
+              value={`${money(totalCapitalAtRiskIncluded)} (${totalCapitalAtRiskPercent.toFixed(2)}%)`}
+              className="border border-amber-300/80 bg-amber-50/70 shadow-sm dark:border-amber-500/50 dark:bg-amber-950/20"
+              valueClassName="text-amber-700 dark:text-amber-300"
+            />
+          )}
+          {dashboardCards.totalPositionSize !== false && (
+            <SummaryCard
+              label="Total Position Size"
+              value={`${money(totalPositionSize)} (${totalPositionSizePercent.toFixed(2)}%)`}
+            />
+          )}
+          {dashboardCards.totalUnrealizedPnl !== false && (
+            <SummaryCard
+              label="Total Unrealized P&L"
+              value={hasKnownUnrealizedPnL ? money(totalUnrealizedPnL) : 'N/A'}
+              valueClassName={hasKnownUnrealizedPnL ? pnlTextClass(totalUnrealizedPnL) : undefined}
+            />
+          )}
+          {dashboardCards.avgR === true && <SummaryCard label="Avg R" value={summary.avgR} />}
+          {dashboardCards.avgHoldingDays !== false && (
+            <SummaryCard label="Avg Holding Days" value={`${summary.avgHoldingDays || 0} days`} />
+          )}
+          {dashboardCards.winRate !== false && <SummaryCard label="Win Rate" value={`${summary.winRate}%`} />}
+          {dashboardCards.avgWinnerLoser !== false && (
+            <SummaryCard
+              label="Avg Winner / Loser"
+              value={`${money(summary.avgWinner)} / ${money(summary.avgLoser)}`}
+            />
+          )}
+          {dashboardCards.profitFactor === true && <SummaryCard label="Profit Factor" value={summary.profitFactor} />}
+          {dashboardCards.maxDrawdown === true && (
+            <SummaryCard label="Max Drawdown" value={money(summary.maxDrawdown)} />
+          )}
+          {dashboardCards.tradesOpenCount !== false && (
+            <SummaryCard
+              label="Trades / Open"
+              value={`${summary.tradesCount} / ${includedGroupedOpenTrades.length}`}
+            />
+          )}
+        </div>
+      </section>
 
       <section className="surface-card p-4">
         <div className="flex items-center justify-between gap-3">
@@ -388,15 +459,17 @@ const DashboardPage = () => {
                 <th className="px-3 py-2">Cpital at Risk (Rs / %)</th>
                 <th className="px-3 py-2">Realized P&L</th>
                 <th className="px-3 py-2">Unrealized P&L</th>
+                <th className="px-3 py-2">Dash</th>
               </tr>
             </thead>
             <tbody>
               {groupedOpenTrades.map((group) => {
                 const canExpand = group.side === 'LONG' && group.trades.length > 1;
                 const isHidden = Boolean(hiddenGroups[group.id]);
+                const isExcluded = excludedOpenPositionIds.includes(group.id);
                 return (
                   <Fragment key={group.id}>
-                    <tr className="table-row-hover">
+                    <tr className={isExcluded ? 'table-row-hover opacity-70' : 'table-row-hover'}>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <button
@@ -492,10 +565,53 @@ const DashboardPage = () => {
                           </span>
                         )}
                       </td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleDashboardPosition(group.id)}
+                          className={`inline-flex h-7 w-7 items-center justify-center rounded border transition-colors duration-200 ${
+                            isExcluded
+                              ? 'border-slate-300 bg-white text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+                              : 'border-emerald-400/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50'
+                          }`}
+                          aria-label={isExcluded ? 'Include in dashboard calculations' : 'Exclude from dashboard calculations'}
+                          title={isExcluded ? 'Include in dashboard calculations' : 'Exclude from dashboard calculations'}
+                        >
+                          {isExcluded ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.9"
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            >
+                              <path d="M3 3 21 21" strokeLinecap="round" />
+                              <path d="M10.7 10.7a2 2 0 0 0 2.8 2.8" />
+                              <path d="M9.9 5.1A10.9 10.9 0 0 1 12 5c5.4 0 9.2 4.2 10 7-0.4 1.3-1.4 2.8-2.8 4.1" />
+                              <path d="M6.7 6.7C4.7 8 3.4 9.9 3 12c0.8 2.8 4.6 7 10 7 1 0 1.9-.1 2.8-.3" />
+                            </svg>
+                          ) : (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.9"
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            >
+                              <path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
                     </tr>
                     {canExpand && expandedGroups[group.id] && (
                       <tr className="border-b-2 border-slate-300 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/70">
-                        <td className="px-3 py-2 text-xs" colSpan={9}>
+                        <td className="px-3 py-2 text-xs" colSpan={10}>
                           <div className="space-y-2">
                             {isHidden ? (
                               <p className="text-slate-600 dark:text-slate-300">Data hidden for this position.</p>
@@ -518,7 +634,7 @@ const DashboardPage = () => {
               })}
               {!groupedOpenTrades.length && (
                 <tr>
-                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={9}>
+                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={10}>
                     No open trades.
                   </td>
                 </tr>

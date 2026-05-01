@@ -10,6 +10,20 @@ const SettingsPage = () => {
   const [defaultRiskPercent, setDefaultRiskPercent] = useState('');
   const [theme, setTheme] = useState('dark');
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
+  const [dashboardCards, setDashboardCards] = useState({
+    totalRealizedPnl: true,
+    monthlyPnl: true,
+    totalCapitalAtRisk: true,
+    totalPositionSize: true,
+    totalUnrealizedPnl: true,
+    avgR: false,
+    avgHoldingDays: true,
+    winRate: true,
+    avgWinnerLoser: true,
+    profitFactor: false,
+    maxDrawdown: false,
+    tradesOpenCount: true
+  });
   const [chartDefaultTimeframe, setChartDefaultTimeframe] = useState('1D');
   const [smaPeriods, setSmaPeriods] = useState(['10', '20', '50']);
   const [smaColors, setSmaColors] = useState(['#2563eb', '#f59e0b', '#16a34a']);
@@ -43,6 +57,20 @@ const SettingsPage = () => {
     setDefaultRiskPercent(settings.defaultRiskPercent ?? '');
     setTheme(settings.theme === 'light' ? 'light' : 'dark');
     setAccentColor(ACCENT_THEMES[settings.accentColor] ? settings.accentColor : DEFAULT_ACCENT);
+    setDashboardCards({
+      totalRealizedPnl: settings?.dashboardCards?.totalRealizedPnl ?? true,
+      monthlyPnl: settings?.dashboardCards?.monthlyPnl ?? true,
+      totalCapitalAtRisk: settings?.dashboardCards?.totalCapitalAtRisk ?? true,
+      totalPositionSize: settings?.dashboardCards?.totalPositionSize ?? true,
+      totalUnrealizedPnl: settings?.dashboardCards?.totalUnrealizedPnl ?? true,
+      avgR: settings?.dashboardCards?.avgR ?? false,
+      avgHoldingDays: settings?.dashboardCards?.avgHoldingDays ?? true,
+      winRate: settings?.dashboardCards?.winRate ?? true,
+      avgWinnerLoser: settings?.dashboardCards?.avgWinnerLoser ?? true,
+      profitFactor: settings?.dashboardCards?.profitFactor ?? false,
+      maxDrawdown: settings?.dashboardCards?.maxDrawdown ?? false,
+      tradesOpenCount: settings?.dashboardCards?.tradesOpenCount ?? true
+    });
     const tf = settings?.chartSettings?.defaultTimeframe;
     setChartDefaultTimeframe(['30m', '1h', '1D', '1W'].includes(tf) ? tf : '1D');
     const nextPeriods = [...(settings?.chartSettings?.smaPeriods || [10, 20, 50])].slice(0, 3);
@@ -114,6 +142,7 @@ const SettingsPage = () => {
         defaultRiskPercent: defaultRiskPercent === '' ? null : Number(defaultRiskPercent),
         theme,
         accentColor,
+        dashboardCards,
         chartSettings: {
           defaultTimeframe: chartDefaultTimeframe,
           smaPeriods: smaPeriods.map((value, index) => {
@@ -236,6 +265,40 @@ const SettingsPage = () => {
                 </button>
               );
             })}
+          </div>
+        </fieldset>
+
+        <fieldset className="space-y-2 rounded border border-slate-200 p-3 dark:border-slate-800">
+          <legend className="px-1 text-sm font-medium">Dashboard Cards</legend>
+          <div className="grid gap-2 md:grid-cols-2">
+            {[
+              ['totalRealizedPnl', 'Total Realized P&L'],
+              ['monthlyPnl', 'Monthly P&L'],
+              ['totalCapitalAtRisk', 'Total Capital at Risk'],
+              ['totalPositionSize', 'Total Position Size'],
+              ['totalUnrealizedPnl', 'Total Unrealized P&L'],
+              ['avgR', 'Avg R'],
+              ['avgHoldingDays', 'Avg Holding Days'],
+              ['winRate', 'Win Rate'],
+              ['avgWinnerLoser', 'Avg Winner / Loser'],
+              ['profitFactor', 'Profit Factor'],
+              ['maxDrawdown', 'Max Drawdown'],
+              ['tradesOpenCount', 'Trades / Open']
+            ].map(([key, label]) => (
+              <label key={key} className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={Boolean(dashboardCards[key])}
+                  onChange={(e) =>
+                    setDashboardCards((prev) => ({
+                      ...prev,
+                      [key]: e.target.checked
+                    }))
+                  }
+                />
+                <span className="text-sm font-medium">{label}</span>
+              </label>
+            ))}
           </div>
         </fieldset>
 

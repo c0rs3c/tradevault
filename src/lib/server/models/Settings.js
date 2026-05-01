@@ -10,6 +10,24 @@ const SettingsSchema = new mongoose.Schema(
       enum: ['emerald', 'sky', 'rose', 'amber', 'violet'],
       default: 'emerald'
     },
+    dashboardCards: {
+      totalRealizedPnl: { type: Boolean, default: true },
+      monthlyPnl: { type: Boolean, default: true },
+      totalCapitalAtRisk: { type: Boolean, default: true },
+      totalPositionSize: { type: Boolean, default: true },
+      totalUnrealizedPnl: { type: Boolean, default: true },
+      avgR: { type: Boolean, default: false },
+      avgHoldingDays: { type: Boolean, default: true },
+      winRate: { type: Boolean, default: true },
+      avgWinnerLoser: { type: Boolean, default: true },
+      profitFactor: { type: Boolean, default: false },
+      maxDrawdown: { type: Boolean, default: false },
+      tradesOpenCount: { type: Boolean, default: true }
+    },
+    dashboardExcludedOpenPositions: {
+      type: [String],
+      default: []
+    },
     chartSettings: {
       defaultTimeframe: {
         type: String,

@@ -30,6 +30,34 @@ const DEFAULT_CHART_SETTINGS = {
   }
 };
 
+const DEFAULT_DASHBOARD_CARDS = {
+  totalRealizedPnl: true,
+  monthlyPnl: true,
+  totalCapitalAtRisk: true,
+  totalPositionSize: true,
+  totalUnrealizedPnl: true,
+  avgR: false,
+  avgHoldingDays: true,
+  winRate: true,
+  avgWinnerLoser: true,
+  profitFactor: false,
+  maxDrawdown: false,
+  tradesOpenCount: true
+};
+
+const normalizeDashboardCards = (raw = {}) => {
+  const normalized = {};
+  Object.entries(DEFAULT_DASHBOARD_CARDS).forEach(([key, fallback]) => {
+    normalized[key] = typeof raw[key] === 'boolean' ? raw[key] : fallback;
+  });
+  return normalized;
+};
+
+const normalizeDashboardExcludedOpenPositions = (raw = []) => {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.map((value) => String(value || '').trim()).filter(Boolean))];
+};
+
 const normalizeChartSettings = (raw = {}) => {
   const allowedTimeframes = new Set(['30m', '1h', '1D', '1W']);
   const defaultTimeframe = allowedTimeframes.has(raw.defaultTimeframe)
@@ -144,6 +172,8 @@ const getOrCreateSettings = async () => {
       totalCapital: 0,
       theme: 'dark',
       accentColor: 'emerald',
+      dashboardCards: DEFAULT_DASHBOARD_CARDS,
+      dashboardExcludedOpenPositions: [],
       chartSettings: DEFAULT_CHART_SETTINGS
     });
     return settings;
@@ -155,6 +185,24 @@ const getOrCreateSettings = async () => {
   }
   if (!settings.accentColor) {
     settings.accentColor = 'emerald';
+    updated = true;
+  }
+  const normalizedDashboardCards = normalizeDashboardCards(settings.dashboardCards || {});
+  if (
+    !settings.dashboardCards ||
+    JSON.stringify(settings.dashboardCards || {}) !== JSON.stringify(normalizedDashboardCards)
+  ) {
+    settings.dashboardCards = normalizedDashboardCards;
+    updated = true;
+  }
+  const normalizedDashboardExcludedOpenPositions = normalizeDashboardExcludedOpenPositions(
+    settings.dashboardExcludedOpenPositions || []
+  );
+  if (
+    JSON.stringify(settings.dashboardExcludedOpenPositions || []) !==
+    JSON.stringify(normalizedDashboardExcludedOpenPositions)
+  ) {
+    settings.dashboardExcludedOpenPositions = normalizedDashboardExcludedOpenPositions;
     updated = true;
   }
   const normalizedChart = normalizeChartSettings(settings.chartSettings || {});
@@ -182,12 +230,31 @@ export const getSettings = async () => {
 
 export const updateSettings = async (payload) => {
   const settings = await getOrCreateSettings();
-  const { totalCapital, defaultRiskPercent, theme, accentColor, chartSettings } = payload;
+  const {
+    totalCapital,
+    defaultRiskPercent,
+    theme,
+    accentColor,
+    dashboardCards,
+    dashboardExcludedOpenPositions,
+    chartSettings
+  } = payload;
 
   if (totalCapital !== undefined) settings.totalCapital = totalCapital;
   if (defaultRiskPercent !== undefined) settings.defaultRiskPercent = defaultRiskPercent;
   if (theme !== undefined) settings.theme = theme;
   if (accentColor !== undefined) settings.accentColor = accentColor;
+  if (dashboardCards !== undefined) {
+    settings.dashboardCards = normalizeDashboardCards({
+      ...settings.dashboardCards?.toObject?.(),
+      ...dashboardCards
+    });
+  }
+  if (dashboardExcludedOpenPositions !== undefined) {
+    settings.dashboardExcludedOpenPositions = normalizeDashboardExcludedOpenPositions(
+      dashboardExcludedOpenPositions
+    );
+  }
   if (chartSettings !== undefined) {
     const mergedChart = normalizeChartSettings({
       ...settings.chartSettings?.toObject?.(),

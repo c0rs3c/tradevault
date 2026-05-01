@@ -63,6 +63,12 @@ const LOOKBACK_DAYS_BY_INTERVAL = {
   '1D': 365,
   '1W': 2000
 };
+
+const CANDLE_SCALE_MARGINS = {
+  top: 0.2,
+  bottom: 0.42
+};
+
 const TIMEFRAME_LABELS = {
   '1D': 'D',
   '1W': 'W'
@@ -535,7 +541,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       candleSeries.setData(candles);
       const candleIndexByTime = new Map(candles.map((bar, index) => [String(bar.time), index]));
       chart.priceScale('right').applyOptions({
-        scaleMargins: { top: 0.08, bottom: 0.32 }
+        scaleMargins: CANDLE_SCALE_MARGINS
       });
       chart.priceScale('right').setAutoScale(true);
 
@@ -588,7 +594,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
 
           return [
             {
-              id: `${paneKey}-${event.kind}-${index}-arrow`,
+              id: `${paneKey}-${event.kind}-${index}`,
               time,
               position,
               color: isEntry
@@ -597,17 +603,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
               shape: isEntry ? 'arrowUp' : 'arrowDown',
               size: isEntry
                 ? chartPrefs.markerSettings.entryArrowSize
-                : chartPrefs.markerSettings.exitArrowSize
-            },
-            {
-              id: `${paneKey}-${event.kind}-${index}-text`,
-              time,
-              position,
-              color: isEntry
-                ? chartPrefs.markerSettings.entryLabelColor
-                : chartPrefs.markerSettings.exitLabelColor,
-              shape: isEntry ? 'arrowUp' : 'arrowDown',
-              size: 0,
+                : chartPrefs.markerSettings.exitArrowSize,
               text: `${isEntry ? 'E' : 'X'} ${Number(event.price).toFixed(2)} x${event.qty}`
             }
           ];
@@ -619,7 +615,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
           : paneKey === 'right'
             ? dotSettings.rightPaneVisible
             : dotSettings.visible;
-      const purpleDotMarkers = paneDotVisible
+      const purpleDotMarkers = paneDotVisible && timeframe === '1D'
         ? candles
             .map((bar, index) => {
               if (index <= 0) return null;
@@ -643,7 +639,12 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
             })
             .filter(Boolean)
         : [];
-      createSeriesMarkers(candleSeries, [...tradeEventMarkers, ...purpleDotMarkers]);
+      const allMarkers = [...tradeEventMarkers, ...purpleDotMarkers].sort((a, b) => {
+        const timeDiff = Number(a.time) - Number(b.time);
+        if (timeDiff !== 0) return timeDiff;
+        return String(a.id).localeCompare(String(b.id));
+      });
+      createSeriesMarkers(candleSeries, allMarkers);
 
       const updateOhlcForTime = (time) => {
         const rawIndex = candleIndexByTime.get(String(time));
@@ -695,22 +696,12 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         });
       });
       resizeObserver.observe(container);
-      const forgetAutoScaleOnRightScaleWheel = (event) => {
-        const rect = container.getBoundingClientRect();
-        const localX = event.clientX - rect.left;
-        const rightScaleZoneWidth = 56;
-        const isOnRightScale = localX >= container.clientWidth - rightScaleZoneWidth;
-        if (!isOnRightScale) return;
-        chart.priceScale('right').applyOptions({ autoScale: false });
-      };
-      container.addEventListener('wheel', forgetAutoScaleOnRightScaleWheel, { passive: true });
 
       const cleanup = () => {
         viewportRef.current[paneKey] = {
           logicalRange: chart.timeScale().getVisibleLogicalRange()
         };
         resizeObserver.disconnect();
-        container.removeEventListener('wheel', forgetAutoScaleOnRightScaleWheel);
         chart.unsubscribeCrosshairMove(onCrosshairMove);
         chart.remove();
       };

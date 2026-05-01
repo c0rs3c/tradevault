@@ -73,7 +73,7 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/80">
-        <div className="mx-auto max-w-7xl px-4 py-3 md:py-4">
+        <div className="mx-auto max-w-[90rem] px-4 py-3 md:py-4">
           <div className="flex items-center justify-between gap-3">
             <Link
               href="/dashboard"
@@ -217,7 +217,7 @@ const Layout = ({ children }) => {
           )}
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-[90rem] px-4 py-6">{children}</main>
     </div>
   );
 };
