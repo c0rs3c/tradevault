@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Bar,
@@ -720,15 +721,40 @@ const DashboardPage = () => {
                   {visibleWinningTrades.map((trade) => (
                     <tr key={trade.id} className="table-row-hover">
                       <td className="px-3 py-2 font-medium">
-                        <button
-                          type="button"
-                          onClick={() => openChartForTrade(trade)}
-                          disabled={chartLoadingTradeId === String(trade.id)}
-                          className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
-                          title="Open chart"
-                        >
-                          {trade.symbol}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openChartForTrade(trade)}
+                            disabled={chartLoadingTradeId === String(trade.id)}
+                            className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
+                            title="Open chart"
+                          >
+                            {trade.symbol}
+                          </button>
+                          <Link
+                            href={`/trades/${trade.id}`}
+                            className="group relative inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                            aria-label={`Details for ${trade.symbol}`}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.9"
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            >
+                              <path d="M9 9h6v6" strokeLinecap="round" />
+                              <path d="m15 9-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M5 12v7h7" strokeLinecap="round" />
+                              <path d="M12 5h7v7" strokeLinecap="round" />
+                            </svg>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                              Details
+                            </span>
+                          </Link>
+                        </div>
                       </td>
                       <td className="px-3 py-2">{formatDisplayDate(trade.openedOn)}</td>
                       <td className="px-3 py-2">{formatDisplayDate(trade.closedOn)}</td>
@@ -780,15 +806,40 @@ const DashboardPage = () => {
                   {visibleLosingTrades.map((trade) => (
                     <tr key={trade.id} className="table-row-hover">
                       <td className="px-3 py-2 font-medium">
-                        <button
-                          type="button"
-                          onClick={() => openChartForTrade(trade)}
-                          disabled={chartLoadingTradeId === String(trade.id)}
-                          className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
-                          title="Open chart"
-                        >
-                          {trade.symbol}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openChartForTrade(trade)}
+                            disabled={chartLoadingTradeId === String(trade.id)}
+                            className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
+                            title="Open chart"
+                          >
+                            {trade.symbol}
+                          </button>
+                          <Link
+                            href={`/trades/${trade.id}`}
+                            className="group relative inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                            aria-label={`Details for ${trade.symbol}`}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.9"
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            >
+                              <path d="M9 9h6v6" strokeLinecap="round" />
+                              <path d="m15 9-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M5 12v7h7" strokeLinecap="round" />
+                              <path d="M12 5h7v7" strokeLinecap="round" />
+                            </svg>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                              Details
+                            </span>
+                          </Link>
+                        </div>
                       </td>
                       <td className="px-3 py-2">{formatDisplayDate(trade.openedOn)}</td>
                       <td className="px-3 py-2">{formatDisplayDate(trade.closedOn)}</td>
