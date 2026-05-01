@@ -671,7 +671,9 @@ const TradesPage = () => {
                     )}
                   </td>
                   <td className="px-3 py-2">
-                    {money(trade.metrics.capitalAtRisk)} ({Number(trade.metrics.riskPercent || 0).toFixed(2)}%)
+                    {isOpenTrade
+                      ? `${money(trade.metrics.capitalAtRisk)} (${Number(trade.metrics.riskPercent || 0).toFixed(2)}%)`
+                      : '-'}
                   </td>
                   <td className={`px-3 py-2 ${pnlTextClass(trade.metrics.realizedPnL)}`}>
                     {money(trade.metrics.realizedPnL)} ({realizedPnlPercent(trade).toFixed(2)}%)
