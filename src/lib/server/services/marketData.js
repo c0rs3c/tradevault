@@ -3,8 +3,12 @@ import { spawn } from 'child_process';
 
 const PYTHON_BIN = process.env.MARKET_DATA_PYTHON || 'python3';
 const QUOTE_SCRIPT_PATH = path.resolve(process.cwd(), 'scripts/get_quote.py');
+const QUOTE_PROVIDER = String(process.env.QUOTE_PROVIDER || '').trim();
+const QUOTE_SERVICE_URL = String(process.env.QUOTE_SERVICE_URL || '').trim();
+const QUOTE_SERVICE_TOKEN = String(process.env.QUOTE_SERVICE_TOKEN || '').trim();
+const REMOTE_QUOTE_TIMEOUT_MS = 15000;
 
-const fetchYFinanceQuote = (symbol) =>
+const fetchLocalPythonQuote = (symbol) =>
   new Promise((resolve, reject) => {
     const child = spawn(PYTHON_BIN, [QUOTE_SCRIPT_PATH, symbol], {
       stdio: ['ignore', 'pipe', 'pipe']
@@ -50,6 +54,87 @@ const fetchYFinanceQuote = (symbol) =>
       }
     });
   });
+
+const createConfigError = (message) => {
+  const error = new Error(message);
+  error.code = 'QUOTE_CONFIG_ERROR';
+  return error;
+};
+
+const normalizeQuote = (quote) => {
+  if (!quote || typeof quote.price !== 'number' || !Number.isFinite(quote.price)) return null;
+  return {
+    symbol: String(quote.symbol || '').trim().toUpperCase() || null,
+    price: Number(quote.price),
+    currency: quote.currency || null,
+    asOf: quote.asOf || null,
+    source: quote.source || null
+  };
+};
+
+const fetchRemoteHttpQuote = async (symbol) => {
+  if (!QUOTE_SERVICE_URL) {
+    throw createConfigError('QUOTE_PROVIDER=remote_http requires QUOTE_SERVICE_URL');
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REMOTE_QUOTE_TIMEOUT_MS);
+
+  try {
+    const url = new URL(QUOTE_SERVICE_URL);
+    url.searchParams.set('symbol', symbol);
+
+    const headers = {
+      Accept: 'application/json'
+    };
+    if (QUOTE_SERVICE_TOKEN) {
+      headers.Authorization = `Bearer ${QUOTE_SERVICE_TOKEN}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+      signal: controller.signal
+    });
+
+    if (response.status === 404) return null;
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Remote quote service rejected the request. Check QUOTE_SERVICE_TOKEN.');
+    }
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      if (!response.ok) {
+        throw new Error(`Remote quote service request failed (${response.status})`);
+      }
+      throw new Error('Remote quote service returned invalid JSON');
+    }
+
+    if (!response.ok) {
+      const message = String(payload?.message || '').trim();
+      throw new Error(message || `Remote quote service request failed (${response.status})`);
+    }
+
+    return normalizeQuote(payload);
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`Remote quote service timed out after ${REMOTE_QUOTE_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const resolveQuoteProvider = () => {
+  if (QUOTE_PROVIDER === 'remote_http' || QUOTE_PROVIDER === 'local_python') {
+    return QUOTE_PROVIDER;
+  }
+  return QUOTE_SERVICE_URL ? 'remote_http' : 'local_python';
+};
 
 const sanitizeSymbolCore = (value) => {
   const upper = String(value || '').trim().toUpperCase();
@@ -103,14 +188,20 @@ const buildCandidateSymbols = (symbol) => {
 
 export const fetchSymbolQuote = async (symbol) => {
   const candidates = buildCandidateSymbols(symbol);
+  const provider = resolveQuoteProvider();
   let lastError = null;
 
   for (const candidate of candidates) {
     try {
-      const quote = await fetchYFinanceQuote(candidate);
+      const quote =
+        provider === 'remote_http'
+          ? await fetchRemoteHttpQuote(candidate)
+          : await fetchLocalPythonQuote(candidate);
       if (quote) return quote;
     } catch (error) {
       lastError = error;
+      if (error?.code === 'QUOTE_CONFIG_ERROR') break;
+      if (provider === 'remote_http' && /rejected the request/i.test(String(error?.message || ''))) break;
     }
   }
 

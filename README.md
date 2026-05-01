@@ -68,6 +68,9 @@ Copy `.env.example` to `.env`:
 
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/trade-journal
+QUOTE_PROVIDER=local_python
+QUOTE_SERVICE_URL=
+QUOTE_SERVICE_TOKEN=
 MARKET_DATA_PYTHON=python3
 AUTH_USERNAME=your_username
 AUTH_PASSWORD=your_password
@@ -84,10 +87,46 @@ npm run dev
 
 App runs on `http://localhost:3000`.
 
+## Quote Providers
+- `local_python`: current local subprocess flow using `scripts/get_quote.py`
+- `remote_http`: hosted quote service, intended for Vercel/Render setups
+- If `QUOTE_PROVIDER` is unset, the app uses `remote_http` when `QUOTE_SERVICE_URL` is set, otherwise `local_python`
+
+### Local development
+
+Use the local Python provider:
+
+```env
+QUOTE_PROVIDER=local_python
+MARKET_DATA_PYTHON=python3
+```
+
+The local provider requires `yfinance` in your Python environment.
+
+### Hosted quote service for Vercel
+
+Deploy the Flask quote service from `services/quote-api` to Render and configure:
+
+In Render:
+- Root Directory: `services/quote-api`
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT`
+- Environment variable: `QUOTE_SERVICE_TOKEN=<shared-secret>`
+
+In Vercel:
+
+```env
+QUOTE_PROVIDER=remote_http
+QUOTE_SERVICE_URL=https://<your-render-service>.onrender.com/quote
+QUOTE_SERVICE_TOKEN=<same-shared-secret>
+```
+
+The hosted service also exposes `GET /health` for smoke checks.
+
 ## Notes
 - Zerodha importer merges split fills by `order_id`.
 - Import status (`OPEN/CLOSED`) is inferred by FIFO matching opposite-side fills over time.
 - Import page stores batches and supports one-click rollback (`Delete Import`) that removes all trades from that batch.
-- Live quote endpoint uses `scripts/get_quote.py` and requires `yfinance` in your Python env.
+- Live quote endpoint supports both the local Python script and a hosted HTTP quote service.
 - App is protected by username/password authentication using a persistent cookie session.
 - Session stays active until logout.
