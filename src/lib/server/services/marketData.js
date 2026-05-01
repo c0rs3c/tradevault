@@ -6,6 +6,7 @@ const QUOTE_SCRIPT_PATH = path.resolve(process.cwd(), 'scripts/get_quote.py');
 const QUOTE_PROVIDER = String(process.env.QUOTE_PROVIDER || '').trim();
 const QUOTE_SERVICE_URL = String(process.env.QUOTE_SERVICE_URL || '').trim();
 const QUOTE_SERVICE_TOKEN = String(process.env.QUOTE_SERVICE_TOKEN || '').trim();
+const NODE_ENV = String(process.env.NODE_ENV || '').trim();
 const REMOTE_QUOTE_TIMEOUT_MS = 15000;
 
 const fetchLocalPythonQuote = (symbol) =>
@@ -72,6 +73,15 @@ const normalizeQuote = (quote) => {
   };
 };
 
+const buildRemoteQuoteUrl = (symbol) => {
+  const url = new URL(QUOTE_SERVICE_URL);
+  if (!url.pathname || url.pathname === '/') {
+    url.pathname = '/quote';
+  }
+  url.searchParams.set('symbol', symbol);
+  return url;
+};
+
 const fetchRemoteHttpQuote = async (symbol) => {
   if (!QUOTE_SERVICE_URL) {
     throw createConfigError('QUOTE_PROVIDER=remote_http requires QUOTE_SERVICE_URL');
@@ -81,8 +91,7 @@ const fetchRemoteHttpQuote = async (symbol) => {
   const timeout = setTimeout(() => controller.abort(), REMOTE_QUOTE_TIMEOUT_MS);
 
   try {
-    const url = new URL(QUOTE_SERVICE_URL);
-    url.searchParams.set('symbol', symbol);
+    const url = buildRemoteQuoteUrl(symbol);
 
     const headers = {
       Accept: 'application/json'
@@ -133,7 +142,10 @@ const resolveQuoteProvider = () => {
   if (QUOTE_PROVIDER === 'remote_http' || QUOTE_PROVIDER === 'local_python') {
     return QUOTE_PROVIDER;
   }
-  return QUOTE_SERVICE_URL ? 'remote_http' : 'local_python';
+  if (NODE_ENV === 'production' && QUOTE_SERVICE_URL) {
+    return 'remote_http';
+  }
+  return 'local_python';
 };
 
 const sanitizeSymbolCore = (value) => {

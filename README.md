@@ -90,7 +90,8 @@ App runs on `http://localhost:3000`.
 ## Quote Providers
 - `local_python`: current local subprocess flow using `scripts/get_quote.py`
 - `remote_http`: hosted quote service, intended for Vercel/Render setups
-- If `QUOTE_PROVIDER` is unset, the app uses `remote_http` when `QUOTE_SERVICE_URL` is set, otherwise `local_python`
+- If `QUOTE_PROVIDER` is unset, development defaults to `local_python`
+- In production, the app uses `remote_http` when `QUOTE_SERVICE_URL` is set, otherwise `local_python`
 
 ### Local development
 
@@ -117,7 +118,7 @@ In Vercel:
 
 ```env
 QUOTE_PROVIDER=remote_http
-QUOTE_SERVICE_URL=https://<your-render-service>.onrender.com/quote
+QUOTE_SERVICE_URL=https://<your-render-service>.onrender.com
 QUOTE_SERVICE_TOKEN=<same-shared-secret>
 ```
 
@@ -128,5 +129,7 @@ The hosted service also exposes `GET /health` for smoke checks.
 - Import status (`OPEN/CLOSED`) is inferred by FIFO matching opposite-side fills over time.
 - Import page stores batches and supports one-click rollback (`Delete Import`) that removes all trades from that batch.
 - Live quote endpoint supports both the local Python script and a hosted HTTP quote service.
+- New trade symbol autocomplete reads from `data/nse_equity_symbols.csv`. Keep this file updated at a regular interval so newly listed or renamed symbols continue to appear in suggestions.
+- On Vercel, the in-app symbol refresh should not be treated as durable storage because the platform filesystem is ephemeral. For hosted deployments, update and commit `data/nse_equity_symbols.csv` regularly or move symbol storage to a persistent database.
 - App is protected by username/password authentication using a persistent cookie session.
 - Session stays active until logout.

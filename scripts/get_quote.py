@@ -49,6 +49,23 @@ def main():
             pass
 
     if price is None:
+        try:
+            history = ticker.history(period="5d", interval="1d", auto_adjust=False)
+            if history is not None and not history.empty:
+                close_series = history.get("Close")
+                if close_series is not None:
+                    latest_close = close_series.dropna()
+                    if not latest_close.empty:
+                        price = latest_close.iloc[-1]
+                        latest_index = latest_close.index[-1]
+                        if hasattr(latest_index, "timestamp"):
+                            as_of = as_of or to_iso(latest_index.timestamp())
+            fast = ticker.fast_info or {}
+            currency = currency or fast.get("currency")
+        except Exception:
+            pass
+
+    if price is None:
         print("{}")
         return
 

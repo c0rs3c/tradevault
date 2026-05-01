@@ -45,14 +45,15 @@ def fetch_quote(symbol):
     price = None
     currency = None
     as_of = None
+    lookup_errors = []
 
     try:
         fast = ticker.fast_info or {}
         price = fast.get("last_price") or fast.get("regular_market_price")
         currency = fast.get("currency")
         as_of = to_iso(fast.get("last_price_time"))
-    except Exception:
-        pass
+    except Exception as exc:
+        lookup_errors.append(f"fast_info: {exc}")
 
     if price is None:
         try:
@@ -60,10 +61,29 @@ def fetch_quote(symbol):
             price = info.get("regularMarketPrice")
             currency = currency or info.get("currency")
             as_of = as_of or to_iso(info.get("regularMarketTime"))
-        except Exception:
-            pass
+        except Exception as exc:
+            lookup_errors.append(f"info: {exc}")
 
     if price is None:
+        try:
+            history = ticker.history(period="5d", interval="1d", auto_adjust=False)
+            if history is not None and not history.empty:
+                close_series = history.get("Close")
+                if close_series is not None:
+                    latest_close = close_series.dropna()
+                    if not latest_close.empty:
+                        price = latest_close.iloc[-1]
+                        latest_index = latest_close.index[-1]
+                        if hasattr(latest_index, "timestamp"):
+                            as_of = as_of or to_iso(latest_index.timestamp())
+            fast = ticker.fast_info or {}
+            currency = currency or fast.get("currency")
+        except Exception as exc:
+            lookup_errors.append(f"history: {exc}")
+
+    if price is None:
+        if lookup_errors:
+            raise RuntimeError("; ".join(lookup_errors))
         return None
 
     return {
