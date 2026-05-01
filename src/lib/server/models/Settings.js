@@ -4,7 +4,7 @@ const SettingsSchema = new mongoose.Schema(
   {
     totalCapital: { type: Number, default: 0, min: 0 },
     defaultRiskPercent: { type: Number, default: null, min: 0 },
-    theme: { type: String, enum: ['light', 'dark'], default: 'dark' },
+    theme: { type: String, enum: ['light', 'dark'], default: 'light' },
     accentColor: {
       type: String,
       enum: ['emerald', 'sky', 'rose', 'amber', 'violet'],

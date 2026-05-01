@@ -10,15 +10,17 @@ import {
   applyAccentColor,
   applyTheme,
   isValidAccent,
-  isValidTheme
+  isValidTheme,
+  resolveInitialAccent,
+  resolveInitialTheme
 } from '../utils/appearance';
 
 const SettingsContext = createContext(null);
 
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState(null);
-  const [theme, setThemeState] = useState(DEFAULT_THEME);
-  const [accentColor, setAccentColorState] = useState(DEFAULT_ACCENT);
+  const [theme, setThemeState] = useState(resolveInitialTheme);
+  const [accentColor, setAccentColorState] = useState(resolveInitialAccent);
   const [loading, setLoading] = useState(true);
 
   const loadSettings = useCallback(async () => {

@@ -170,7 +170,7 @@ const getOrCreateSettings = async () => {
   if (!settings) {
     settings = await Settings.create({
       totalCapital: 0,
-      theme: 'dark',
+      theme: 'light',
       accentColor: 'emerald',
       dashboardCards: DEFAULT_DASHBOARD_CARDS,
       dashboardExcludedOpenPositions: [],
@@ -180,7 +180,7 @@ const getOrCreateSettings = async () => {
   }
   let updated = false;
   if (!settings.theme) {
-    settings.theme = 'dark';
+    settings.theme = 'light';
     updated = true;
   }
   if (!settings.accentColor) {

@@ -8,7 +8,7 @@ const SettingsPage = () => {
   const { settings, refreshSettings, loading } = useSettings();
   const [totalCapital, setTotalCapital] = useState('');
   const [defaultRiskPercent, setDefaultRiskPercent] = useState('');
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [dashboardCards, setDashboardCards] = useState({
     totalRealizedPnl: true,

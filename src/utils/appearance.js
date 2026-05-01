@@ -64,7 +64,7 @@ export const ACCENT_THEMES = {
   }
 };
 
-export const DEFAULT_THEME = 'dark';
+export const DEFAULT_THEME = 'light';
 export const DEFAULT_ACCENT = 'emerald';
 
 export const isValidTheme = (theme) => theme === 'light' || theme === 'dark';
