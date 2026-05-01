@@ -2,15 +2,18 @@ import { Fragment, useMemo, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   addStopLossAdjustment,
+  deleteTradeScreenshotUpload,
   deleteExit,
   deletePyramid,
   deleteTrade,
   fetchTradeQuote,
   fetchTrades,
+  uploadTradeScreenshotFile,
   updateExit,
   updateTrade,
   updatePyramid
 } from '../api/trades';
+import ScreenshotManager from '../components/ScreenshotManager';
 import { useSettings } from '../contexts/SettingsContext';
 import TradeChartOverlay from '../components/TradeChartOverlay';
 
@@ -138,6 +141,21 @@ const tradeHoldingDays = (trade) => {
 };
 
 const todayInputDate = () => new Date().toISOString().slice(0, 10);
+const normalizeScreenshots = (items) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      url: String(item?.url || '').trim(),
+      key: String(item?.key || '').trim()
+    }))
+    .filter((item) => item.url);
+
+const validateScreenshotFiles = (files) => {
+  const nextFiles = Array.from(files || []);
+  if (!nextFiles.length) return '';
+  if (nextFiles.some((file) => !file.type.startsWith('image/'))) return 'Please upload only image files';
+  if (nextFiles.some((file) => file.size > 5 * 1024 * 1024)) return 'Each screenshot must be 5MB or smaller';
+  return '';
+};
 
 const TradesPage = () => {
   const { settings } = useSettings();
@@ -157,6 +175,8 @@ const TradesPage = () => {
   const [editingExit, setEditingExit] = useState(null);
   const [editingStopLossAdjustment, setEditingStopLossAdjustment] = useState(null);
   const [chartTrade, setChartTrade] = useState(null);
+  const [editingBaseScreenshotFiles, setEditingBaseScreenshotFiles] = useState([]);
+  const [editingBaseUploadError, setEditingBaseUploadError] = useState('');
 
   const loadTrades = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -417,6 +437,8 @@ const TradesPage = () => {
     setEditingPyramid(null);
     setEditingExit(null);
     setEditingStopLossAdjustment(null);
+    setEditingBaseScreenshotFiles([]);
+    setEditingBaseUploadError('');
     setEditingBase({
       tradeId: trade._id,
       values: {
@@ -426,9 +448,23 @@ const TradesPage = () => {
         entryQty: String(trade.entryQty ?? ''),
         stopLoss: String(trade.stopLoss ?? ''),
         strategy: trade.strategy || '',
-        notes: trade.notes || ''
+        notes: trade.notes || '',
+        screenshots: normalizeScreenshots(trade.screenshots)
       }
     });
+  };
+
+  const handleEditingBaseScreenshotChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    const validationError = validateScreenshotFiles(files);
+    if (validationError) {
+      setEditingBaseUploadError(validationError);
+      return;
+    }
+
+    setEditingBaseUploadError('');
+    setEditingBaseScreenshotFiles((prev) => [...prev, ...files]);
   };
 
   const saveEditBase = async (tradeId) => {
@@ -440,7 +476,8 @@ const TradesPage = () => {
       entryQty: Number(editingBase.values.entryQty),
       stopLoss: Number(editingBase.values.stopLoss),
       strategy: editingBase.values.strategy,
-      notes: editingBase.values.notes
+      notes: editingBase.values.notes,
+      screenshots: normalizeScreenshots(editingBase.values.screenshots)
     };
 
     if (
@@ -454,11 +491,23 @@ const TradesPage = () => {
       return;
     }
 
+    const uploadedScreenshots = [];
     try {
+      if (editingBaseScreenshotFiles.length) {
+        for (const file of editingBaseScreenshotFiles) {
+          const uploaded = await uploadTradeScreenshotFile(file, tradeId);
+          uploadedScreenshots.push(uploaded);
+        }
+        payload.screenshots = [...payload.screenshots, ...uploadedScreenshots];
+      }
+
       const updatedTrade = await updateTrade(tradeId, payload);
       upsertTrade(updatedTrade);
       setEditingBase(null);
+      setEditingBaseScreenshotFiles([]);
+      setEditingBaseUploadError('');
     } catch (err) {
+      await Promise.all(uploadedScreenshots.map((item) => deleteTradeScreenshotUpload(item.key).catch(() => {})));
       alert(err.response?.data?.message || 'Failed to update base trade');
     }
   };
@@ -847,7 +896,11 @@ const TradesPage = () => {
                               <button
                                 type="button"
                                 className="btn-muted px-2 py-1 text-xs"
-                                onClick={() => setEditingBase(null)}
+                                onClick={() => {
+                                  setEditingBase(null);
+                                  setEditingBaseScreenshotFiles([]);
+                                  setEditingBaseUploadError('');
+                                }}
                               >
                                 Cancel
                               </button>
@@ -949,6 +1002,28 @@ const TradesPage = () => {
                               }
                               placeholder="Notes"
                             />
+                            <div className="md:col-span-2">
+                              <ScreenshotManager
+                                label="Trade Screenshots"
+                                existingScreenshots={editingBase.values.screenshots}
+                                pendingFiles={editingBaseScreenshotFiles}
+                                error={editingBaseUploadError}
+                                inputId={`trade-edit-screenshots-${trade._id}`}
+                                onFilesSelected={handleEditingBaseScreenshotChange}
+                                onRemoveExisting={(index) =>
+                                  setEditingBase((prev) => ({
+                                    ...prev,
+                                    values: {
+                                      ...prev.values,
+                                      screenshots: prev.values.screenshots.filter((_, itemIndex) => itemIndex !== index)
+                                    }
+                                  }))
+                                }
+                                onRemovePending={(index) =>
+                                  setEditingBaseScreenshotFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+                                }
+                              />
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-1 text-slate-600 dark:text-slate-300">
@@ -961,6 +1036,19 @@ const TradesPage = () => {
                             </p>
                             {trade.strategy && <p>Strategy: {trade.strategy}</p>}
                             {trade.notes && <p>Notes: {trade.notes}</p>}
+                            {(trade.screenshots || []).length ? (
+                              <div className="grid gap-2 pt-1 md:grid-cols-2">
+                                {trade.screenshots.map((item, index) => (
+                                  <a key={item.key || item.url || index} href={item.url} target="_blank" rel="noreferrer">
+                                    <img
+                                      src={item.url}
+                                      alt={`${trade.symbol} trade screenshot ${index + 1}`}
+                                      className="max-h-52 w-full rounded-md border border-slate-300 object-contain dark:border-slate-700"
+                                    />
+                                  </a>
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
                         )}
                       </div>

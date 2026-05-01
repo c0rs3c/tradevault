@@ -1,11 +1,20 @@
 import mongoose from 'mongoose';
 
+const ScreenshotSchema = new mongoose.Schema(
+  {
+    url: { type: String, required: true, trim: true },
+    key: { type: String, trim: true }
+  },
+  { _id: true }
+);
+
 const PyramidSchema = new mongoose.Schema(
   {
     date: { type: Date, required: true },
     price: { type: Number, required: true, min: 0.000001 },
     qty: { type: Number, required: true, min: 0.000001 },
-    stopLoss: { type: Number, required: true, min: 0.000001 }
+    stopLoss: { type: Number, required: true, min: 0.000001 },
+    screenshots: [ScreenshotSchema]
   },
   { _id: true }
 );
@@ -47,7 +56,9 @@ const TradeSchema = new mongoose.Schema(
     notes: { type: String, trim: true },
     tags: [{ type: String, trim: true }],
     strategy: { type: String, trim: true },
+    screenshots: [ScreenshotSchema],
     screenshot: { type: String, trim: true },
+    screenshotKey: { type: String, trim: true },
     importBatchId: { type: mongoose.Schema.Types.ObjectId, ref: 'ImportBatch', index: true }
   },
   { timestamps: true }

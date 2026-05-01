@@ -2,13 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Modal from '../components/Modal';
+import ScreenshotManager from '../components/ScreenshotManager';
 import {
   addExit,
   addPyramid,
+  deleteTradeScreenshotUpload,
   deleteExit,
   deletePyramid,
   fetchTrade,
   fetchTradeQuote,
+  uploadTradeScreenshotFile,
   updateExit,
   updatePyramid,
   updateTrade
@@ -22,6 +25,22 @@ const money = (value) =>
     currency: 'INR',
     maximumFractionDigits: 2
   }).format(Number(value || 0));
+
+const normalizeScreenshots = (items) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      url: String(item?.url || '').trim(),
+      key: String(item?.key || '').trim()
+    }))
+    .filter((item) => item.url);
+
+const validateScreenshotFiles = (files) => {
+  const nextFiles = Array.from(files || []);
+  if (!nextFiles.length) return '';
+  if (nextFiles.some((file) => !file.type.startsWith('image/'))) return 'Please upload only image files';
+  if (nextFiles.some((file) => file.size > 5 * 1024 * 1024)) return 'Each screenshot must be 5MB or smaller';
+  return '';
+};
 
 const TradeDetailPage = () => {
   const params = useParams();
@@ -43,7 +62,7 @@ const TradeDetailPage = () => {
   const [editingPyramidId, setEditingPyramidId] = useState('');
   const [editingExitId, setEditingExitId] = useState('');
 
-  const [pyramidForm, setPyramidForm] = useState({ date: '', price: '', qty: '', stopLoss: '' });
+  const [pyramidForm, setPyramidForm] = useState({ date: '', price: '', qty: '', stopLoss: '', screenshots: [] });
   const [exitForm, setExitForm] = useState({ exitDate: '', exitPrice: '', exitQty: '', notes: '' });
   const [entryForm, setEntryForm] = useState({
     entryDate: '',
@@ -51,15 +70,23 @@ const TradeDetailPage = () => {
     entryQty: '',
     stopLoss: '',
     strategy: '',
-    notes: ''
+    notes: '',
+    screenshots: []
   });
-  const [editPyramidForm, setEditPyramidForm] = useState({ date: '', price: '', qty: '', stopLoss: '' });
+  const [editPyramidForm, setEditPyramidForm] = useState({ date: '', price: '', qty: '', stopLoss: '', screenshots: [] });
   const [editExitForm, setEditExitForm] = useState({
     exitDate: '',
     exitPrice: '',
     exitQty: '',
     notes: ''
   });
+  const [entryScreenshotFiles, setEntryScreenshotFiles] = useState([]);
+  const [entryUploadError, setEntryUploadError] = useState('');
+  const [pyramidScreenshotFiles, setPyramidScreenshotFiles] = useState([]);
+  const [pyramidUploadError, setPyramidUploadError] = useState('');
+  const [editPyramidScreenshotFiles, setEditPyramidScreenshotFiles] = useState([]);
+  const [editPyramidUploadError, setEditPyramidUploadError] = useState('');
+  const [detailScreenshotSaving, setDetailScreenshotSaving] = useState(false);
 
   const loadTrade = useCallback(async () => {
     try {
@@ -71,7 +98,8 @@ const TradeDetailPage = () => {
         entryQty: String(data.entryQty ?? ''),
         stopLoss: String(data.stopLoss ?? ''),
         strategy: data.strategy || '',
-        notes: data.notes || ''
+        notes: data.notes || '',
+        screenshots: normalizeScreenshots(data.screenshots)
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load trade');
@@ -140,17 +168,29 @@ const TradeDetailPage = () => {
       return alert('Price, qty, and stop loss must be greater than 0');
     }
 
+    const uploadedScreenshots = [];
     try {
+      if (pyramidScreenshotFiles.length) {
+        for (const file of pyramidScreenshotFiles) {
+          const uploaded = await uploadTradeScreenshotFile(file, `${id}-pyramid`);
+          uploadedScreenshots.push(uploaded);
+        }
+      }
+
       const updated = await addPyramid(id, {
         date: pyramidForm.date,
         price: Number(pyramidForm.price),
         qty: Number(pyramidForm.qty),
-        stopLoss: Number(pyramidForm.stopLoss)
+        stopLoss: Number(pyramidForm.stopLoss),
+        screenshots: [...normalizeScreenshots(pyramidForm.screenshots), ...uploadedScreenshots]
       });
       setTrade(updated);
       setShowPyramidModal(false);
-      setPyramidForm({ date: '', price: '', qty: '', stopLoss: '' });
+      setPyramidForm({ date: '', price: '', qty: '', stopLoss: '', screenshots: [] });
+      setPyramidScreenshotFiles([]);
+      setPyramidUploadError('');
     } catch (err) {
+      await Promise.all(uploadedScreenshots.map((item) => deleteTradeScreenshotUpload(item.key).catch(() => {})));
       alert(err.response?.data?.message || 'Failed to add pyramid');
     }
   };
@@ -201,9 +241,71 @@ const TradeDetailPage = () => {
       entryQty: String(trade.entryQty ?? ''),
       stopLoss: String(trade.stopLoss ?? ''),
       strategy: trade.strategy || '',
-      notes: trade.notes || ''
+      notes: trade.notes || '',
+      screenshots: normalizeScreenshots(trade.screenshots)
     });
+    setEntryScreenshotFiles([]);
+    setEntryUploadError('');
     setShowEditEntryModal(true);
+  };
+
+  const handleEntryScreenshotChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    const validationError = validateScreenshotFiles(files);
+    if (validationError) {
+      setEntryUploadError(validationError);
+      return;
+    }
+
+    setEntryUploadError('');
+    setEntryScreenshotFiles((prev) => [...prev, ...files]);
+  };
+
+  const updateTradeScreenshotDirectly = async ({ files = [], removeIndex = null } = {}) => {
+    const uploadedScreenshots = [];
+    setDetailScreenshotSaving(true);
+    try {
+      const payload = {
+        screenshots: normalizeScreenshots(trade.screenshots)
+      };
+
+      if (files.length) {
+        for (const file of files) {
+          const uploaded = await uploadTradeScreenshotFile(file, id);
+          uploadedScreenshots.push(uploaded);
+        }
+        payload.screenshots = [...payload.screenshots, ...uploadedScreenshots];
+      } else if (removeIndex !== null) {
+        payload.screenshots = payload.screenshots.filter((_, index) => index !== removeIndex);
+      } else {
+        return;
+      }
+
+      const updated = await updateTrade(id, payload);
+      setTrade(updated);
+      setEntryForm((prev) => ({
+        ...prev,
+        screenshots: normalizeScreenshots(updated.screenshots)
+      }));
+    } catch (err) {
+      await Promise.all(uploadedScreenshots.map((item) => deleteTradeScreenshotUpload(item.key).catch(() => {})));
+      alert(err.response?.data?.message || 'Failed to update screenshot');
+    } finally {
+      setDetailScreenshotSaving(false);
+    }
+  };
+
+  const handleDetailScreenshotChange = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    const validationError = validateScreenshotFiles(files);
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    await updateTradeScreenshotDirectly({ files });
   };
 
   const handleUpdateEntry = async (event) => {
@@ -216,18 +318,35 @@ const TradeDetailPage = () => {
       return alert('Entry price, qty, and stop loss must be greater than 0');
     }
 
+    const uploadedScreenshots = [];
     try {
-      const updated = await updateTrade(id, {
+      const payload = {
         entryDate: entryForm.entryDate,
         entryPrice: Number(entryForm.entryPrice),
         entryQty: Number(entryForm.entryQty),
         stopLoss: Number(entryForm.stopLoss),
         strategy: entryForm.strategy,
-        notes: entryForm.notes
+        notes: entryForm.notes,
+        screenshots: normalizeScreenshots(entryForm.screenshots)
+      };
+
+      if (entryScreenshotFiles.length) {
+        for (const file of entryScreenshotFiles) {
+          const uploaded = await uploadTradeScreenshotFile(file, id);
+          uploadedScreenshots.push(uploaded);
+        }
+        payload.screenshots = [...payload.screenshots, ...uploadedScreenshots];
+      }
+
+      const updated = await updateTrade(id, {
+        ...payload
       });
       setTrade(updated);
       setShowEditEntryModal(false);
+      setEntryScreenshotFiles([]);
+      setEntryUploadError('');
     } catch (err) {
+      await Promise.all(uploadedScreenshots.map((item) => deleteTradeScreenshotUpload(item.key).catch(() => {})));
       alert(err.response?.data?.message || 'Failed to update initial entry');
     }
   };
@@ -238,8 +357,11 @@ const TradeDetailPage = () => {
       date: toInputDate(pyramid.date),
       price: String(pyramid.price ?? ''),
       qty: String(pyramid.qty ?? ''),
-      stopLoss: String(pyramid.stopLoss ?? '')
+      stopLoss: String(pyramid.stopLoss ?? ''),
+      screenshots: normalizeScreenshots(pyramid.screenshots)
     });
+    setEditPyramidScreenshotFiles([]);
+    setEditPyramidUploadError('');
     setShowEditPyramidModal(true);
   };
 
@@ -253,17 +375,29 @@ const TradeDetailPage = () => {
     ) {
       return alert('Price, qty, and stop loss must be greater than 0');
     }
+    const uploadedScreenshots = [];
     try {
+      if (editPyramidScreenshotFiles.length) {
+        for (const file of editPyramidScreenshotFiles) {
+          const uploaded = await uploadTradeScreenshotFile(file, `${id}-${editingPyramidId}`);
+          uploadedScreenshots.push(uploaded);
+        }
+      }
+
       const updated = await updatePyramid(id, editingPyramidId, {
         date: editPyramidForm.date,
         price: Number(editPyramidForm.price),
         qty: Number(editPyramidForm.qty),
-        stopLoss: Number(editPyramidForm.stopLoss)
+        stopLoss: Number(editPyramidForm.stopLoss),
+        screenshots: [...normalizeScreenshots(editPyramidForm.screenshots), ...uploadedScreenshots]
       });
       setTrade(updated);
       setShowEditPyramidModal(false);
       setEditingPyramidId('');
+      setEditPyramidScreenshotFiles([]);
+      setEditPyramidUploadError('');
     } catch (err) {
+      await Promise.all(uploadedScreenshots.map((item) => deleteTradeScreenshotUpload(item.key).catch(() => {})));
       alert(err.response?.data?.message || 'Failed to update pyramid');
     }
   };
@@ -417,6 +551,49 @@ const TradeDetailPage = () => {
             <p className="text-xs text-slate-600 dark:text-slate-400">Notes</p>
             <p className="text-sm font-medium">{trade.notes || '-'}</p>
           </div>
+          <div className="md:col-span-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-slate-600 dark:text-slate-400">Screenshots</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="btn-muted cursor-pointer px-2 py-1 text-xs">
+                  {detailScreenshotSaving ? 'Uploading...' : 'Add Screenshots'}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    multiple
+                    className="hidden"
+                    onChange={handleDetailScreenshotChange}
+                    disabled={detailScreenshotSaving}
+                  />
+                </label>
+              </div>
+            </div>
+            {(trade.screenshots || []).length ? (
+              <div className="mt-2 grid gap-3 md:grid-cols-2">
+                {trade.screenshots.map((item, index) => (
+                  <div key={item.key || item.url || index} className="space-y-2 rounded-md border border-slate-300 p-2 dark:border-slate-700">
+                    <a href={item.url} target="_blank" rel="noreferrer">
+                      <img
+                        src={item.url}
+                        alt={`${trade.symbol} trade screenshot ${index + 1}`}
+                        className="max-h-[20rem] w-full rounded-md object-contain"
+                      />
+                    </a>
+                    <button
+                      type="button"
+                      className="btn-danger px-2 py-1 text-xs"
+                      onClick={() => updateTradeScreenshotDirectly({ removeIndex: index })}
+                      disabled={detailScreenshotSaving}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm font-medium">No screenshots uploaded.</p>
+            )}
+          </div>
         </div>
       </section>
 
@@ -424,26 +601,41 @@ const TradeDetailPage = () => {
         <h2 className="text-lg font-semibold">Pyramids</h2>
         <div className="mt-3 space-y-2">
           {(trade.pyramids || []).map((p) => (
-            <div key={p._id} className="table-row-hover flex items-center justify-between rounded-md p-3">
-              <p className="text-sm">
-                {new Date(p.date).toLocaleDateString()} | Price: {p.price} | Qty: {p.qty} | Stop: {p.stopLoss}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openEditPyramidModal(p)}
-                  className="btn-muted px-2 py-1 text-xs"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeletePyramid(p._id)}
-                  className="btn-danger px-2 py-1 text-xs"
-                >
-                  Remove
-                </button>
+            <div key={p._id} className="table-row-hover space-y-3 rounded-md p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm">
+                  {new Date(p.date).toLocaleDateString()} | Price: {p.price} | Qty: {p.qty} | Stop: {p.stopLoss}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditPyramidModal(p)}
+                    className="btn-muted px-2 py-1 text-xs"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePyramid(p._id)}
+                    className="btn-danger px-2 py-1 text-xs"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
+              {(p.screenshots || []).length ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {p.screenshots.map((item, index) => (
+                    <a key={item.key || item.url || index} href={item.url} target="_blank" rel="noreferrer">
+                      <img
+                        src={item.url}
+                        alt={`Pyramid screenshot ${index + 1}`}
+                        className="max-h-56 w-full rounded-md border border-slate-300 object-contain dark:border-slate-700"
+                      />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
           {!trade.pyramids?.length && <p className="text-sm text-slate-600 dark:text-slate-400">No pyramid entries.</p>}
@@ -544,6 +736,33 @@ const TradeDetailPage = () => {
             onChange={(e) => setPyramidForm((prev) => ({ ...prev, stopLoss: e.target.value }))}
             required
           />
+          <ScreenshotManager
+            label="Pyramid Screenshots (optional)"
+            existingScreenshots={pyramidForm.screenshots}
+            pendingFiles={pyramidScreenshotFiles}
+            error={pyramidUploadError}
+            inputId="add-pyramid-screenshots"
+            onFilesSelected={(event) => {
+              const files = Array.from(event.target.files || []);
+              event.target.value = '';
+              const validationError = validateScreenshotFiles(files);
+              if (validationError) {
+                setPyramidUploadError(validationError);
+                return;
+              }
+              setPyramidUploadError('');
+              setPyramidScreenshotFiles((prev) => [...prev, ...files]);
+            }}
+            onRemoveExisting={(index) =>
+              setPyramidForm((prev) => ({
+                ...prev,
+                screenshots: prev.screenshots.filter((_, itemIndex) => itemIndex !== index)
+              }))
+            }
+            onRemovePending={(index) =>
+              setPyramidScreenshotFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+            }
+          />
           <button type="submit" className="btn-primary">
             Save Pyramid
           </button>
@@ -638,6 +857,23 @@ const TradeDetailPage = () => {
             value={entryForm.notes}
             onChange={(e) => setEntryForm((prev) => ({ ...prev, notes: e.target.value }))}
           />
+          <ScreenshotManager
+            label="Trade Screenshots"
+            existingScreenshots={entryForm.screenshots}
+            pendingFiles={entryScreenshotFiles}
+            error={entryUploadError}
+            inputId="edit-entry-screenshots"
+            onFilesSelected={handleEntryScreenshotChange}
+            onRemoveExisting={(index) =>
+              setEntryForm((prev) => ({
+                ...prev,
+                screenshots: prev.screenshots.filter((_, itemIndex) => itemIndex !== index)
+              }))
+            }
+            onRemovePending={(index) =>
+              setEntryScreenshotFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+            }
+          />
           <button type="submit" className="btn-primary">
             Save Entry
           </button>
@@ -686,6 +922,33 @@ const TradeDetailPage = () => {
             value={editPyramidForm.stopLoss}
             onChange={(e) => setEditPyramidForm((prev) => ({ ...prev, stopLoss: e.target.value }))}
             required
+          />
+          <ScreenshotManager
+            label="Pyramid Screenshots"
+            existingScreenshots={editPyramidForm.screenshots}
+            pendingFiles={editPyramidScreenshotFiles}
+            error={editPyramidUploadError}
+            inputId="edit-pyramid-screenshots"
+            onFilesSelected={(event) => {
+              const files = Array.from(event.target.files || []);
+              event.target.value = '';
+              const validationError = validateScreenshotFiles(files);
+              if (validationError) {
+                setEditPyramidUploadError(validationError);
+                return;
+              }
+              setEditPyramidUploadError('');
+              setEditPyramidScreenshotFiles((prev) => [...prev, ...files]);
+            }}
+            onRemoveExisting={(index) =>
+              setEditPyramidForm((prev) => ({
+                ...prev,
+                screenshots: prev.screenshots.filter((_, itemIndex) => itemIndex !== index)
+              }))
+            }
+            onRemovePending={(index) =>
+              setEditPyramidScreenshotFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+            }
           />
           <button type="submit" className="btn-primary">
             Save Pyramid

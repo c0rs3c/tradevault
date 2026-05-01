@@ -3,6 +3,7 @@ import Settings from '../models/Settings';
 import ImportBatch from '../models/ImportBatch';
 import { calcTradeMetrics, buildDashboardAnalytics } from '../utils/calculations';
 import { fetchSymbolQuote } from '../services/marketData';
+import { deleteObjectByKey } from '../services/objectStorage';
 import { parseCsv } from '../utils/csv';
 
 const LIST_CACHE_TTL_MS = 15000;
@@ -115,6 +116,74 @@ const createError = (message, statusCode = 500) => {
   return error;
 };
 
+const normalizeScreenshotItem = (item) => {
+  if (!item) return null;
+  if (typeof item === 'string') {
+    const url = item.trim();
+    return url ? { url, key: '' } : null;
+  }
+
+  const url = String(item.url || item.screenshot || '').trim();
+  const key = String(item.key || item.screenshotKey || '').trim();
+  if (!url) return null;
+  return { url, key };
+};
+
+const getNormalizedScreenshots = (entity) => {
+  const next = Array.isArray(entity?.screenshots)
+    ? entity.screenshots.map(normalizeScreenshotItem).filter(Boolean)
+    : [];
+  if (next.length) return next;
+
+  const legacy = normalizeScreenshotItem({
+    url: entity?.screenshot,
+    key: entity?.screenshotKey
+  });
+  return legacy ? [legacy] : [];
+};
+
+const getScreenshotKeys = (items) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => String(item?.key || '').trim())
+    .filter(Boolean);
+
+const getRemovedScreenshotKeys = (previousItems, nextItems) => {
+  const nextKeys = new Set(getScreenshotKeys(nextItems));
+  return getScreenshotKeys(previousItems).filter((key) => !nextKeys.has(key));
+};
+
+const deleteScreenshotKeysIfPresent = async (keys) => {
+  const uniqueKeys = [...new Set((Array.isArray(keys) ? keys : []).filter(Boolean))];
+  await Promise.all(
+    uniqueKeys.map(async (key) => {
+      try {
+        await deleteObjectByKey(key);
+      } catch (error) {
+        console.error(`Failed to delete screenshot object ${key}:`, error);
+      }
+    })
+  );
+};
+
+const normalizeTradePayloadScreenshots = (payload = {}) => {
+  const nextPayload = { ...payload };
+  if ('screenshots' in nextPayload || 'screenshot' in nextPayload || 'screenshotKey' in nextPayload) {
+    nextPayload.screenshots = Array.isArray(nextPayload.screenshots)
+      ? nextPayload.screenshots.map(normalizeScreenshotItem).filter(Boolean)
+      : getNormalizedScreenshots(nextPayload);
+  }
+  return nextPayload;
+};
+
+const withNormalizedScreenshots = (trade) => ({
+  ...trade,
+  screenshots: getNormalizedScreenshots(trade),
+  pyramids: (trade.pyramids || []).map((pyramid) => ({
+    ...pyramid,
+    screenshots: getNormalizedScreenshots(pyramid)
+  }))
+});
+
 const getTotalCapital = async () => {
   const settings = await Settings.findOne();
   return settings?.totalCapital || 0;
@@ -131,7 +200,7 @@ const toPreviewRows = (rows, source) =>
   }));
 
 const withMetrics = (tradeDoc, totalCapital) => {
-  const trade = tradeDoc.toObject ? tradeDoc.toObject() : tradeDoc;
+  const trade = withNormalizedScreenshots(tradeDoc.toObject ? tradeDoc.toObject() : tradeDoc);
   return {
     ...trade,
     metrics: calcTradeMetrics(trade, totalCapital)
@@ -336,7 +405,7 @@ export const getTrades = async () => {
 
   const totalCapital = await getTotalCapital();
   const trades = await Trade.find()
-    .select('-screenshot')
+    .select('-screenshot -screenshotKey')
     .sort({ entryDate: -1, createdAt: -1 })
     .lean();
   const computed = trades.map((trade) => withMetrics(trade, totalCapital));
@@ -354,17 +423,22 @@ export const getTradeById = async (id) => {
 
 export const createTrade = async (payload) => {
   const normalizedPayload = {
-    ...payload,
+    ...normalizeTradePayloadScreenshots(payload),
     stopLoss: withDefaultStopLoss({
       entryPrice: payload.entryPrice,
       side: payload.side,
       stopLoss: payload.stopLoss
     })
   };
-  const trade = await Trade.create(normalizedPayload);
-  invalidateTradeCaches();
-  const totalCapital = await getTotalCapital();
-  return withMetrics(trade, totalCapital);
+  try {
+    const trade = await Trade.create(normalizedPayload);
+    invalidateTradeCaches();
+    const totalCapital = await getTotalCapital();
+    return withMetrics(trade, totalCapital);
+  } catch (error) {
+    await deleteScreenshotKeysIfPresent(getScreenshotKeys(normalizedPayload.screenshots));
+    throw error;
+  }
 };
 
 export const getTradeImports = async () => {
@@ -680,6 +754,8 @@ export const updateTrade = async (id, payload) => {
   const trade = await Trade.findById(id);
   if (!trade) throw createError('Trade not found', 404);
 
+  const previousScreenshots = getNormalizedScreenshots(trade);
+  const normalizedPayload = normalizeTradePayloadScreenshots(payload);
   const nextEntryPrice = payload.entryPrice ?? trade.entryPrice;
   const nextSide = payload.side ?? trade.side;
   const nextStopLoss = withDefaultStopLoss({
@@ -687,10 +763,11 @@ export const updateTrade = async (id, payload) => {
     side: nextSide,
     stopLoss: payload.stopLoss ?? trade.stopLoss
   });
-  Object.assign(trade, payload, { stopLoss: nextStopLoss });
+  Object.assign(trade, normalizedPayload, { stopLoss: nextStopLoss });
   validatePositionSize(trade);
   await trade.save();
   invalidateTradeCaches();
+  await deleteScreenshotKeysIfPresent(getRemovedScreenshotKeys(previousScreenshots, getNormalizedScreenshots(trade)));
 
   const totalCapital = await getTotalCapital();
   return withMetrics(trade, totalCapital);
@@ -700,6 +777,8 @@ export const deleteTrade = async (id) => {
   const trade = await Trade.findByIdAndDelete(id);
   if (!trade) throw createError('Trade not found', 404);
   invalidateTradeCaches();
+  const pyramidKeys = (trade.pyramids || []).flatMap((pyramid) => getScreenshotKeys(getNormalizedScreenshots(pyramid)));
+  await deleteScreenshotKeysIfPresent([...getScreenshotKeys(getNormalizedScreenshots(trade)), ...pyramidKeys]);
   return null;
 };
 
@@ -707,7 +786,11 @@ export const addPyramid = async (id, payload) => {
   const trade = await Trade.findById(id);
   if (!trade) throw createError('Trade not found', 404);
 
-  trade.pyramids.push(payload);
+  const normalizedPayload = {
+    ...payload,
+    screenshots: getNormalizedScreenshots(payload)
+  };
+  trade.pyramids.push(normalizedPayload);
   await trade.save();
   invalidateTradeCaches();
 
@@ -722,10 +805,16 @@ export const updatePyramid = async (id, pid, payload) => {
   const pyramid = trade.pyramids.id(pid);
   if (!pyramid) throw createError('Pyramid entry not found', 404);
 
-  Object.assign(pyramid, payload);
+  const previousScreenshots = getNormalizedScreenshots(pyramid);
+  const normalizedPayload = {
+    ...payload,
+    screenshots: getNormalizedScreenshots(payload)
+  };
+  Object.assign(pyramid, normalizedPayload);
   validatePositionSize(trade);
   await trade.save();
   invalidateTradeCaches();
+  await deleteScreenshotKeysIfPresent(getRemovedScreenshotKeys(previousScreenshots, getNormalizedScreenshots(pyramid)));
 
   const totalCapital = await getTotalCapital();
   return withMetrics(trade, totalCapital);
@@ -737,6 +826,7 @@ export const deletePyramid = async (id, pid) => {
 
   const pyramid = trade.pyramids.id(pid);
   if (!pyramid) throw createError('Pyramid entry not found', 404);
+  const screenshotKeysToDelete = getScreenshotKeys(getNormalizedScreenshots(pyramid));
 
   pyramid.deleteOne();
 
@@ -750,6 +840,7 @@ export const deletePyramid = async (id, pid) => {
 
   await trade.save();
   invalidateTradeCaches();
+  await deleteScreenshotKeysIfPresent(screenshotKeysToDelete);
 
   const totalCapital = await getTotalCapital();
   return withMetrics(trade, totalCapital);
@@ -843,7 +934,7 @@ export const getDashboard = async ({ forceRefreshCmp = false } = {}) => {
 
   const totalCapital = await getTotalCapital();
   const trades = await Trade.find()
-    .select('-screenshot')
+    .select('-screenshot -screenshotKey')
     .sort({ entryDate: -1, createdAt: -1 })
     .lean();
 

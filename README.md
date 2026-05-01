@@ -1,6 +1,6 @@
 # Trade Journal (Next.js)
 
-Trading journal app with pyramiding, multi-exits, dashboard analytics, Zerodha CSV import, import history, and one-click import rollback.
+Trading journal app with pyramiding, multi-exits, trade and pyramid screenshot uploads, dashboard analytics, Zerodha CSV import, import history, and one-click import rollback.
 
 ## Tech Stack
 - Next.js (App Router)
@@ -76,6 +76,11 @@ AUTH_USERNAME=your_username
 AUTH_PASSWORD=your_password
 AUTH_SECRET=your_long_random_secret
 AUTH_COOKIE_SECURE=0
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+R2_PUBLIC_BASE_URL=
 ```
 
 ## Run
@@ -123,6 +128,14 @@ QUOTE_SERVICE_TOKEN=<same-shared-secret>
 ```
 
 The hosted service also exposes `GET /health` for smoke checks.
+
+## Trade Screenshot Storage
+- Trade and pyramid screenshots are uploaded to Cloudflare R2 through `POST /api/uploads/trade-screenshot`.
+- Configure `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, and `R2_PUBLIC_BASE_URL`.
+- `R2_PUBLIC_BASE_URL` should point to either your bucket custom domain or your Cloudflare-managed `r2.dev` public URL.
+- The app supports multiple screenshots per trade and multiple screenshots per pyramid entry.
+- Screenshots are stored in R2 and the app saves the public URL plus the object key on the trade or pyramid record.
+- Removing screenshots, deleting pyramids, or deleting trades also cleans up the corresponding R2 objects.
 
 ## Notes
 - Zerodha importer merges split fills by `order_id`.

@@ -15,6 +15,22 @@ export const createTrade = async (payload) => {
   return data;
 };
 
+export const uploadTradeScreenshotFile = async (file, tradeId) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (tradeId) {
+    formData.append('tradeId', tradeId);
+  }
+
+  const { data } = await http.post('/uploads/trade-screenshot', formData);
+  return data;
+};
+
+export const deleteTradeScreenshotUpload = async (key) => {
+  if (!key) return;
+  await http.delete('/uploads/trade-screenshot', { data: { key } });
+};
+
 export const updateTrade = async (id, payload) => {
   const { data } = await http.put(`/trades/${id}`, payload);
   return data;

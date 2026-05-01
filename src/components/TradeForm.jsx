@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import ScreenshotManager from './ScreenshotManager';
 
 const todayInputDate = () => new Date().toISOString().slice(0, 10);
 const STOP_LOSS_PCTS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 5];
@@ -14,7 +15,7 @@ const initialValues = {
   stopLoss: '',
   strategy: [],
   notes: '',
-  screenshot: ''
+  screenshots: []
 };
 
 const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbolOptions = [] }) => {
@@ -34,6 +35,7 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
   const [errors, setErrors] = useState({});
   const [uploadError, setUploadError] = useState('');
   const [selectedStopLossPct, setSelectedStopLossPct] = useState(3);
+  const [pendingScreenshotFiles, setPendingScreenshotFiles] = useState([]);
 
   const setField = (field, value) => setValues((prev) => ({ ...prev, [field]: value }));
 
@@ -70,35 +72,24 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
   };
 
   const handleScreenshotChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      setUploadError('');
-      setField('screenshot', '');
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
+
+    const invalidType = files.find((file) => !file.type.startsWith('image/'));
+    if (invalidType) {
+      setUploadError('Please upload only image files');
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      setUploadError('Please upload an image file');
-      setField('screenshot', '');
+    const invalidSize = files.find((file) => file.size > 5 * 1024 * 1024);
+    if (invalidSize) {
+      setUploadError('Each screenshot must be 5MB or smaller');
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setUploadError('Screenshot must be 2MB or smaller');
-      setField('screenshot', '');
-      return;
-    }
-
-    const reader = new window.FileReader();
-    reader.onload = () => {
-      setUploadError('');
-      setField('screenshot', reader.result);
-    };
-    reader.onerror = () => {
-      setUploadError('Failed to read the image file');
-      setField('screenshot', '');
-    };
-    reader.readAsDataURL(file);
+    setUploadError('');
+    setPendingScreenshotFiles((prev) => [...prev, ...files]);
   };
 
   const validate = () => {
@@ -125,7 +116,8 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
       entryPrice: Number(values.entryPrice),
       entryQty: Number(values.entryQty),
       stopLoss: values.stopLoss === '' ? undefined : Number(values.stopLoss),
-      screenshot: values.screenshot || undefined
+      screenshots: values.screenshots || [],
+      screenshotFiles: pendingScreenshotFiles
     });
   };
 
@@ -275,33 +267,25 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
           </div>
         </label>
 
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium">Trade Screenshot (optional)</span>
-          <input
-            type="file"
-            accept="image/*"
-            className="field-input file:mr-4 file:rounded-md file:border-0 file:bg-slate-200 dark:file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-700 dark:file:text-slate-100 hover:file:bg-slate-300 dark:hover:file:bg-slate-700"
-            onChange={handleScreenshotChange}
+        <div className="md:col-span-2">
+          <ScreenshotManager
+            label="Trade Screenshots (optional)"
+            existingScreenshots={values.screenshots || []}
+            pendingFiles={pendingScreenshotFiles}
+            error={uploadError}
+            inputId="trade-screenshots"
+            onFilesSelected={handleScreenshotChange}
+            onRemoveExisting={(index) =>
+              setValues((prev) => ({
+                ...prev,
+                screenshots: (prev.screenshots || []).filter((_, itemIndex) => itemIndex !== index)
+              }))
+            }
+            onRemovePending={(index) =>
+              setPendingScreenshotFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+            }
           />
-          <span className="text-xs text-slate-600 dark:text-slate-400">PNG/JPG/WebP up to 2MB</span>
-          {uploadError && <span className="text-sm text-red-500">{uploadError}</span>}
-          {!!values.screenshot && (
-            <div className="space-y-2">
-              <img
-                src={values.screenshot}
-                alt="Trade screenshot preview"
-                className="max-h-64 w-full rounded-md border border-slate-300 dark:border-slate-700 object-contain"
-              />
-              <button
-                type="button"
-                className="btn-muted px-3 py-1.5 text-xs"
-                onClick={() => setField('screenshot', '')}
-              >
-                Remove screenshot
-              </button>
-            </div>
-          )}
-        </label>
+        </div>
 
         <label className="space-y-1 md:col-span-2">
           <span className="text-sm font-medium">Notes</span>
