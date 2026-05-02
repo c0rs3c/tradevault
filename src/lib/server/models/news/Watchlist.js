@@ -17,7 +17,7 @@ const WatchlistItemSchema = new mongoose.Schema(
 const WatchlistSchema = new mongoose.Schema(
   {
     ownerUsername: { type: String, required: true, index: true },
-    source: { type: String, enum: ['tradingview', 'text'], default: 'tradingview', required: true },
+    source: { type: String, enum: ['tradingview', 'text', 'earnings'], default: 'tradingview', required: true },
     sourceWatchlistId: { type: String, required: true },
     sourceUrl: { type: String, default: '', trim: true },
     title: { type: String, required: true, trim: true },

@@ -41,3 +41,35 @@ export const searchNewsBySymbol = async (symbol) => {
   });
   return data;
 };
+
+export const searchEarningsNewsBySymbol = async (symbol) => {
+  const { data } = await http.get('/news/earnings-search', {
+    params: { symbol }
+  });
+  return data;
+};
+
+export const fetchEarningsWatchlists = async () => {
+  const { data } = await http.get('/news/earnings-watchlists');
+  return data;
+};
+
+export const importEarningsWatchlistText = async ({ title, text }) => {
+  const { data } = await http.post('/news/earnings-watchlists', { title, text });
+  return data;
+};
+
+export const fetchEarningsWatchlistDetails = async (watchlistId) => {
+  const { data } = await http.get(`/news/earnings-watchlists/${watchlistId}`);
+  return data;
+};
+
+export const deleteEarningsWatchlist = async (watchlistId) => {
+  const { data } = await http.delete(`/news/earnings-watchlists/${watchlistId}`);
+  return data;
+};
+
+export const syncEarningsWatchlist = async (watchlistId) => {
+  const { data } = await http.post(`/news/earnings-watchlists/${watchlistId}/sync`);
+  return data;
+};

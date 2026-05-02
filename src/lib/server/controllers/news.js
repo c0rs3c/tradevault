@@ -7,6 +7,7 @@ import { getWatchlistModel } from '@/lib/server/models/news/Watchlist';
 import { getNewsArticleModel } from '@/lib/server/models/news/NewsArticle';
 import { getWatchlistNewsMatchModel } from '@/lib/server/models/news/WatchlistNewsMatch';
 import { fetchSymbolQuote } from '@/lib/server/services/marketData';
+import { getSymbols } from '@/lib/server/controllers/symbols';
 
 const GOOGLE_NEWS_BASE_URL = 'https://news.google.com/rss/search';
 const GOOGLE_NEWS_PARAMS = {
@@ -19,6 +20,17 @@ const TRADINGVIEW_HOST = 'www.tradingview.com';
 const COMPANY_PROFILES_PATH = path.join(process.cwd(), 'data', 'company_profiles.json');
 const BLOCKED_SOURCE_DOMAINS = new Set(['fathomjournal.org', 'meyka.com']);
 const AMBIGUOUS_TICKERS = new Set(['CUPID']);
+const EARNINGS_NEWS_WINDOW_DAYS = 30;
+const EARNINGS_KEYWORDS = [
+  'earnings',
+  'results',
+  'quarterly results',
+  'financial results',
+  'q1',
+  'q2',
+  'q3',
+  'q4'
+];
 
 const companyProfilesCache = {
   loaded: false,
@@ -290,6 +302,17 @@ const buildGoogleNewsQuery = ({ symbol, companyName }) => {
   return `${symbolPart} when:${NEWS_WINDOW_DAYS}d`;
 };
 
+const buildEarningsNewsQuery = ({ symbol, companyName }) => {
+  const symbolPart = String(symbol || '').trim().toUpperCase();
+  const companyPart = String(companyName || '').trim();
+  const companyQueryPart =
+    companyPart && normalizeText(companyPart) !== normalizeText(symbolPart)
+      ? `("${companyPart}" OR ${symbolPart})`
+      : symbolPart;
+  const earningsTerms = '("earnings" OR "results" OR "quarterly results" OR "financial results" OR Q1 OR Q2 OR Q3 OR Q4)';
+  return `${companyQueryPart} ${earningsTerms} when:${EARNINGS_NEWS_WINDOW_DAYS}d`;
+};
+
 const isWithinNewsWindow = (value) => {
   const publishedAt = new Date(value);
   if (Number.isNaN(publishedAt.getTime())) return false;
@@ -379,8 +402,12 @@ const extractGoogleNewsItems = (xml, ticker) => {
 
 export const fetchGoogleNewsRssForTicker = async ({ symbol, companyName }) => {
   const query = buildGoogleNewsQuery({ symbol, companyName });
+  return fetchGoogleNewsRssForQuery(query);
+};
+
+const fetchGoogleNewsRssForQuery = async (query) => {
   const url = new URL(GOOGLE_NEWS_BASE_URL);
-  url.searchParams.set('q', query);
+  url.searchParams.set('q', String(query || '').trim());
   Object.entries(GOOGLE_NEWS_PARAMS).forEach(([key, value]) => url.searchParams.set(key, value));
 
   const response = await fetch(url, {
@@ -398,6 +425,12 @@ export const fetchGoogleNewsRssForTicker = async ({ symbol, companyName }) => {
 
   return response.text();
 };
+
+const filterEarningsArticles = (articles) =>
+  (articles || []).filter((article) => {
+    const haystack = normalizeText(`${article?.title || ''} ${article?.descriptionText || ''}`);
+    return EARNINGS_KEYWORDS.some((keyword) => haystack.includes(normalizeText(keyword)));
+  });
 
 export const searchTickerNews = async ({ symbol }) => {
   const normalizedSymbol = String(symbol || '').trim().toUpperCase();
@@ -430,6 +463,58 @@ export const searchTickerNews = async ({ symbol }) => {
     descriptionText: article.descriptionText,
     matchedBy: article.matchedBy
   }));
+
+  const dedupedItems = dedupeArticlesForDisplay(items);
+
+  return {
+    symbol: normalizedSymbol,
+    companyName,
+    articleCount: dedupedItems.length,
+    articles: dedupedItems
+  };
+};
+
+export const searchTickerEarningsNews = async ({ symbol }) => {
+  const normalizedSymbol = String(symbol || '').trim().toUpperCase();
+  if (!normalizedSymbol) {
+    throw createError('symbol is required', 400);
+  }
+
+  const symbolsData = await getSymbols();
+  const nseSymbols = new Set((symbolsData?.symbols || []).map((item) => String(item || '').trim().toUpperCase()));
+  if (!nseSymbols.has(normalizedSymbol)) {
+    throw createError('Only NSE stock tickers are supported for earnings news', 400);
+  }
+
+  const companyName = await resolveCompanyName(normalizedSymbol);
+  const ticker = {
+    symbol: normalizedSymbol,
+    companyName,
+    canonicalTicker: normalizedSymbol,
+    exchange: 'NSE',
+    sectionTitle: '',
+    normalizedCompanyName: normalizeText(companyName)
+  };
+
+  const xml = await fetchGoogleNewsRssForQuery(
+    buildEarningsNewsQuery({
+      symbol: normalizedSymbol,
+      companyName
+    })
+  );
+  const items = filterEarningsArticles(
+    extractGoogleNewsItems(xml, ticker).map((article) => ({
+      id: buildArticleKey(article),
+      title: article.title,
+      googleNewsUrl: article.googleNewsUrl,
+      publisherUrl: article.publisherUrl,
+      sourceName: article.sourceName,
+      sourceDomain: article.sourceDomain,
+      publishedAt: article.publishedAt,
+      descriptionText: article.descriptionText,
+      matchedBy: article.matchedBy
+    }))
+  );
 
   const dedupedItems = dedupeArticlesForDisplay(items);
 
@@ -512,7 +597,7 @@ export const importTradingViewWatchlist = async ({ ownerUsername, url }) => {
   return formatWatchlistListItem(watchlist, 0);
 };
 
-export const importTextWatchlist = async ({ ownerUsername, title, text }) => {
+const importSymbolWatchlist = async ({ ownerUsername, title, text, source }) => {
   const normalizedTitle = normalizeTextWatchlistTitle(title);
   const rawSymbols = parseTextWatchlist(text);
   const items = await buildWatchlistItems(rawSymbols);
@@ -520,19 +605,19 @@ export const importTextWatchlist = async ({ ownerUsername, title, text }) => {
   const now = new Date();
   const sourceWatchlistId = crypto
     .createHash('sha256')
-    .update(`${ownerUsername}|${normalizedTitle.toLowerCase()}`)
+    .update(`${ownerUsername}|${source}|${normalizedTitle.toLowerCase()}`)
     .digest('hex');
 
   const watchlist = await Watchlist.findOneAndUpdate(
     {
       ownerUsername,
-      source: 'text',
+      source,
       sourceWatchlistId
     },
     {
       $set: {
         ownerUsername,
-        source: 'text',
+        source,
         sourceWatchlistId,
         sourceUrl: '',
         title: normalizedTitle,
@@ -554,6 +639,22 @@ export const importTextWatchlist = async ({ ownerUsername, title, text }) => {
   return formatWatchlistListItem(watchlist, 0);
 };
 
+export const importTextWatchlist = async ({ ownerUsername, title, text }) =>
+  importSymbolWatchlist({
+    ownerUsername,
+    title,
+    text,
+    source: 'text'
+  });
+
+export const importEarningsWatchlist = async ({ ownerUsername, title, text }) =>
+  importSymbolWatchlist({
+    ownerUsername,
+    title,
+    text,
+    source: 'earnings'
+  });
+
 const formatWatchlistListItem = (watchlist, articleCount) => ({
   id: String(watchlist._id),
   title: watchlist.title,
@@ -568,9 +669,13 @@ const formatWatchlistListItem = (watchlist, articleCount) => ({
   syncProgress: buildSyncProgress(watchlist)
 });
 
-export const listWatchlists = async ({ ownerUsername }) => {
+export const listWatchlists = async ({ ownerUsername, sources = [] }) => {
   const { Watchlist, WatchlistNewsMatch } = await getNewsModels();
-  const watchlists = await Watchlist.find({ ownerUsername }).sort({ updatedAt: -1, createdAt: -1 }).lean();
+  const filter = { ownerUsername };
+  if (sources.length) {
+    filter.source = { $in: sources };
+  }
+  const watchlists = await Watchlist.find(filter).sort({ updatedAt: -1, createdAt: -1 }).lean();
 
   const results = await Promise.all(
     watchlists.map(async (watchlist) => {
@@ -828,11 +933,22 @@ export const syncWatchlistNews = async ({ ownerUsername, watchlistId }) => {
       );
       tickerCount = nextTickerCount;
       try {
-        const xml = await fetchGoogleNewsRssForTicker({
-          symbol: ticker.symbol,
-          companyName: resolvedCompanyName
-        });
-        const feedItems = extractGoogleNewsItems(xml, tickerWithCompanyName);
+        const xml =
+          watchlist.source === 'earnings'
+            ? await fetchGoogleNewsRssForQuery(
+                buildEarningsNewsQuery({
+                  symbol: ticker.symbol,
+                  companyName: resolvedCompanyName
+                })
+              )
+            : await fetchGoogleNewsRssForTicker({
+                symbol: ticker.symbol,
+                companyName: resolvedCompanyName
+              });
+        const feedItems =
+          watchlist.source === 'earnings'
+            ? filterEarningsArticles(extractGoogleNewsItems(xml, tickerWithCompanyName))
+            : extractGoogleNewsItems(xml, tickerWithCompanyName);
         const result = await upsertArticlesAndMatches({
           ownerUsername,
           watchlist,
