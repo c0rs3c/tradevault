@@ -114,6 +114,26 @@ const PositionSizingPage = () => {
         </p>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+        <label className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Side</span>
+          <select className="field-input" value={form.side} onChange={(e) => setField('side', e.target.value)}>
+            <option value="LONG">LONG</option>
+            <option value="SHORT">SHORT</option>
+          </select>
+        </label>
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Account Capital
+          </p>
+          <p className="mt-1 text-lg font-semibold">{money(totalCapital)}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Default Risk %: {settings?.defaultRiskPercent ? percentText(settings.defaultRiskPercent) : 'Not set'}
+          </p>
+        </div>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] md:items-start">
         <section className="surface-card space-y-3 p-4">
           <div className="flex items-start justify-between gap-3">
@@ -129,24 +149,6 @@ const PositionSizingPage = () => {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1">
-              <span className="text-sm font-medium">Side</span>
-              <select className="field-input" value={form.side} onChange={(e) => setField('side', e.target.value)}>
-                <option value="LONG">LONG</option>
-                <option value="SHORT">SHORT</option>
-              </select>
-            </label>
-
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Account Capital
-              </p>
-              <p className="mt-1 text-lg font-semibold">{money(totalCapital)}</p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Default Risk %: {settings?.defaultRiskPercent ? percentText(settings.defaultRiskPercent) : 'Not set'}
-              </p>
-            </div>
-
             <div className="space-y-1">
               <div className="flex flex-wrap items-end gap-2">
                 <label className="min-w-0 flex-1 space-y-1">
@@ -194,7 +196,7 @@ const PositionSizingPage = () => {
               {result.errors.entryPrice ? <p className="text-sm text-red-600">{result.errors.entryPrice}</p> : null}
             </label>
 
-            <label className="space-y-1">
+            <label className="space-y-1 md:col-span-2">
               <span className="text-sm font-medium">Stop Loss</span>
               <div className="grid grid-cols-6 gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 p-2 dark:border-slate-800 dark:bg-slate-950/40">
                 {STOP_LOSS_PCTS.map((pct) => {
