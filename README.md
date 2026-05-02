@@ -49,6 +49,8 @@ trade-journal/
 - `GET /api/trades`
 - `POST /api/trades`
 - `GET /api/trades/dashboard`
+- `GET /api/market-trend`
+- `POST /api/market-trend/sync`
 - `POST /api/trades/import/zerodha`
 - `GET /api/trades/imports`
 - `DELETE /api/trades/imports/:importId`
@@ -142,6 +144,8 @@ The hosted service also exposes `GET /health` for smoke checks.
 - Import status (`OPEN/CLOSED`) is inferred by FIFO matching opposite-side fills over time.
 - Import page stores batches and supports one-click rollback (`Delete Import`) that removes all trades from that batch.
 - Live quote endpoint supports both the local Python script and a hosted HTTP quote service.
+- NSE F&O participant OI backfill script: `node scripts/backfill-nse-participant-oi.mjs`
+- The NSE participant dashboard stores all participant rows for each imported trading day and surfaces FII-focused trend analytics on `/market-trend`.
 - New trade symbol autocomplete reads from `data/nse_equity_symbols.csv`. Keep this file updated at a regular interval so newly listed or renamed symbols continue to appear in suggestions.
 - On Vercel, the in-app symbol refresh should not be treated as durable storage because the platform filesystem is ephemeral. For hosted deployments, update and commit `data/nse_equity_symbols.csv` regularly or move symbol storage to a persistent database.
 - App is protected by username/password authentication using a persistent cookie session.

@@ -124,6 +124,7 @@ const Layout = ({ children }) => {
 
               <nav className="hidden items-center gap-2 md:flex">
                 <NavItem href="/dashboard" label="Dashboard" />
+                <NavItem href="/market-trend" label="Market Trend" exact />
                 <NavItem href="/trades" label="Trades" exact />
                 <NavItem href="/trades/new" label="New Trade" exact />
                 <NavItem href="/position-sizing" label="Position Sizing" exact />
@@ -187,6 +188,7 @@ const Layout = ({ children }) => {
           {mobileMenuOpen && (
             <nav className="mt-3 flex flex-col gap-2 border-t border-slate-200/80 pt-3 dark:border-slate-800/80 md:hidden">
               <NavItem href="/dashboard" label="Dashboard" />
+              <NavItem href="/market-trend" label="Market Trend" exact />
               <NavItem href="/trades" label="Trades" exact />
               <NavItem href="/trades/new" label="New Trade" exact />
               <NavItem href="/position-sizing" label="Position Sizing" exact />
