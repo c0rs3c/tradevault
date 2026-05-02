@@ -126,6 +126,68 @@ const getTradeOpenedOn = (trade) => {
   return firstEntryDate || trade?.entryDate || null;
 };
 
+const buildCalendarTradeClusters = (closedTrades) => {
+  const tradePoints = closedTrades
+    .map((trade) => {
+      const openedOn = getTradeOpenedOn(trade);
+      const parsedDate = new Date(openedOn);
+      if (Number.isNaN(parsedDate.getTime())) return null;
+
+      return {
+        id: trade._id,
+        symbol: trade.symbol,
+        entryDate: openedOn,
+        monthKey: parsedDate.toISOString().slice(0, 7),
+        dayOfMonth: parsedDate.getUTCDate(),
+        realizedPnL: round(trade.metrics.realizedPnL, 2),
+        realizedR: round(calcNormalizedRFromStopLoss(trade), 4),
+        isProfitable: trade.metrics.realizedPnL > 0,
+        closedOn: getTradeClosedOn(trade)
+      };
+    })
+    .filter(Boolean);
+
+  const tradesPerDay = tradePoints.reduce((acc, tradePoint) => {
+    const dayKey = `${tradePoint.monthKey}-${String(tradePoint.dayOfMonth).padStart(2, '0')}`;
+    acc[dayKey] = (acc[dayKey] || 0) + 1;
+    return acc;
+  }, {});
+
+  const monthMap = new Map();
+  tradePoints.forEach((tradePoint) => {
+    const monthEntry = monthMap.get(tradePoint.monthKey) || { monthKey: tradePoint.monthKey, days: {} };
+    const dayKey = String(tradePoint.dayOfMonth);
+    if (!monthEntry.days[dayKey]) {
+      monthEntry.days[dayKey] = {
+        dayOfMonth: tradePoint.dayOfMonth,
+        trades: []
+      };
+    }
+
+    monthEntry.days[dayKey].trades.push({
+      ...tradePoint,
+      tradesOnSameDay:
+        tradesPerDay[`${tradePoint.monthKey}-${String(tradePoint.dayOfMonth).padStart(2, '0')}`] || 1
+    });
+    monthMap.set(tradePoint.monthKey, monthEntry);
+  });
+
+  return Array.from(monthMap.values())
+    .sort((a, b) => b.monthKey.localeCompare(a.monthKey))
+    .map((monthEntry) => ({
+      monthKey: monthEntry.monthKey,
+      days: Object.values(monthEntry.days)
+        .sort((a, b) => a.dayOfMonth - b.dayOfMonth)
+        .map((day) => ({
+          ...day,
+          trades: day.trades.sort((a, b) => {
+            if (a.isProfitable !== b.isProfitable) return a.isProfitable ? -1 : 1;
+            return String(a.symbol || '').localeCompare(String(b.symbol || ''));
+          })
+        }))
+    }));
+};
+
 const buildFifoResult = ({ entries, exits, side }) => {
   const lots = entries.map((entry) => ({
     qtyRemaining: toNumber(entry.qty),
@@ -420,6 +482,7 @@ export const buildDashboardAnalytics = (trades) => {
       };
     })
     .sort((a, b) => new Date(b.closedOn) - new Date(a.closedOn));
+  const calendarTradeClusters = buildCalendarTradeClusters(closedTrades);
 
   return {
     summary: {
@@ -439,6 +502,7 @@ export const buildDashboardAnalytics = (trades) => {
     winningTrades,
     losingTrades,
     equityCurve: equityPoints,
-    monthlyPnL
+    monthlyPnL,
+    calendarTradeClusters
   };
 };

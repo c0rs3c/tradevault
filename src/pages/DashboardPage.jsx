@@ -69,6 +69,214 @@ const symbolText = (symbols) => {
   return unique.join(', ');
 };
 
+const monthShortLabel = (year, monthIndex) =>
+  new Intl.DateTimeFormat('en-IN', {
+    month: 'short',
+    timeZone: 'UTC'
+  }).format(new Date(Date.UTC(year, monthIndex, 1)));
+
+const toYear = (value) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.getUTCFullYear();
+};
+
+const getDaysInMonth = (year, monthIndex) => new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+
+const tradeDotSizeClass = (count) => {
+  return 'h-2 w-2';
+};
+
+const CalendarTradeTooltip = ({ trade, className = '' }) => (
+  <span className={`pointer-events-none absolute z-[80] hidden w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-[11px] text-slate-700 shadow-lg group-hover:block group-focus-visible:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 ${className}`}>
+    <span className="block font-semibold text-slate-900 dark:text-slate-100">{trade.symbol || 'Trade'}</span>
+    <span className="mt-1 block">Entry: {formatDisplayDate(trade.entryDate)}</span>
+    <span className="block">Close: {formatDisplayDate(trade.closedOn)}</span>
+    <span className={`block ${pnlTextClass(trade.realizedPnL)}`}>P&amp;L: {money(trade.realizedPnL)}</span>
+    <span className="block">R: {Number(trade.realizedR || 0).toFixed(2)}</span>
+  </span>
+);
+
+const TradeClustersCalendar = ({
+  months,
+  selectedYear,
+  availableYears,
+  onPreviousYear,
+  onNextYear,
+  onTradeClick,
+  chartLoadingTradeId,
+  expanded,
+  onToggleExpanded
+}) => {
+  const monthsByKey = new Map((months || []).map((month) => [month.monthKey, month]));
+  const yearRows = Array.from({ length: 12 }, (_, monthIndex) => {
+    const monthKey = `${selectedYear}-${String(monthIndex + 1).padStart(2, '0')}`;
+    const source = monthsByKey.get(monthKey);
+    const daysByNumber = new Map((source?.days || []).map((day) => [day.dayOfMonth, day]));
+    const daysInMonth = getDaysInMonth(selectedYear, monthIndex);
+
+    return {
+      monthIndex,
+      monthKey,
+      label: monthShortLabel(selectedYear, monthIndex),
+      cells: Array.from({ length: 31 }, (_, dayIndex) => {
+        const dayOfMonth = dayIndex + 1;
+        if (dayOfMonth > daysInMonth) return null;
+        return daysByNumber.get(dayOfMonth) || { dayOfMonth, trades: [] };
+      })
+    };
+  });
+  const hasTrades = yearRows.some((row) => row.cells.some((cell) => cell?.trades?.length));
+  const canGoPrevious = availableYears.indexOf(selectedYear) < availableYears.length - 1;
+  const canGoNext = availableYears.indexOf(selectedYear) > 0;
+  const tooltipPlacementClass = ({ rowIndex, dayIndex }) => {
+    const placeAbove = rowIndex >= 9;
+    const alignRight = dayIndex >= 28;
+    const alignLeft = dayIndex <= 2;
+
+    const verticalClass = placeAbove ? 'bottom-full mb-2' : 'top-full mt-2';
+    if (alignRight) return `${verticalClass} right-0`;
+    if (alignLeft) return `${verticalClass} left-0`;
+    return `${verticalClass} left-1/2 -translate-x-1/2`;
+  };
+
+  if (!availableYears.length) {
+    return (
+      <section className="surface-card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Trade Clusters Calendar</h2>
+          <button type="button" onClick={onToggleExpanded} className="btn-muted px-3 py-1.5 text-sm">
+            {expanded ? 'Hide Calendar' : 'Show Calendar'}
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">No closed trades available yet.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="surface-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Trade Clusters Calendar</h2>
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={onToggleExpanded} className="btn-muted px-3 py-1.5 text-sm">
+            {expanded ? 'Hide Calendar' : 'Show Calendar'}
+          </button>
+        </div>
+      </div>
+
+      {expanded ? (
+        <>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              One row per month and one column per day, with stacked dots per trading day.
+            </p>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-2 py-1 dark:border-slate-700 dark:bg-slate-900">
+              <button
+                type="button"
+                onClick={onNextYear}
+                disabled={!canGoNext}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                aria-label="Show newer year"
+                title="Show newer year"
+              >
+                ↑
+              </button>
+              <span className="min-w-16 text-center text-sm font-semibold">{selectedYear}</span>
+              <button
+                type="button"
+                onClick={onPreviousYear}
+                disabled={!canGoPrevious}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                aria-label="Show older year"
+                title="Show older year"
+              >
+                ↓
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <div className="min-w-[1320px] rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-slate-100/70 shadow-sm dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900/70">
+              <div className="grid grid-cols-[84px_repeat(31,minmax(36px,1fr))] border-b border-slate-200/80 bg-slate-100/80 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-400">
+                <div className="sticky left-0 z-10 border-r border-slate-200/80 bg-slate-100/95 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/95">
+                  Month
+                </div>
+                {Array.from({ length: 31 }, (_, dayIndex) => (
+                  <div
+                    key={dayIndex + 1}
+                    className="border-r border-slate-200/60 px-1 py-3 text-center last:border-r-0 dark:border-slate-800/80"
+                  >
+                    {dayIndex + 1}
+                  </div>
+                ))}
+              </div>
+
+              {yearRows.map((row, rowIndex) => (
+                <div
+                  key={row.monthKey}
+                  className="grid grid-cols-[84px_repeat(31,minmax(36px,1fr))] border-b border-slate-200/70 last:border-b-0 dark:border-slate-800"
+                >
+                  <div className="sticky left-0 z-10 flex items-center border-r border-slate-200/80 bg-white/95 px-3 py-3 text-sm font-semibold dark:border-slate-800 dark:bg-slate-950/95">
+                    {row.label}
+                  </div>
+                  {row.cells.map((day, index) => (
+                    <div
+                      key={`${row.monthKey}-${index + 1}`}
+                      className={`min-h-16 border-r border-slate-200/60 px-1 py-1 last:border-r-0 dark:border-slate-800/80 ${
+                        day
+                          ? 'bg-white/75 dark:bg-slate-950/60'
+                          : 'bg-slate-100/50 dark:bg-slate-900/50'
+                      }`}
+                    >
+                      {day ? (
+                    <div className="flex flex-wrap items-start justify-center gap-1 overflow-visible pt-1">
+                      {day.trades.map((trade) => {
+                            const isLoading = chartLoadingTradeId === String(trade.id);
+                            return (
+                              <button
+                                key={trade.id}
+                                type="button"
+                                onClick={() => onTradeClick(trade)}
+                                disabled={isLoading}
+                                className={`group relative z-0 inline-flex rounded-full transition-transform duration-150 hover:z-[70] hover:scale-110 focus-visible:z-[70] focus-visible:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-wait disabled:opacity-60 ${
+                                  trade.isProfitable
+                                    ? 'bg-emerald-500 ring-emerald-200 dark:bg-emerald-400 dark:ring-emerald-900'
+                                    : 'bg-red-500 ring-red-200 dark:bg-red-400 dark:ring-red-900'
+                                } ${tradeDotSizeClass(trade.tradesOnSameDay)}`}
+                                title={trade.symbol || 'Trade'}
+                                aria-label={`${trade.symbol || 'Trade'} on ${formatDisplayDate(trade.entryDate)}`}
+                              >
+                            <span className="absolute inset-0 rounded-full ring-2 ring-current/10" aria-hidden="true" />
+                            <CalendarTradeTooltip
+                              trade={trade}
+                              className={tooltipPlacementClass({ rowIndex, dayIndex: index + 1 })}
+                            />
+                          </button>
+                        );
+                      })}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {!hasTrades ? (
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">No closed trades found for {selectedYear}.</p>
+          ) : null}
+        </>
+      ) : (
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+          Click `Show Calendar` to expand the full year trade-cluster matrix for {selectedYear}.
+        </p>
+      )}
+    </section>
+  );
+};
+
 const EquityTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload || {};
@@ -107,8 +315,8 @@ const DashboardPage = () => {
   const [hiddenGroups, setHiddenGroups] = useState({});
   const [showAllWinningTrades, setShowAllWinningTrades] = useState(false);
   const [showAllLosingTrades, setShowAllLosingTrades] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('ALL');
-  const [hasInitializedMonth, setHasInitializedMonth] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [showTradeClusterCalendar, setShowTradeClusterCalendar] = useState(false);
   const [chartTrade, setChartTrade] = useState(null);
   const [chartLoadingTradeId, setChartLoadingTradeId] = useState('');
   const [refreshingCmp, setRefreshingCmp] = useState(false);
@@ -141,7 +349,8 @@ const DashboardPage = () => {
     winningTrades: [],
     losingTrades: [],
     equityCurve: [],
-    monthlyPnL: []
+    monthlyPnL: [],
+    calendarTradeClusters: []
   };
   const openTrades = data?.openTrades || [];
   const totalCapital = data?.totalCapital || 0;
@@ -150,38 +359,37 @@ const DashboardPage = () => {
   const losingTrades = analytics.losingTrades || [];
   const equityCurve = analytics.equityCurve || [];
   const monthlyPnL = analytics.monthlyPnL || [];
+  const calendarTradeClusters = analytics.calendarTradeClusters || [];
   const latestMonthly = monthlyPnL.length ? monthlyPnL[monthlyPnL.length - 1] : null;
   const monthlyLabel = latestMonthly?.month ? ` (${monthLabel(latestMonthly.month)})` : '';
-  const tradeMonthOptions = useMemo(() => {
-    const months = new Set();
+  const availableYears = useMemo(() => {
+    const years = new Set();
     [...winningTrades, ...losingTrades].forEach((trade) => {
-      const monthKey = toMonthKey(trade.openedOn);
-      if (monthKey) months.add(monthKey);
+      const year = toYear(trade.openedOn);
+      if (year !== null) years.add(year);
     });
-    return Array.from(months).sort((a, b) => b.localeCompare(a));
+    return Array.from(years).sort((a, b) => b - a);
   }, [winningTrades, losingTrades]);
   useEffect(() => {
-    if (hasInitializedMonth) return;
-    if (!tradeMonthOptions.length) return;
-    setSelectedMonth(tradeMonthOptions[0]);
-    setHasInitializedMonth(true);
-  }, [tradeMonthOptions, hasInitializedMonth]);
+    if (!availableYears.length) return;
+    setSelectedYear((current) => (current !== null && availableYears.includes(current) ? current : availableYears[0]));
+  }, [availableYears]);
   useEffect(() => {
     setExcludedOpenPositionIds(settings?.dashboardExcludedOpenPositions || []);
   }, [settings?.dashboardExcludedOpenPositions]);
   const filteredWinningTrades = useMemo(
     () =>
-      selectedMonth === 'ALL'
+      selectedYear === null
         ? winningTrades
-        : winningTrades.filter((trade) => toMonthKey(trade.openedOn) === selectedMonth),
-    [winningTrades, selectedMonth]
+        : winningTrades.filter((trade) => toYear(trade.openedOn) === selectedYear),
+    [winningTrades, selectedYear]
   );
   const filteredLosingTrades = useMemo(
     () =>
-      selectedMonth === 'ALL'
+      selectedYear === null
         ? losingTrades
-        : losingTrades.filter((trade) => toMonthKey(trade.openedOn) === selectedMonth),
-    [losingTrades, selectedMonth]
+        : losingTrades.filter((trade) => toYear(trade.openedOn) === selectedYear),
+    [losingTrades, selectedYear]
   );
   const visibleWinningTrades = showAllWinningTrades
     ? filteredWinningTrades
@@ -189,6 +397,13 @@ const DashboardPage = () => {
   const visibleLosingTrades = showAllLosingTrades
     ? filteredLosingTrades
     : filteredLosingTrades.slice(0, 5);
+  const visibleCalendarMonths = useMemo(
+    () =>
+      selectedYear === null
+        ? calendarTradeClusters
+        : calendarTradeClusters.filter((month) => Number(month.monthKey.slice(0, 4)) === selectedYear),
+    [calendarTradeClusters, selectedYear]
+  );
   const closedTradeSequence = useMemo(
     () => [...filteredWinningTrades, ...filteredLosingTrades].map((trade) => String(trade.id)),
     [filteredWinningTrades, filteredLosingTrades]
@@ -368,6 +583,15 @@ const DashboardPage = () => {
   const chartGrid = isDark ? '#334155' : '#cbd5e1';
   const chartAxis = isDark ? '#475569' : '#94a3b8';
   const chartTick = isDark ? '#cbd5e1' : '#334155';
+  const selectedYearIndex = availableYears.indexOf(selectedYear);
+  const showPreviousYear = () => {
+    if (selectedYearIndex < 0 || selectedYearIndex >= availableYears.length - 1) return;
+    setSelectedYear(availableYears[selectedYearIndex + 1]);
+  };
+  const showNextYear = () => {
+    if (selectedYearIndex <= 0) return;
+    setSelectedYear(availableYears[selectedYearIndex - 1]);
+  };
 
   return (
     <div className="space-y-6">
@@ -722,24 +946,24 @@ const DashboardPage = () => {
         </section>
       </div>
 
+      <TradeClustersCalendar
+        months={visibleCalendarMonths}
+        selectedYear={selectedYear || availableYears[0] || new Date().getUTCFullYear()}
+        availableYears={availableYears}
+        onPreviousYear={showPreviousYear}
+        onNextYear={showNextYear}
+        onTradeClick={openChartForTrade}
+        chartLoadingTradeId={chartLoadingTradeId}
+        expanded={showTradeClusterCalendar}
+        onToggleExpanded={() => setShowTradeClusterCalendar((prev) => !prev)}
+      />
+
       <section className="surface-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Closed Trades</h2>
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-slate-600 dark:text-slate-300">Opened Month</span>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
-            >
-              <option value="ALL">All Months</option>
-              {tradeMonthOptions.map((month) => (
-                <option key={month} value={month}>
-                  {monthLabel(month)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Opened Year: <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedYear || '-'}</span>
+          </p>
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">

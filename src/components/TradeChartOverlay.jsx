@@ -997,7 +997,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
 
   return (
     <div
-      className="fixed inset-0 z-[90] bg-slate-950/70 p-3 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[200] bg-slate-950/70 p-3 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
