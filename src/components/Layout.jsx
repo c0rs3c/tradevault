@@ -27,10 +27,22 @@ const Layout = ({ children }) => {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sessionUsername, setSessionUsername] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  const themeToggleLabel = mounted
+    ? theme === 'dark'
+      ? 'Switch to light mode'
+      : 'Switch to dark mode'
+    : 'Toggle theme';
+  const mobileThemeToggleLabel = mounted ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : 'Toggle Theme';
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -143,8 +155,8 @@ const Layout = ({ children }) => {
                   type="button"
                   onClick={handleThemeToggle}
                   className="btn-muted shrink-0 whitespace-nowrap px-2.5 py-1.5 text-xs md:px-3 md:py-2 md:text-sm"
-                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  aria-label={themeToggleLabel}
+                  title={themeToggleLabel}
                 >
                   {theme === 'dark' ? (
                     <svg
@@ -205,10 +217,10 @@ const Layout = ({ children }) => {
                 type="button"
                 onClick={handleThemeToggle}
                 className="btn-muted w-full shrink-0 whitespace-nowrap px-2.5 py-1.5 text-left text-xs"
-                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                aria-label={themeToggleLabel}
+                title={themeToggleLabel}
               >
-                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                {mobileThemeToggleLabel}
               </button>
               <button
                 type="button"

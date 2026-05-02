@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/server/api';
 import { requireApiUsername } from '@/lib/auth/apiAuth';
-import { importTradingViewWatchlist, listWatchlists } from '@/lib/server/controllers/news';
+import {
+  importTextWatchlist,
+  importTradingViewWatchlist,
+  listWatchlists
+} from '@/lib/server/controllers/news';
 
 export async function GET() {
   try {
@@ -17,10 +21,19 @@ export async function POST(request) {
   try {
     const ownerUsername = await requireApiUsername();
     const body = await request.json().catch(() => ({}));
-    const watchlist = await importTradingViewWatchlist({
-      ownerUsername,
-      url: body?.url
-    });
+    let watchlist;
+    if (body?.text) {
+      watchlist = await importTextWatchlist({
+        ownerUsername,
+        title: body?.title || 'Text Watchlist',
+        text: body?.text
+      });
+    } else {
+      watchlist = await importTradingViewWatchlist({
+        ownerUsername,
+        url: body?.url
+      });
+    }
     return NextResponse.json(watchlist);
   } catch (error) {
     return handleApiError(error);

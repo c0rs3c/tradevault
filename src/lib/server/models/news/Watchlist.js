@@ -17,9 +17,9 @@ const WatchlistItemSchema = new mongoose.Schema(
 const WatchlistSchema = new mongoose.Schema(
   {
     ownerUsername: { type: String, required: true, index: true },
-    source: { type: String, enum: ['tradingview'], default: 'tradingview', required: true },
-    sourceWatchlistId: { type: Number, required: true },
-    sourceUrl: { type: String, required: true, trim: true },
+    source: { type: String, enum: ['tradingview', 'text'], default: 'tradingview', required: true },
+    sourceWatchlistId: { type: String, required: true },
+    sourceUrl: { type: String, default: '', trim: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, default: '', trim: true },
     authorUsername: { type: String, default: '', trim: true },
@@ -29,7 +29,11 @@ const WatchlistSchema = new mongoose.Schema(
     lastImportedAt: { type: Date, default: null },
     lastSyncedAt: { type: Date, default: null },
     syncStatus: { type: String, enum: ['idle', 'syncing', 'success', 'error'], default: 'idle' },
-    syncError: { type: String, default: '' }
+    syncError: { type: String, default: '' },
+    syncProgressCurrent: { type: Number, default: 0 },
+    syncProgressTotal: { type: Number, default: 0 },
+    syncCurrentTicker: { type: String, default: '', trim: true },
+    syncCurrentCompanyName: { type: String, default: '', trim: true }
   },
   { timestamps: true }
 );

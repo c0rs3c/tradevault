@@ -3,6 +3,18 @@
 @tailwind utilities;
 
 @layer base {
+  @keyframes news-sync-indeterminate {
+    0% {
+      transform: translateX(-120%);
+    }
+    50% {
+      transform: translateX(110%);
+    }
+    100% {
+      transform: translateX(260%);
+    }
+  }
+
   :root {
     color-scheme: light;
     --brand-primary: #245b4a;

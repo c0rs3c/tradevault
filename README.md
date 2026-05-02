@@ -141,10 +141,11 @@ The hosted service also exposes `GET /health` for smoke checks.
 
 ## Watchlist News Feed
 - News watchlists and articles are stored in a dedicated MongoDB cluster via `NEWS_MONGO_URI`.
-- Import public TradingView watchlists from `/news`, then sync Google News for the last 7 days per ticker/company.
+- Import public TradingView watchlists or upload `.txt` watchlist files from `/news`, then sync Google News for the last 7 days per ticker/company.
 - The manual UI supports `Sync Now` for one watchlist and `Sync All` for the current signed-in user.
 - GitHub Actions can trigger scheduled sync by calling `POST /api/news/cron-sync` with the `x-news-sync-secret` header set to `NEWS_SYNC_CRON_SECRET`.
 - Store the deployed route in the GitHub Actions secret `NEWS_SYNC_URL`, for example `https://your-app.vercel.app/api/news/cron-sync`.
+- To wipe all stored news data, run `npm run reset:news`. This deletes every document from the `watchlists`, `watchlistnewsmatches`, and `newsarticles` collections in `NEWS_MONGO_URI`.
 
 ## Trade Screenshot Storage
 - Trade and pyramid screenshots are uploaded to Cloudflare R2 through `POST /api/uploads/trade-screenshot`.

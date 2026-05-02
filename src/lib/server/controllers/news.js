@@ -18,6 +18,7 @@ const NEWS_WINDOW_DAYS = 7;
 const TRADINGVIEW_HOST = 'www.tradingview.com';
 const COMPANY_PROFILES_PATH = path.join(process.cwd(), 'data', 'company_profiles.json');
 const BLOCKED_SOURCE_DOMAINS = new Set(['fathomjournal.org', 'meyka.com']);
+const AMBIGUOUS_TICKERS = new Set(['CUPID']);
 
 const companyProfilesCache = {
   loaded: false,
@@ -54,6 +55,8 @@ const normalizeText = (value) =>
     .toLowerCase();
 
 const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizeDomain = (value) => String(value || '').trim().toLowerCase().replace(/^www\./, '');
 
 const getNewsModels = async () => {
   const connection = await connectNewsDB();
@@ -107,6 +110,14 @@ const normalizeTradingViewUrl = (value) => {
   return `https://${TRADINGVIEW_HOST}/watchlists/${match[1]}/`;
 };
 
+const normalizeTextWatchlistTitle = (value) => {
+  const title = String(value || '').trim().replace(/\.[^.]+$/, '');
+  if (!title) {
+    throw createError('Text watchlist title is required', 400);
+  }
+  return title.slice(0, 120);
+};
+
 const extractWatchlistPayload = (html) => {
   const match = String(html || '').match(
     /<script type="application\/prs\.init-data\+json">([\s\S]*?)<\/script>/
@@ -129,7 +140,7 @@ const extractWatchlistPayload = (html) => {
   }
 
   return {
-    sourceWatchlistId: Number(list.id),
+    sourceWatchlistId: String(list.id),
     title: String(list.name || '').trim() || `Watchlist ${list.id}`,
     description: String(list.description || '').trim(),
     color: String(list.color || '').trim(),
@@ -224,7 +235,51 @@ const fetchTradingViewWatchlist = async (url) => {
   return extractWatchlistPayload(html);
 };
 
+const parseTextWatchlist = (text) => {
+  const rawText = String(text || '')
+    .replace(/\u2064/g, '')
+    .trim();
+
+  if (!rawText) {
+    throw createError('Text watchlist file is empty', 400);
+  }
+
+  const tokens = rawText
+    .split(/[\r\n,]+/)
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  if (!tokens.length) {
+    throw createError('Text watchlist file is empty', 400);
+  }
+
+  return tokens;
+};
+
 const getTickerItems = (watchlist) => (watchlist?.items || []).filter((item) => item.type === 'ticker');
+
+const buildSyncProgress = (watchlist) => ({
+  current: Number(watchlist?.syncProgressCurrent || 0),
+  total: Number(watchlist?.syncProgressTotal || 0),
+  currentTicker: String(watchlist?.syncCurrentTicker || '').trim(),
+  currentCompanyName: String(watchlist?.syncCurrentCompanyName || '').trim()
+});
+
+const buildCompanyNameVariants = (companyName) => {
+  const raw = String(companyName || '').trim();
+  if (!raw) return [];
+
+  const variants = new Set([normalizeText(raw)]);
+  const stripped = raw
+    .replace(/\b(limited|ltd)\b\.?/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (stripped) {
+    variants.add(normalizeText(stripped));
+  }
+
+  return [...variants].filter(Boolean);
+};
 
 const buildGoogleNewsQuery = ({ symbol, companyName }) => {
   const symbolPart = String(symbol || '').trim().toUpperCase();
@@ -274,31 +329,34 @@ const extractGoogleNewsItems = (xml, ticker) => {
 
     let sourceDomain = '';
     try {
-      sourceDomain = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : '';
+      sourceDomain = sourceUrl ? normalizeDomain(new URL(sourceUrl).hostname) : '';
     } catch {
       sourceDomain = '';
     }
-    if (!sourceDomain || /\s/.test(sourceDomain) || BLOCKED_SOURCE_DOMAINS.has(sourceDomain)) {
+    if (sourceDomain && (/\s/.test(sourceDomain) || BLOCKED_SOURCE_DOMAINS.has(sourceDomain))) {
       continue;
     }
 
     const normalizedTitle = normalizeText(title);
     if (!normalizedTitle) continue;
 
-    const itemKey = guid || `${normalizedTitle}|${pubDate}|${sourceDomain}`;
+    const stablePublisherKey = [sourceUrl, normalizedTitle].filter(Boolean).join('|');
+    const itemKey = guid || stablePublisherKey || `${normalizedTitle}|${sourceDomain}`;
     if (seenKeys.has(itemKey)) continue;
     seenKeys.add(itemKey);
 
     const descriptionText = stripTags(descriptionHtml);
     const normalizedBody = normalizeText(`${title} ${descriptionText}`);
+    const companyNameVariants = buildCompanyNameVariants(ticker.companyName);
     const matchedSymbol = new RegExp(`\\b${escapeRegex(ticker.symbol)}\\b`, 'i').test(
       `${title} ${descriptionText}`
     );
-    const normalizedCompanyName = normalizeText(ticker.companyName);
-    const matchedCompany =
-      normalizedCompanyName && normalizedCompanyName !== normalizeText(ticker.symbol)
-        ? normalizedBody.includes(normalizedCompanyName)
-        : false;
+    const matchedCompany = companyNameVariants.some(
+      (variant) => variant && variant !== normalizeText(ticker.symbol) && normalizedBody.includes(variant)
+    );
+    const requiresCompanyMatch = AMBIGUOUS_TICKERS.has(String(ticker.symbol || '').trim().toUpperCase());
+    if (!matchedSymbol && !matchedCompany) continue;
+    if (requiresCompanyMatch && !matchedCompany) continue;
 
     items.push({
       guid,
@@ -341,12 +399,80 @@ export const fetchGoogleNewsRssForTicker = async ({ symbol, companyName }) => {
   return response.text();
 };
 
+export const searchTickerNews = async ({ symbol }) => {
+  const normalizedSymbol = String(symbol || '').trim().toUpperCase();
+  if (!normalizedSymbol) {
+    throw createError('symbol is required', 400);
+  }
+
+  const companyName = await resolveCompanyName(normalizedSymbol);
+  const ticker = {
+    symbol: normalizedSymbol,
+    companyName,
+    canonicalTicker: normalizedSymbol,
+    exchange: '',
+    sectionTitle: '',
+    normalizedCompanyName: normalizeText(companyName)
+  };
+
+  const xml = await fetchGoogleNewsRssForTicker({
+    symbol: normalizedSymbol,
+    companyName
+  });
+  const items = extractGoogleNewsItems(xml, ticker).map((article) => ({
+    id: buildArticleKey(article),
+    title: article.title,
+    googleNewsUrl: article.googleNewsUrl,
+    publisherUrl: article.publisherUrl,
+    sourceName: article.sourceName,
+    sourceDomain: article.sourceDomain,
+    publishedAt: article.publishedAt,
+    descriptionText: article.descriptionText,
+    matchedBy: article.matchedBy
+  }));
+
+  const dedupedItems = dedupeArticlesForDisplay(items);
+
+  return {
+    symbol: normalizedSymbol,
+    companyName,
+    articleCount: dedupedItems.length,
+    articles: dedupedItems
+  };
+};
+
 const buildArticleKey = (item) =>
   item.guid ||
   crypto
     .createHash('sha256')
-    .update(`${item.googleNewsUrl}|${item.normalizedTitle}|${item.publishedAt.toISOString()}`)
+    .update(
+      [
+        item.publisherUrl,
+        item.normalizedTitle,
+        item.sourceDomain,
+        item.googleNewsUrl
+      ]
+        .filter(Boolean)
+        .join('|')
+    )
     .digest('hex');
+
+const dedupeArticlesForDisplay = (articles) => {
+  const seenKeys = new Set();
+  return (articles || []).filter((article) => {
+    const primaryKey = [
+      normalizeDomain(article?.publisherUrl || article?.sourceDomain || ''),
+      normalizeText(article?.title || '')
+    ]
+      .filter(Boolean)
+      .join('|');
+    const fallbackKey = String(article?.id || article?.googleNewsUrl || '');
+    const key = primaryKey || fallbackKey;
+    if (!key || seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
+};
 
 export const importTradingViewWatchlist = async ({ ownerUsername, url }) => {
   const normalizedUrl = normalizeTradingViewUrl(url);
@@ -359,19 +485,61 @@ export const importTradingViewWatchlist = async ({ ownerUsername, url }) => {
     {
       ownerUsername,
       source: 'tradingview',
-      sourceWatchlistId: payload.sourceWatchlistId
+      sourceWatchlistId: String(payload.sourceWatchlistId)
     },
     {
       $set: {
         ownerUsername,
         source: 'tradingview',
-        sourceWatchlistId: payload.sourceWatchlistId,
+        sourceWatchlistId: String(payload.sourceWatchlistId),
         sourceUrl: normalizedUrl,
         title: payload.title,
         description: payload.description,
         authorUsername: payload.authorUsername,
         color: payload.color,
         rawSymbols: payload.rawSymbols,
+        items,
+        lastImportedAt: now
+      },
+      $setOnInsert: {
+        syncStatus: 'idle',
+        syncError: ''
+      }
+    },
+    { new: true, upsert: true }
+  ).lean();
+
+  return formatWatchlistListItem(watchlist, 0);
+};
+
+export const importTextWatchlist = async ({ ownerUsername, title, text }) => {
+  const normalizedTitle = normalizeTextWatchlistTitle(title);
+  const rawSymbols = parseTextWatchlist(text);
+  const items = await buildWatchlistItems(rawSymbols);
+  const { Watchlist } = await getNewsModels();
+  const now = new Date();
+  const sourceWatchlistId = crypto
+    .createHash('sha256')
+    .update(`${ownerUsername}|${normalizedTitle.toLowerCase()}`)
+    .digest('hex');
+
+  const watchlist = await Watchlist.findOneAndUpdate(
+    {
+      ownerUsername,
+      source: 'text',
+      sourceWatchlistId
+    },
+    {
+      $set: {
+        ownerUsername,
+        source: 'text',
+        sourceWatchlistId,
+        sourceUrl: '',
+        title: normalizedTitle,
+        description: '',
+        authorUsername: '',
+        color: '',
+        rawSymbols,
         items,
         lastImportedAt: now
       },
@@ -396,7 +564,8 @@ const formatWatchlistListItem = (watchlist, articleCount) => ({
   lastImportedAt: watchlist.lastImportedAt,
   lastSyncedAt: watchlist.lastSyncedAt,
   syncStatus: watchlist.syncStatus,
-  syncError: watchlist.syncError
+  syncError: watchlist.syncError,
+  syncProgress: buildSyncProgress(watchlist)
 });
 
 export const listWatchlists = async ({ ownerUsername }) => {
@@ -476,7 +645,9 @@ const buildGroupedNews = async ({ ownerUsername, watchlist }) => {
     .filter(Boolean)
     .map((group) => ({
       ...group,
-      articles: group.articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+      articles: dedupeArticlesForDisplay(
+        group.articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+      )
     }));
 
   return {
@@ -491,6 +662,7 @@ const buildGroupedNews = async ({ ownerUsername, watchlist }) => {
     lastSyncedAt: watchlist.lastSyncedAt,
     syncStatus: watchlist.syncStatus,
     syncError: watchlist.syncError,
+    syncProgress: buildSyncProgress(watchlist),
     tickerCount: tickerItems.length,
     tickerGroups
   };
@@ -499,6 +671,23 @@ const buildGroupedNews = async ({ ownerUsername, watchlist }) => {
 export const getWatchlistDetails = async ({ ownerUsername, watchlistId }) => {
   const watchlist = await getOwnedWatchlist({ ownerUsername, watchlistId });
   return buildGroupedNews({ ownerUsername, watchlist });
+};
+
+export const deleteWatchlist = async ({ ownerUsername, watchlistId }) => {
+  const { Watchlist, WatchlistNewsMatch } = await getNewsModels();
+  const watchlist = await getOwnedWatchlist({ ownerUsername, watchlistId });
+
+  const deleteMatchesResult = await WatchlistNewsMatch.deleteMany({
+    ownerUsername,
+    watchlistId: watchlist._id
+  });
+  await Watchlist.deleteOne({ _id: watchlist._id, ownerUsername });
+
+  return {
+    watchlistId: String(watchlist._id),
+    title: watchlist.title,
+    deletedMatches: deleteMatchesResult.deletedCount || 0
+  };
 };
 
 export const upsertArticlesAndMatches = async ({ ownerUsername, watchlist, ticker, feedItems }) => {
@@ -599,7 +788,16 @@ export const syncWatchlistNews = async ({ ownerUsername, watchlistId }) => {
 
   await Watchlist.updateOne(
     { _id: watchlist._id },
-    { $set: { syncStatus: 'syncing', syncError: '' } }
+    {
+      $set: {
+        syncStatus: 'syncing',
+        syncError: '',
+        syncProgressCurrent: 0,
+        syncProgressTotal: tickers.length,
+        syncCurrentTicker: '',
+        syncCurrentCompanyName: ''
+      }
+    }
   );
 
   let tickerCount = 0;
@@ -610,17 +808,35 @@ export const syncWatchlistNews = async ({ ownerUsername, watchlistId }) => {
 
   try {
     for (const ticker of tickers) {
-      tickerCount += 1;
+      const resolvedCompanyName = String(ticker.companyName || '').trim() || (await resolveCompanyName(ticker.symbol));
+      const tickerWithCompanyName = {
+        ...ticker,
+        companyName: resolvedCompanyName,
+        normalizedCompanyName: normalizeText(resolvedCompanyName)
+      };
+      const nextTickerCount = tickerCount + 1;
+      await Watchlist.updateOne(
+        { _id: watchlist._id },
+        {
+          $set: {
+            syncProgressCurrent: nextTickerCount,
+            syncProgressTotal: tickers.length,
+            syncCurrentTicker: ticker.symbol,
+            syncCurrentCompanyName: resolvedCompanyName
+          }
+        }
+      );
+      tickerCount = nextTickerCount;
       try {
         const xml = await fetchGoogleNewsRssForTicker({
           symbol: ticker.symbol,
-          companyName: ticker.companyName
+          companyName: resolvedCompanyName
         });
-        const feedItems = extractGoogleNewsItems(xml, ticker);
+        const feedItems = extractGoogleNewsItems(xml, tickerWithCompanyName);
         const result = await upsertArticlesAndMatches({
           ownerUsername,
           watchlist,
-          ticker,
+          ticker: tickerWithCompanyName,
           feedItems
         });
         importedArticles += result.insertedArticles;
@@ -637,7 +853,11 @@ export const syncWatchlistNews = async ({ ownerUsername, watchlistId }) => {
         $set: {
           lastSyncedAt: new Date(),
           syncStatus: errors.length ? 'error' : 'success',
-          syncError: errors.join(' | ')
+          syncError: errors.join(' | '),
+          syncProgressCurrent: tickers.length,
+          syncProgressTotal: tickers.length,
+          syncCurrentTicker: '',
+          syncCurrentCompanyName: ''
         }
       }
     );
@@ -647,7 +867,9 @@ export const syncWatchlistNews = async ({ ownerUsername, watchlistId }) => {
       {
         $set: {
           syncStatus: 'error',
-          syncError: error.message
+          syncError: error.message,
+          syncCurrentTicker: '',
+          syncCurrentCompanyName: ''
         }
       }
     );
