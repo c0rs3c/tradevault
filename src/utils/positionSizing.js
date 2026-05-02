@@ -9,7 +9,9 @@ export const getDefaultPositionSizingState = (settings) => {
     entryPrice: '',
     stopLoss: '',
     sizingMode: 'RISK_PERCENT',
-    sizingValue: '0.3'
+    sizingValue: '0.3',
+    brokeragePercent: '0.2',
+    includeBrokerage: true
   };
 };
 
@@ -24,13 +26,17 @@ export const calculatePositionSizing = ({
   stopLoss,
   sizingMode,
   sizingValue,
+  brokeragePercent,
+  includeBrokerage,
   totalCapital
 }) => {
   const parsedEntryPrice = toNumber(entryPrice);
   const parsedStopLoss = toNumber(stopLoss);
   const parsedSizingValue = toNumber(sizingValue);
+  const parsedBrokeragePercent = toNumber(brokeragePercent);
   const parsedTotalCapital = toNumber(totalCapital);
   const hasCapital = Number.isFinite(parsedTotalCapital) && parsedTotalCapital > 0;
+  const brokerageIncluded = includeBrokerage !== false;
 
   const errors = {};
 
@@ -42,6 +48,9 @@ export const calculatePositionSizing = ({
   }
   if (!(parsedSizingValue > 0)) {
     errors.sizingValue = 'Enter a sizing value greater than 0.';
+  }
+  if (brokeragePercent !== '' && !(parsedBrokeragePercent >= 0)) {
+    errors.brokeragePercent = 'Enter a valid brokerage percentage of 0 or more.';
   }
   if (
     (sizingMode === 'RISK_PERCENT' || sizingMode === 'ALLOCATION_PERCENT') &&
@@ -65,12 +74,17 @@ export const calculatePositionSizing = ({
     stopLoss: parsedStopLoss,
     sizingMode,
     sizingValue: parsedSizingValue,
+    brokeragePercent: parsedBrokeragePercent,
+    includeBrokerage: brokerageIncluded,
     totalCapital: parsedTotalCapital,
     perUnitRisk,
     stopLossDistancePercent,
     recommendedQty: NaN,
     positionValue: NaN,
     capitalAtRisk: NaN,
+    brokerageAmount: NaN,
+    totalRiskWithBrokerage: NaN,
+    totalCostWithBrokerage: NaN,
     riskPercentOfCapital: NaN,
     allocationPercentOfCapital: NaN,
     riskAmount: NaN,
@@ -83,27 +97,32 @@ export const calculatePositionSizing = ({
     return result;
   }
 
+  const brokerageRate = brokerageIncluded ? parsedBrokeragePercent / 100 : 0;
+
   if (sizingMode === 'RISK_PERCENT') {
     result.riskAmount = (parsedTotalCapital * parsedSizingValue) / 100;
-    result.recommendedQty = result.riskAmount / perUnitRisk;
+    result.recommendedQty = result.riskAmount / (perUnitRisk + parsedEntryPrice * brokerageRate);
   } else if (sizingMode === 'ALLOCATION_PERCENT') {
     result.allocationAmount = (parsedTotalCapital * parsedSizingValue) / 100;
-    result.recommendedQty = result.allocationAmount / parsedEntryPrice;
+    result.recommendedQty = result.allocationAmount / (parsedEntryPrice * (1 + brokerageRate));
   }
-
-  result.positionValue = result.recommendedQty * parsedEntryPrice;
-  result.capitalAtRisk = result.recommendedQty * perUnitRisk;
-  result.riskAmount = Number.isFinite(result.riskAmount) ? result.riskAmount : result.capitalAtRisk;
-  result.allocationAmount = Number.isFinite(result.allocationAmount)
-    ? result.allocationAmount
-    : result.positionValue;
-  result.riskPercentOfCapital = hasCapital ? (result.capitalAtRisk / parsedTotalCapital) * 100 : NaN;
-  result.allocationPercentOfCapital = hasCapital ? (result.positionValue / parsedTotalCapital) * 100 : NaN;
 
   if (!(result.recommendedQty > 0)) {
     result.errors.recommendedQty = 'Could not compute a valid quantity from the current inputs.';
     return result;
   }
+
+  result.positionValue = result.recommendedQty * parsedEntryPrice;
+  result.capitalAtRisk = result.recommendedQty * perUnitRisk;
+  result.brokerageAmount = result.positionValue * brokerageRate;
+  result.totalRiskWithBrokerage = result.capitalAtRisk + result.brokerageAmount;
+  result.totalCostWithBrokerage = result.positionValue + result.brokerageAmount;
+  result.riskAmount = Number.isFinite(result.riskAmount) ? result.riskAmount : result.totalRiskWithBrokerage;
+  result.allocationAmount = Number.isFinite(result.allocationAmount)
+    ? result.allocationAmount
+    : result.totalCostWithBrokerage;
+  result.riskPercentOfCapital = hasCapital ? (result.totalRiskWithBrokerage / parsedTotalCapital) * 100 : NaN;
+  result.allocationPercentOfCapital = hasCapital ? (result.totalCostWithBrokerage / parsedTotalCapital) * 100 : NaN;
 
   const warningRiskPercent = hasCapital
     ? Number.isFinite(toNumber(result.riskPercentOfCapital)) &&
@@ -119,7 +138,7 @@ export const calculatePositionSizing = ({
   if (
     sizingMode === 'RISK_PERCENT' &&
     hasCapital &&
-    result.positionValue > parsedTotalCapital
+    result.totalCostWithBrokerage > parsedTotalCapital
   ) {
     result.warnings.push('This risk-based size requires allocation above your total capital.');
   }

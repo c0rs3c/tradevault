@@ -11,6 +11,7 @@ const CAR_PCTS = Array.from({ length: 10 }, (_, index) => Number((0.1 + index * 
 const ALLOCATION_PCTS = Array.from({ length: 36 }, (_, index) => 5 + index);
 const DEFAULT_CAR_PCT = 0.3;
 const DEFAULT_ALLOCATION_PCT = 10;
+const DEFAULT_BROKERAGE_PCT = '0.2';
 
 const limitPriceInput = (value) => {
   const next = String(value ?? '');
@@ -78,6 +79,8 @@ const PositionSizingPage = () => {
         stopLoss: form.stopLoss,
         sizingMode: form.sizingMode,
         sizingValue: form.sizingValue,
+        brokeragePercent: form.brokeragePercent,
+        includeBrokerage: form.includeBrokerage,
         totalCapital
       }),
     [form, totalCapital]
@@ -142,6 +145,40 @@ const PositionSizingPage = () => {
               <p className="text-xs text-slate-600 dark:text-slate-400">
                 Default Risk %: {settings?.defaultRiskPercent ? percentText(settings.defaultRiskPercent) : 'Not set'}
               </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="min-w-0 flex-1 space-y-1">
+                  <span className="text-sm font-medium">Brokerage %</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="field-input"
+                    value={form.brokeragePercent}
+                    onChange={(e) => setField('brokeragePercent', limitPriceInput(e.target.value))}
+                    placeholder={DEFAULT_BROKERAGE_PCT}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setField('includeBrokerage', !form.includeBrokerage)}
+                  className={
+                    form.includeBrokerage
+                      ? 'btn-brand-soft px-3 py-2 text-sm font-medium'
+                      : 'btn-muted px-3 py-2 text-sm'
+                  }
+                >
+                  {form.includeBrokerage ? 'Brokerage Included' : 'Brokerage Excluded'}
+                </button>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Brokerage is treated as a total round-trip percentage of position value.
+              </p>
+              {result.errors.brokeragePercent ? (
+                <p className="text-sm text-red-600">{result.errors.brokeragePercent}</p>
+              ) : null}
             </div>
 
             <label className="space-y-1">
@@ -320,6 +357,12 @@ const PositionSizingPage = () => {
                 {Number.isFinite(result.capitalAtRisk) ? money(result.capitalAtRisk) : '—'}
               </p>
             </div>
+            <div className={outputCardClass(form.includeBrokerage)}>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Brokerage</p>
+              <p className={metricValueClass}>
+                {Number.isFinite(result.brokerageAmount) ? money(result.brokerageAmount) : '—'}
+              </p>
+            </div>
             <div className={outputCardClass(highlightRiskPercent)}>
               <p className="text-xs text-slate-600 dark:text-slate-400">Risk % of Capital</p>
               <p className={metricValueClass}>{percentText(result.riskPercentOfCapital)}</p>
@@ -355,6 +398,30 @@ const PositionSizingPage = () => {
                 <dt className="text-slate-600 dark:text-slate-400">Allocation Amount</dt>
                 <dd className="font-medium text-slate-900 dark:text-slate-100">
                   {Number.isFinite(result.allocationAmount) ? money(result.allocationAmount) : '—'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-600 dark:text-slate-400">Brokerage Included</dt>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  {form.includeBrokerage ? 'Yes' : 'No'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-600 dark:text-slate-400">Brokerage %</dt>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  {percentText(result.brokeragePercent)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-600 dark:text-slate-400">Brokerage Amount</dt>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  {Number.isFinite(result.brokerageAmount) ? money(result.brokerageAmount) : '—'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-slate-600 dark:text-slate-400">Total Cost w/ Brokerage</dt>
+                <dd className="font-medium text-slate-900 dark:text-slate-100">
+                  {Number.isFinite(result.totalCostWithBrokerage) ? money(result.totalCostWithBrokerage) : '—'}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
