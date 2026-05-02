@@ -656,7 +656,7 @@ const TradesPage = () => {
               <th className="px-3 py-2">Open Qty</th>
               <th className="px-3 py-2">Capital Allocated (Rs / %)</th>
               <th className="px-3 py-2">Current Price</th>
-              <th className="px-3 py-2">Risk (Rs / %)</th>
+              <th className="px-3 py-2">Capital at Risk</th>
               <th className="px-3 py-2">Realized P&L</th>
               <th className="px-3 py-2">Unrealized P&L</th>
               <th className="px-3 py-2">R Multiple</th>
@@ -1032,7 +1032,7 @@ const TradesPage = () => {
                             <p>Price: {trade.entryPrice}</p>
                             <p>Qty: {trade.entryQty}</p>
                             <p>
-                              Stop Loss: {trade.stopLoss} ({stopLossPercent(trade.entryPrice, trade.stopLoss).toFixed(2)}%)
+                              Stop Loss: {Number(trade.stopLoss || 0).toFixed(2)} ({stopLossPercent(trade.entryPrice, trade.stopLoss).toFixed(2)}%)
                             </p>
                             {trade.strategy && <p>Strategy: {trade.strategy}</p>}
                             {trade.notes && <p>Notes: {trade.notes}</p>}
