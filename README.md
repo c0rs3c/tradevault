@@ -44,6 +44,12 @@ trade-journal/
 
 ## API Endpoints
 - `GET /api/health`
+- `GET /api/news/watchlists`
+- `POST /api/news/watchlists`
+- `GET /api/news/watchlists/:id`
+- `POST /api/news/watchlists/:id/sync`
+- `POST /api/news/sync`
+- `POST /api/news/cron-sync`
 - `GET /api/settings`
 - `PUT /api/settings`
 - `GET /api/trades`
@@ -70,6 +76,7 @@ Copy `.env.example` to `.env`:
 
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/trade-journal
+NEWS_MONGO_URI=mongodb://127.0.0.1:27017/trade-journal-news
 QUOTE_PROVIDER=local_python
 QUOTE_SERVICE_URL=
 QUOTE_SERVICE_TOKEN=
@@ -77,6 +84,7 @@ MARKET_DATA_PYTHON=python3
 AUTH_USERNAME=your_username
 AUTH_PASSWORD=your_password
 AUTH_SECRET=your_long_random_secret
+NEWS_SYNC_CRON_SECRET=your_news_sync_secret
 AUTH_COOKIE_SECURE=0
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
@@ -130,6 +138,13 @@ QUOTE_SERVICE_TOKEN=<same-shared-secret>
 ```
 
 The hosted service also exposes `GET /health` for smoke checks.
+
+## Watchlist News Feed
+- News watchlists and articles are stored in a dedicated MongoDB cluster via `NEWS_MONGO_URI`.
+- Import public TradingView watchlists from `/news`, then sync Google News for the last 7 days per ticker/company.
+- The manual UI supports `Sync Now` for one watchlist and `Sync All` for the current signed-in user.
+- GitHub Actions can trigger scheduled sync by calling `POST /api/news/cron-sync` with the `x-news-sync-secret` header set to `NEWS_SYNC_CRON_SECRET`.
+- Store the deployed route in the GitHub Actions secret `NEWS_SYNC_URL`, for example `https://your-app.vercel.app/api/news/cron-sync`.
 
 ## Trade Screenshot Storage
 - Trade and pyramid screenshots are uploaded to Cloudflare R2 through `POST /api/uploads/trade-screenshot`.
