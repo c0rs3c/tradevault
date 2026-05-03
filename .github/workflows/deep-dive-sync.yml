@@ -1,0 +1,42 @@
+name: Deep Dive Sync
+
+on:
+  schedule:
+    - cron: '30 13 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Ingestion mode
+        required: true
+        default: daily_sync
+        type: choice
+        options:
+          - daily_sync
+          - backfill_prices
+          - sync_prices
+          - sync_profiles
+
+jobs:
+  deep-dive-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Deep Dive ingestion
+        env:
+          DEEP_DIVE_MONGO_URI: ${{ secrets.DEEP_DIVE_MONGO_URI }}
+          DEEP_DIVE_DB_NAME: ${{ secrets.DEEP_DIVE_DB_NAME }}
+          DEEP_DIVE_HISTORY_YEARS: ${{ vars.DEEP_DIVE_HISTORY_YEARS || '5' }}
+          DEEP_DIVE_SYNC_OVERLAP_DAYS: ${{ vars.DEEP_DIVE_SYNC_OVERLAP_DAYS || '10' }}
+          DEEP_DIVE_PROFILE_REFRESH_DAYS: ${{ vars.DEEP_DIVE_PROFILE_REFRESH_DAYS || '30' }}
+          DEEP_DIVE_BATCH_SIZE: ${{ vars.DEEP_DIVE_BATCH_SIZE || '25' }}
+        run: python scripts/deep_dive_ingest.py --mode "${{ inputs.mode || 'daily_sync' }}"

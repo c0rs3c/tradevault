@@ -57,6 +57,14 @@ trade-journal/
 - `GET /api/trades/dashboard`
 - `GET /api/market-trend`
 - `POST /api/market-trend/sync`
+- `GET /api/deep-dive/lists`
+- `POST /api/deep-dive/lists`
+- `GET /api/deep-dive/lists/:id`
+- `PUT /api/deep-dive/lists/:id`
+- `DELETE /api/deep-dive/lists/:id`
+- `POST /api/deep-dive/rs`
+- `POST /api/deep-dive/analysis/sector`
+- `GET /api/deep-dive/status`
 - `POST /api/trades/import/zerodha`
 - `GET /api/trades/imports`
 - `DELETE /api/trades/imports/:importId`
@@ -77,6 +85,8 @@ Copy `.env.example` to `.env`:
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/trade-journal
 NEWS_MONGO_URI=mongodb://127.0.0.1:27017/trade-journal-news
+DEEP_DIVE_MONGO_URI=mongodb://127.0.0.1:27017/trade-journal-deep-dive
+DEEP_DIVE_DB_NAME=trade-journal-deep-dive
 QUOTE_PROVIDER=local_python
 QUOTE_SERVICE_URL=
 QUOTE_SERVICE_TOKEN=
@@ -138,6 +148,47 @@ QUOTE_SERVICE_TOKEN=<same-shared-secret>
 ```
 
 The hosted service also exposes `GET /health` for smoke checks.
+
+## Deep Dive
+- `Deep Dive` is a separate research module at `/deep-dive`.
+- Historical prices, company profiles, sync state, and ingestion logs live in a dedicated MongoDB cluster via `DEEP_DIVE_MONGO_URI`.
+- The Deep Dive UI reads only MongoDB-backed data and never calls `yfinance` during page load.
+- Stock lists created in the UI become the active research universe for hosted ingestion.
+- GitHub Actions workflow `.github/workflows/deep-dive-sync.yml` runs `scripts/deep_dive_ingest.py` on weekdays around 7:00 PM IST.
+- For local setup, run the ingestion commands from the project root:
+  - `/Users/praweenprakash/Documents/software_development/projects/trade-journal`
+- The Python dependency file used by the ingestion script is:
+  - `/Users/praweenprakash/Documents/software_development/projects/trade-journal/requirements.txt`
+- Initial local commands:
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 scripts/deep_dive_ingest.py --mode backfill_prices
+python3 scripts/deep_dive_ingest.py --mode sync_profiles
+```
+
+- Mode meanings:
+  - `backfill_prices`: downloads and stores historical daily OHLCV bars for all symbols saved in Deep Dive stock lists plus the built-in benchmark indexes.
+  - `sync_profiles`: downloads and stores company metadata such as company name, sector, industry, description, market cap, and other profile fields for the saved stock symbols.
+  - `daily_sync`: runs incremental price sync plus profile refresh logic.
+- Local terminal progress:
+  - `backfill_prices` prints batch-level and symbol-level progress while it runs.
+  - `sync_profiles` prints profile refresh progress symbol by symbol.
+- Reset helper:
+  - `python3 scripts/reset_deep_dive.py --confirm`
+  - `python3 scripts/reset_deep_dive.py --confirm --keep-lists`
+- Recommended GitHub configuration:
+  - Secret: `DEEP_DIVE_MONGO_URI`
+  - Secret: `DEEP_DIVE_DB_NAME`
+  - Optional repo variables: `DEEP_DIVE_HISTORY_YEARS`, `DEEP_DIVE_SYNC_OVERLAP_DAYS`, `DEEP_DIVE_PROFILE_REFRESH_DAYS`, `DEEP_DIVE_BATCH_SIZE`
+- Default historical backfill horizon is `3 years` unless `DEEP_DIVE_HISTORY_YEARS` or `--history-years` overrides it.
+- Manual examples:
+
+```bash
+python scripts/deep_dive_ingest.py --mode backfill_prices
+python scripts/deep_dive_ingest.py --mode sync_profiles
+python scripts/deep_dive_ingest.py --mode daily_sync
+```
 
 ## Watchlist News Feed
 - News watchlists and articles are stored in a dedicated MongoDB cluster via `NEWS_MONGO_URI`.
