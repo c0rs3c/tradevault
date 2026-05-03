@@ -9,16 +9,16 @@ import { parseCsv } from '../utils/csv';
 const LIST_CACHE_TTL_MS = 15000;
 const DEFAULT_STOP_LOSS_PCT = 0.03;
 const queryCache = {
-  trades: { until: 0, data: null },
-  dashboard: { until: 0, data: null }
+  trades: new Map(),
+  dashboard: new Map()
 };
 
 const invalidateTradeCaches = () => {
-  queryCache.trades.until = 0;
-  queryCache.trades.data = null;
-  queryCache.dashboard.until = 0;
-  queryCache.dashboard.data = null;
+  queryCache.trades.clear();
+  queryCache.dashboard.clear();
 };
+
+const getCacheKey = (value) => String(value || 'default').trim() || 'default';
 
 const normalizeHeader = (header) =>
   String(header || '')
@@ -398,9 +398,11 @@ const buildTradesFromOrderEvents = (
   return { payloads, skippedUnmatchedSellQty, touchedExistingTrades };
 };
 
-export const getTrades = async () => {
-  if (queryCache.trades.data && Date.now() < queryCache.trades.until) {
-    return queryCache.trades.data;
+export const getTrades = async ({ cacheKey } = {}) => {
+  const normalizedCacheKey = getCacheKey(cacheKey);
+  const cachedTrades = queryCache.trades.get(normalizedCacheKey);
+  if (cachedTrades && Date.now() < cachedTrades.until) {
+    return cachedTrades.data;
   }
 
   const totalCapital = await getTotalCapital();
@@ -409,8 +411,10 @@ export const getTrades = async () => {
     .sort({ entryDate: -1, createdAt: -1 })
     .lean();
   const computed = trades.map((trade) => withMetrics(trade, totalCapital));
-  queryCache.trades.data = computed;
-  queryCache.trades.until = Date.now() + LIST_CACHE_TTL_MS;
+  queryCache.trades.set(normalizedCacheKey, {
+    data: computed,
+    until: Date.now() + LIST_CACHE_TTL_MS
+  });
   return computed;
 };
 
@@ -927,9 +931,11 @@ export const deleteExit = async (id, eid) => {
   return withMetrics(trade, totalCapital);
 };
 
-export const getDashboard = async ({ forceRefreshCmp = false } = {}) => {
-  if (!forceRefreshCmp && queryCache.dashboard.data && Date.now() < queryCache.dashboard.until) {
-    return queryCache.dashboard.data;
+export const getDashboard = async ({ forceRefreshCmp = false, cacheKey } = {}) => {
+  const normalizedCacheKey = getCacheKey(cacheKey);
+  const cachedDashboard = queryCache.dashboard.get(normalizedCacheKey);
+  if (!forceRefreshCmp && cachedDashboard && Date.now() < cachedDashboard.until) {
+    return cachedDashboard.data;
   }
 
   const totalCapital = await getTotalCapital();
@@ -976,8 +982,10 @@ export const getDashboard = async ({ forceRefreshCmp = false } = {}) => {
     analytics,
     totalCapital
   };
-  queryCache.dashboard.data = payload;
-  queryCache.dashboard.until = Date.now() + LIST_CACHE_TTL_MS;
+  queryCache.dashboard.set(normalizedCacheKey, {
+    data: payload,
+    until: Date.now() + LIST_CACHE_TTL_MS
+  });
   return payload;
 };
 

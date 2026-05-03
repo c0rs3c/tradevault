@@ -35,8 +35,16 @@ const pnlTextClass = (value) => {
   return '';
 };
 
-const entryRisk = (entryPrice, stopLoss, qty) =>
-  Math.abs(Number(entryPrice || 0) - Number(stopLoss || 0)) * Number(qty || 0);
+const entryRisk = (entryPrice, stopLoss, qty, side = 'LONG') => {
+  const entry = Number(entryPrice || 0);
+  const stop = Number(stopLoss || 0);
+  const quantity = Number(qty || 0);
+  const perUnitRisk =
+    String(side || 'LONG').toUpperCase() === 'SHORT'
+      ? Math.max(stop - entry, 0)
+      : Math.max(entry - stop, 0);
+  return perUnitRisk * quantity;
+};
 
 const stopLossPercent = (entryPrice, stopLoss) => {
   const entry = Number(entryPrice || 0);
@@ -104,7 +112,7 @@ const tradeStopLossPercent = (trade) => {
   const entries = tradeEntries(trade).filter((e) => e.entryPrice > 0 && e.qty > 0 && e.stopLoss > 0);
   if (!entries.length) return 0;
   const totalNotional = entries.reduce((acc, e) => acc + e.entryPrice * e.qty, 0);
-  const totalRisk = entries.reduce((acc, e) => acc + Math.abs(e.entryPrice - e.stopLoss) * e.qty, 0);
+  const totalRisk = entries.reduce((acc, e) => acc + entryRisk(e.entryPrice, e.stopLoss, e.qty, trade?.side), 0);
   if (!totalNotional) return 0;
   return (totalRisk / totalNotional) * 100;
 };
@@ -1227,7 +1235,7 @@ const TradesPage = () => {
                                     <p>
                                       Date: {new Date(p.date).toLocaleDateString()} | Price: {p.price} | Qty: {p.qty} | Stop: {p.stopLoss} ({stopLossPercent(p.price, p.stopLoss).toFixed(2)}%)
                                       {trade.metrics.status === 'OPEN'
-                                        ? ` | Capital at Risk: ${money(entryRisk(p.price, p.stopLoss, p.qty))}`
+                                        ? ` | Capital at Risk: ${money(entryRisk(p.price, p.stopLoss, p.qty, trade.side))}`
                                         : ''}
                                     </p>
                                     <div className="flex items-center gap-2">

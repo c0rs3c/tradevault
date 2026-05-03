@@ -5,6 +5,16 @@ const toNumber = (value) => {
 
 const EPSILON_QTY = 1e-9;
 
+const directionalRiskPerUnit = (side, entryPrice, stopLoss) => {
+  const entry = toNumber(entryPrice);
+  const stop = toNumber(stopLoss);
+  if (entry <= 0 || stop <= 0) return 0;
+  if (String(side || 'LONG').toUpperCase() === 'SHORT') {
+    return Math.max(stop - entry, 0);
+  }
+  return Math.max(entry - stop, 0);
+};
+
 export const computeTradeMetrics = (trade, totalCapital = 0) => {
   const entries = [
     {
@@ -59,7 +69,7 @@ export const computeTradeMetrics = (trade, totalCapital = 0) => {
   const avgEntryPrice = openQty > EPSILON_QTY ? openNotional / openQty : weightedAvgEntryPrice;
 
   const capitalAtRisk = entries.reduce(
-    (acc, entry) => acc + Math.abs(entry.entryPrice - entry.stopLoss) * entry.qty,
+    (acc, entry) => acc + directionalRiskPerUnit(trade.side, entry.entryPrice, entry.stopLoss) * entry.qty,
     0
   );
 

@@ -10,6 +10,16 @@ const round = (value, precision = 2) => {
 
 const EPSILON_QTY = 1e-9;
 
+const calcDirectionalRiskPerUnit = ({ side, entryPrice, stopLoss }) => {
+  const entry = toNumber(entryPrice);
+  const stop = toNumber(stopLoss);
+  if (entry <= 0 || stop <= 0) return 0;
+  if (String(side || 'LONG').toUpperCase() === 'SHORT') {
+    return Math.max(stop - entry, 0);
+  }
+  return Math.max(entry - stop, 0);
+};
+
 const buildEntries = (trade) => {
   const base = {
     label: 'BASE',
@@ -45,7 +55,7 @@ const calcWeightedAvgEntryPrice = (entries) => {
   return totals.notional / totals.qty;
 };
 
-const calcWeightedStopLossPercent = (entries) => {
+const calcWeightedStopLossPercent = (entries, side = 'LONG') => {
   const totals = entries.reduce(
     (acc, entry) => {
       const qty = toNumber(entry.qty);
@@ -53,7 +63,7 @@ const calcWeightedStopLossPercent = (entries) => {
       const stopLoss = toNumber(entry.stopLoss);
       if (qty <= 0 || entryPrice <= 0 || stopLoss <= 0) return acc;
       acc.notional += entryPrice * qty;
-      acc.risk += Math.abs(entryPrice - stopLoss) * qty;
+      acc.risk += calcDirectionalRiskPerUnit({ side, entryPrice, stopLoss }) * qty;
       return acc;
     },
     { notional: 0, risk: 0 }
@@ -70,7 +80,7 @@ const calcNormalizedRFromStopLoss = (trade, entriesInput = null) => {
   );
   const gainPercent =
     totalNotional > 0 ? (toNumber(trade?.metrics?.realizedPnL) / totalNotional) * 100 : 0;
-  const slPercent = calcWeightedStopLossPercent(entries);
+  const slPercent = calcWeightedStopLossPercent(entries, trade?.side);
   if (!slPercent) return 0;
   const rawR = gainPercent / slPercent;
   return rawR <= -1 ? -1 : rawR;
@@ -247,7 +257,7 @@ const buildFifoResult = ({ entries, exits, side }) => {
   };
 };
 
-const calcOpenCapitalAtRisk = (openLots, stopLossAdjustments) => {
+const calcOpenCapitalAtRisk = (openLots, stopLossAdjustments, side = 'LONG') => {
   if (!openLots.length) return 0;
   let segments = openLots.map((lot) => ({
     qty: toNumber(lot.qty),
@@ -296,7 +306,14 @@ const calcOpenCapitalAtRisk = (openLots, stopLossAdjustments) => {
   return segments.reduce((acc, segment) => {
     const qty = toNumber(segment.qty);
     if (qty <= EPSILON_QTY) return acc;
-    return acc + Math.abs(toNumber(segment.entryPrice) - toNumber(segment.stopLoss)) * qty;
+    return (
+      acc +
+      calcDirectionalRiskPerUnit({
+        side,
+        entryPrice: toNumber(segment.entryPrice),
+        stopLoss: toNumber(segment.stopLoss)
+      }) * qty
+    );
   }, 0);
 };
 
@@ -319,7 +336,7 @@ export const calcTradeMetrics = (trade, totalCapital = 0) => {
     openQty > 0 ? fifo.avgOpenEntryPrice : calcWeightedAvgEntryPrice(entries);
   const capitalAtRisk =
     openQty > EPSILON_QTY
-      ? calcOpenCapitalAtRisk(fifo.openLots, trade.stopLossAdjustments)
+      ? calcOpenCapitalAtRisk(fifo.openLots, trade.stopLossAdjustments, trade.side)
       : 0;
   const realizedPnL = fifo.realizedPnL;
   const charges = toNumber(trade.charges);

@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/server/db';
 import { handleApiError } from '@/lib/server/api';
+import { requireApiUsername } from '@/lib/auth/apiAuth';
 import { createTrade, getTrades } from '@/lib/server/controllers/trades';
 
 export async function GET() {
   try {
     await connectDB();
-    const trades = await getTrades();
+    const username = await requireApiUsername();
+    const trades = await getTrades({ cacheKey: username });
     return NextResponse.json(trades);
   } catch (error) {
     return handleApiError(error);
