@@ -10,7 +10,7 @@ import {
 export async function GET() {
   try {
     const ownerUsername = await requireApiUsername();
-    const result = await listWatchlists({ ownerUsername });
+    const result = await listWatchlists({ ownerUsername, sources: ['tradingview', 'text'] });
     return NextResponse.json(result);
   } catch (error) {
     return handleApiError(error);

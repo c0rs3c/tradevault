@@ -130,6 +130,29 @@ const normalizeTextWatchlistTitle = (value) => {
   return title.slice(0, 120);
 };
 
+const buildUniqueManualWatchlistTitle = async ({ Watchlist, ownerUsername, source, title }) => {
+  const baseTitle = normalizeTextWatchlistTitle(title);
+  let candidateTitle = baseTitle;
+  let suffix = 2;
+
+  // Manual watchlists should create a new visible list instead of silently overwriting
+  // an existing one with the same title.
+  while (
+    await Watchlist.exists({
+      ownerUsername,
+      source,
+      title: candidateTitle
+    })
+  ) {
+    const nextSuffix = ` (${suffix})`;
+    const maxBaseLength = Math.max(1, 120 - nextSuffix.length);
+    candidateTitle = `${baseTitle.slice(0, maxBaseLength)}${nextSuffix}`;
+    suffix += 1;
+  }
+
+  return candidateTitle;
+};
+
 const extractWatchlistPayload = (html) => {
   const match = String(html || '').match(
     /<script type="application\/prs\.init-data\+json">([\s\S]*?)<\/script>/
@@ -598,43 +621,36 @@ export const importTradingViewWatchlist = async ({ ownerUsername, url }) => {
 };
 
 const importSymbolWatchlist = async ({ ownerUsername, title, text, source }) => {
-  const normalizedTitle = normalizeTextWatchlistTitle(title);
   const rawSymbols = parseTextWatchlist(text);
-  const items = await buildWatchlistItems(rawSymbols);
   const { Watchlist } = await getNewsModels();
+  const normalizedTitle = await buildUniqueManualWatchlistTitle({
+    Watchlist,
+    ownerUsername,
+    source,
+    title
+  });
+  const items = await buildWatchlistItems(rawSymbols);
   const now = new Date();
   const sourceWatchlistId = crypto
     .createHash('sha256')
-    .update(`${ownerUsername}|${source}|${normalizedTitle.toLowerCase()}`)
+    .update(`${ownerUsername}|${source}|${normalizedTitle.toLowerCase()}|${now.toISOString()}`)
     .digest('hex');
 
-  const watchlist = await Watchlist.findOneAndUpdate(
-    {
-      ownerUsername,
-      source,
-      sourceWatchlistId
-    },
-    {
-      $set: {
-        ownerUsername,
-        source,
-        sourceWatchlistId,
-        sourceUrl: '',
-        title: normalizedTitle,
-        description: '',
-        authorUsername: '',
-        color: '',
-        rawSymbols,
-        items,
-        lastImportedAt: now
-      },
-      $setOnInsert: {
-        syncStatus: 'idle',
-        syncError: ''
-      }
-    },
-    { new: true, upsert: true }
-  ).lean();
+  const watchlist = await Watchlist.create({
+    ownerUsername,
+    source,
+    sourceWatchlistId,
+    sourceUrl: '',
+    title: normalizedTitle,
+    description: '',
+    authorUsername: '',
+    color: '',
+    rawSymbols,
+    items,
+    lastImportedAt: now,
+    syncStatus: 'idle',
+    syncError: ''
+  });
 
   return formatWatchlistListItem(watchlist, 0);
 };
@@ -1003,9 +1019,13 @@ export const syncWatchlistNews = async ({ ownerUsername, watchlistId }) => {
   };
 };
 
-export const syncAllWatchlistsNews = async ({ ownerUsername }) => {
+export const syncAllWatchlistsNews = async ({ ownerUsername, sources = [] }) => {
   const { Watchlist } = await getNewsModels();
-  const watchlists = await Watchlist.find({ ownerUsername }).select('_id title').lean();
+  const filter = { ownerUsername };
+  if (sources.length) {
+    filter.source = { $in: sources };
+  }
+  const watchlists = await Watchlist.find(filter).select('_id title').lean();
 
   const summary = {
     watchlistsScanned: watchlists.length,
