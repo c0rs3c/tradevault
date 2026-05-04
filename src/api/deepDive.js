@@ -30,6 +30,33 @@ export const fetchDeepDiveStatus = async () => {
   return data;
 };
 
+export const fetchDeepDiveImports = async ({ q = '', page = 1, pageSize = 100 } = {}) => {
+  const { data } = await http.get('/deep-dive/imports', {
+    params: {
+      q,
+      page,
+      pageSize
+    }
+  });
+  return data;
+};
+
+export const triggerDeepDiveSync = async (payload) => {
+  const { data } = await http.post('/deep-dive/sync', payload || {});
+  return data;
+};
+
+export const fetchDeepDiveErrors = async ({ q = '', page = 1, pageSize = 100 } = {}) => {
+  const { data } = await http.get('/deep-dive/errors', {
+    params: {
+      q,
+      page,
+      pageSize
+    }
+  });
+  return data;
+};
+
 export const fetchDeepDiveRs = async (payload) => {
   const { data } = await http.post('/deep-dive/rs', payload);
   return data;

@@ -1,11 +1,71 @@
 import { useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import {
+  createDeepDiveList,
+  fetchDeepDiveErrors,
+  deleteDeepDiveList,
+  fetchDeepDiveImports,
+  triggerDeepDiveSync
+} from '../api/deepDive';
 import { saveSettings } from '../api/settings';
 import { fetchSymbols, refreshSymbols } from '../api/symbols';
+import ImportTradesPage from './ImportTradesPage';
 import { useSettings } from '../contexts/SettingsContext';
 import { ACCENT_THEMES, DEFAULT_ACCENT } from '../utils/appearance';
 
+const numberFormatter = new Intl.NumberFormat('en-IN');
+const LoadingSpinner = ({ label = 'Loading...' }) => (
+  <div className="flex items-center justify-center gap-3 py-8 text-sm text-slate-600 dark:text-slate-300">
+    <span className="inline-flex h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700 dark:border-slate-700 dark:border-t-slate-100" />
+    <span>{label}</span>
+  </div>
+);
+
+const buildPageNumbers = (currentPage, totalPages) => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  if (currentPage <= 3) {
+    pages.add(2);
+    pages.add(3);
+    pages.add(4);
+  }
+  if (currentPage >= totalPages - 2) {
+    pages.add(totalPages - 1);
+    pages.add(totalPages - 2);
+    pages.add(totalPages - 3);
+  }
+
+  return [...pages]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+};
+
+const normalizeSearchText = (value) => String(value || '').trim().toUpperCase();
+const matchesFuzzy = (candidate, query) => {
+  const source = normalizeSearchText(candidate);
+  const needle = normalizeSearchText(query);
+  if (!needle) return null;
+  if (source === needle) return 1000;
+  if (source.startsWith(needle)) return 750 - (source.length - needle.length);
+  if (source.includes(needle)) return 500 - source.indexOf(needle);
+  let queryIndex = 0;
+  let gaps = 0;
+  for (let index = 0; index < source.length && queryIndex < needle.length; index += 1) {
+    if (source[index] === needle[queryIndex]) queryIndex += 1;
+    else gaps += 1;
+  }
+  return queryIndex === needle.length ? 250 - gaps : null;
+};
+
 const SettingsPage = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { settings, refreshSettings, loading } = useSettings();
+  const [activeTab, setActiveTab] = useState('general');
   const [totalCapital, setTotalCapital] = useState('');
   const [defaultRiskPercent, setDefaultRiskPercent] = useState('');
   const [theme, setTheme] = useState('light');
@@ -48,8 +108,42 @@ const SettingsPage = () => {
   const [purpleDotPosition, setPurpleDotPosition] = useState('belowBar');
   const [symbolsCount, setSymbolsCount] = useState(0);
   const [symbolsUpdatedAt, setSymbolsUpdatedAt] = useState('');
+  const [allMarketSymbols, setAllMarketSymbols] = useState([]);
   const [refreshingSymbols, setRefreshingSymbols] = useState(false);
+  const [deepDiveImports, setDeepDiveImports] = useState(null);
+  const [deepDiveImportsLoading, setDeepDiveImportsLoading] = useState(false);
+  const [deepDiveSection, setDeepDiveSection] = useState('stocks');
+  const [deepDiveSyncing, setDeepDiveSyncing] = useState(false);
+  const [createDeepDiveTitle, setCreateDeepDiveTitle] = useState('');
+  const [createDeepDiveDescription, setCreateDeepDiveDescription] = useState('');
+  const [createDeepDiveText, setCreateDeepDiveText] = useState('');
+  const [creatingDeepDiveList, setCreatingDeepDiveList] = useState(false);
+  const [addingDeepDiveSymbol, setAddingDeepDiveSymbol] = useState(false);
+  const [deletingDeepDiveListId, setDeletingDeepDiveListId] = useState('');
+  const [deepDiveSearch, setDeepDiveSearch] = useState('');
+  const [deepDivePage, setDeepDivePage] = useState(1);
+  const [deepDiveErrors, setDeepDiveErrors] = useState(null);
+  const [deepDiveErrorsLoading, setDeepDiveErrorsLoading] = useState(false);
+  const [deepDiveErrorSearch, setDeepDiveErrorSearch] = useState('');
+  const [deepDiveErrorPage, setDeepDiveErrorPage] = useState(1);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'deepDive' || tab === 'importTrades') {
+      setActiveTab(tab);
+      return;
+    }
+    setActiveTab('general');
+  }, [searchParams]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams.toString());
+    if (tab === 'general') next.delete('tab');
+    else next.set('tab', tab);
+    router.replace(next.toString() ? `${pathname}?${next.toString()}` : pathname);
+  };
 
   useEffect(() => {
     if (!settings) return;
@@ -109,13 +203,48 @@ const SettingsPage = () => {
         const data = await fetchSymbols();
         setSymbolsCount(Number(data?.count || 0));
         setSymbolsUpdatedAt(data?.updatedAt || '');
+        setAllMarketSymbols(Array.isArray(data?.symbols) ? data.symbols : []);
       } catch {
         setSymbolsCount(0);
         setSymbolsUpdatedAt('');
+        setAllMarketSymbols([]);
       }
     };
     loadSymbolsMeta();
   }, []);
+
+  const loadDeepDiveImports = async ({ query = deepDiveSearch, page = deepDivePage } = {}) => {
+    setDeepDiveImportsLoading(true);
+    try {
+      const data = await fetchDeepDiveImports({ q: query, page, pageSize: 100 });
+      setDeepDiveImports(data);
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to load Deep Dive imports');
+    } finally {
+      setDeepDiveImportsLoading(false);
+    }
+  };
+
+  const loadDeepDiveErrors = async ({ query = deepDiveErrorSearch, page = deepDiveErrorPage } = {}) => {
+    setDeepDiveErrorsLoading(true);
+    try {
+      const data = await fetchDeepDiveErrors({ q: query, page, pageSize: 100 });
+      setDeepDiveErrors(data);
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to load Deep Dive errors');
+    } finally {
+      setDeepDiveErrorsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'deepDive') return;
+    const timer = setTimeout(() => {
+      if (deepDiveSection === 'errors') loadDeepDiveErrors();
+      else loadDeepDiveImports();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [activeTab, deepDiveSection, deepDiveSearch, deepDivePage, deepDiveErrorSearch, deepDiveErrorPage]);
 
   const handleRefreshSymbols = async () => {
     setRefreshingSymbols(true);
@@ -123,6 +252,7 @@ const SettingsPage = () => {
       const data = await refreshSymbols();
       setSymbolsCount(Number(data?.count || 0));
       setSymbolsUpdatedAt(data?.updatedAt || '');
+      setAllMarketSymbols(Array.isArray(data?.symbols) ? data.symbols : []);
       alert('Latest NSE symbol CSV downloaded successfully.');
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to download NSE symbol CSV');
@@ -185,11 +315,652 @@ const SettingsPage = () => {
     }
   };
 
+  const handleCreateDeepDiveList = async (event) => {
+    event.preventDefault();
+    setCreatingDeepDiveList(true);
+    try {
+      await createDeepDiveList({
+        title: createDeepDiveTitle || 'Deep Dive Universe',
+        description: createDeepDiveDescription,
+        text: createDeepDiveText
+      });
+      setCreateDeepDiveTitle('');
+      setCreateDeepDiveDescription('');
+      setCreateDeepDiveText('');
+      setDeepDivePage(1);
+      await loadDeepDiveImports({ query: '', page: 1 });
+      alert('Deep Dive list created');
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to create Deep Dive list');
+    } finally {
+      setCreatingDeepDiveList(false);
+    }
+  };
+
+  const handleDeleteDeepDiveList = async (id, title) => {
+    const confirmed = window.confirm(`Delete "${title}"?`);
+    if (!confirmed) return;
+    setDeletingDeepDiveListId(id);
+    try {
+      await deleteDeepDiveList(id);
+      await loadDeepDiveImports();
+      alert('Deep Dive list deleted');
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to delete Deep Dive list');
+    } finally {
+      setDeletingDeepDiveListId('');
+    }
+  };
+
+  const handleAddDeepDiveSymbol = async (symbol) => {
+    const normalized = normalizeSearchText(symbol);
+    if (!normalized) return;
+    setAddingDeepDiveSymbol(true);
+    try {
+      await createDeepDiveList({
+        title: 'Deep Dive Universe',
+        description: '',
+        text: normalized
+      });
+      await triggerDeepDiveSync({ mode: 'daily_sync' });
+      setCreateDeepDiveText('');
+      setDeepDiveSearch(normalized);
+      setDeepDivePage(1);
+      await loadDeepDiveImports({ query: normalized, page: 1 });
+      await loadDeepDiveErrors({ query: '', page: 1 });
+      alert(`Added ${normalized} and fetched Deep Dive data`);
+    } catch (error) {
+      alert(error.response?.data?.message || error.message || `Failed to add ${normalized}`);
+    } finally {
+      setAddingDeepDiveSymbol(false);
+    }
+  };
+
+  const handleDeepDiveSync = async () => {
+    setDeepDiveSyncing(true);
+    try {
+      const result = await triggerDeepDiveSync({ mode: 'daily_sync' });
+      await loadDeepDiveImports();
+      const summary = result?.summary;
+      if (summary) {
+        alert(
+          `Deep Dive sync finished. Attempted: ${summary.symbolsAttempted || 0}, succeeded: ${summary.symbolsSucceeded || 0}, rows: ${summary.rowsUpserted || 0}.`
+        );
+      } else {
+        alert('Deep Dive sync finished');
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || error.message || 'Failed to sync Deep Dive data');
+    } finally {
+      setDeepDiveSyncing(false);
+    }
+  };
+
   if (loading) return <p>Loading settings...</p>;
+
+  const normalizedDeepDiveSearch = normalizeSearchText(deepDiveSearch);
+  const marketSearchCandidates = normalizedDeepDiveSearch
+    ? allMarketSymbols
+        .filter((symbol) => !Array.isArray(deepDiveImports?.stocks) || !deepDiveImports.stocks.some((item) => item.symbol === symbol))
+        .map((symbol) => ({ symbol, score: matchesFuzzy(symbol, normalizedDeepDiveSearch) }))
+        .filter((item) => item.score !== null)
+        .sort((a, b) => (b.score - a.score) || a.symbol.localeCompare(b.symbol))
+        .slice(0, 8)
+        .map((item) => item.symbol)
+    : [];
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Settings</h1>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => handleTabChange('general')}
+          className={`rounded-md px-3 py-2 text-sm font-medium ${
+            activeTab === 'general'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+              : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+          }`}
+        >
+          General
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabChange('deepDive')}
+          className={`rounded-md px-3 py-2 text-sm font-medium ${
+            activeTab === 'deepDive'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+              : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+          }`}
+        >
+          Deep Dive
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabChange('importTrades')}
+          className={`rounded-md px-3 py-2 text-sm font-medium ${
+            activeTab === 'importTrades'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+              : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+          }`}
+        >
+          Import Trades
+        </button>
+      </div>
+
+      {activeTab === 'importTrades' ? (
+        <section className="surface-card p-5">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">Import Trades</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Upload Zerodha or Dhan tradebooks and review prior imports from the same settings area.
+            </p>
+          </div>
+          <ImportTradesPage embedded />
+        </section>
+      ) : null}
+
+      {activeTab === 'deepDive' ? (
+        <div className="space-y-4">
+          <section className="surface-card p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Deep Dive Imports</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Search imported symbols, inspect only the current page, and add a missing stock directly into the Deep Dive universe.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDeepDiveSync}
+                disabled={deepDiveSyncing}
+                className="btn-primary px-4 py-2 text-sm disabled:cursor-wait disabled:opacity-60"
+              >
+                {deepDiveSyncing ? 'Fetching Latest Data...' : 'Fetch Latest Data'}
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/70">
+                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Lists</div>
+                <div className="mt-1 font-medium">{numberFormatter.format(deepDiveImports?.summary?.totalLists || 0)}</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/70">
+                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Imported Stocks</div>
+                <div className="mt-1 font-medium">{numberFormatter.format(deepDiveImports?.summary?.totalSymbols || 0)}</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/70">
+                <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Latest Data Date</div>
+                <div className="mt-1 font-medium">{deepDiveImports?.summary?.latestAvailableDate || 'Not available'}</div>
+              </div>
+            </div>
+
+            {deepDiveImports?.latestRun ? (
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                Last sync: {new Date(deepDiveImports.latestRun.finishedAt || deepDiveImports.latestRun.startedAt).toLocaleString()} | Attempted {numberFormatter.format(deepDiveImports.latestRun.symbolsAttempted || 0)} | Succeeded {numberFormatter.format(deepDiveImports.latestRun.symbolsSucceeded || 0)} | Rows {numberFormatter.format(deepDiveImports.latestRun.rowsUpserted || 0)}
+              </p>
+            ) : null}
+          </section>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              ['stocks', 'Imported Stocks'],
+              ['universe', 'Edit Universe'],
+              ['errors', 'Errors']
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setDeepDiveSection(key)}
+                className={`rounded-md px-3 py-2 text-sm font-medium ${
+                  deepDiveSection === key
+                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                    : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {deepDiveSection === 'universe' ? (
+            <form onSubmit={handleCreateDeepDiveList} className="surface-card space-y-4 p-5">
+              <div>
+                <h2 className="text-lg font-semibold">Deep Dive Universe</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  There is only one universe. Adding symbols merges them into the same imported stock set.
+                </p>
+              </div>
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">Universe Name</span>
+                <input
+                  value={createDeepDiveTitle}
+                  onChange={(event) => setCreateDeepDiveTitle(event.target.value)}
+                  className="field-input"
+                  placeholder="Deep Dive Universe"
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">Description</span>
+                <input
+                  value={createDeepDiveDescription}
+                  onChange={(event) => setCreateDeepDiveDescription(event.target.value)}
+                  className="field-input"
+                  placeholder="Optional notes"
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">Symbols</span>
+                <textarea
+                  value={createDeepDiveText}
+                  onChange={(event) => setCreateDeepDiveText(event.target.value)}
+                  rows={8}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-sm dark:border-slate-700 dark:bg-slate-900"
+                  placeholder={'RELIANCE\nTCS\nINFY'}
+                />
+              </label>
+              <button type="submit" className="btn-primary px-4 py-2 text-sm" disabled={creatingDeepDiveList}>
+                {creatingDeepDiveList ? 'Saving...' : 'Add Symbols To Universe'}
+              </button>
+
+              <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+                {(deepDiveImports?.lists || []).map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
+                    <div>
+                      <div className="font-medium">{item.title}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {numberFormatter.format(item.symbolCount || 0)} symbols
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDeepDiveList(item.id, item.title)}
+                      disabled={deletingDeepDiveListId === item.id}
+                      className="btn-danger px-3 py-1.5 text-sm"
+                    >
+                      {deletingDeepDiveListId === item.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                ))}
+                {!deepDiveImports?.lists?.length && !deepDiveImportsLoading ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No Deep Dive universe yet.</p>
+                ) : null}
+              </div>
+            </form>
+          ) : null}
+
+          {deepDiveSection === 'stocks' ? (
+            <section className="surface-card space-y-4 p-5">
+              <div>
+                <h2 className="text-lg font-semibold">Imported Stocks</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Search uses fuzzy matching. Only the current page of 100 stocks is loaded, so this section should appear much faster.
+                </p>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="space-y-1">
+                  <span className="text-sm font-medium">Search Imported Stock</span>
+                  <input
+                    value={deepDiveSearch}
+                    onChange={(event) => {
+                      setDeepDiveSearch(event.target.value);
+                      setDeepDivePage(1);
+                    }}
+                    className="field-input"
+                    placeholder="Type symbol like RELIANCE or INF"
+                  />
+                </label>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeepDiveSearch('');
+                      setDeepDivePage(1);
+                    }}
+                    className="btn-muted px-3 py-2 text-sm"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <p>
+                  Page {deepDiveImports?.page || 1} of {deepDiveImports?.totalPages || 1} | Matches {numberFormatter.format(deepDiveImports?.totalMatches || 0)} of {numberFormatter.format(deepDiveImports?.summary?.totalSymbols || 0)}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeepDivePage((current) => Math.max(1, current - 1))}
+                    disabled={deepDiveImportsLoading || (deepDiveImports?.page || 1) <= 1}
+                    className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ← Previous
+                  </button>
+                  {buildPageNumbers(deepDiveImports?.page || 1, deepDiveImports?.totalPages || 1).map((pageNumber, index, pages) => (
+                    <span key={pageNumber} className="flex items-center gap-2">
+                      {index > 0 && pageNumber - pages[index - 1] > 1 ? (
+                        <span className="text-slate-400">…</span>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setDeepDivePage(pageNumber)}
+                        disabled={deepDiveImportsLoading}
+                        className={`rounded-md px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                          (deepDiveImports?.page || 1) === pageNumber
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                            : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setDeepDivePage((current) => Math.min(deepDiveImports?.totalPages || 1, current + 1))}
+                    disabled={deepDiveImportsLoading || (deepDiveImports?.page || 1) >= (deepDiveImports?.totalPages || 1)}
+                    className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+
+              {normalizedDeepDiveSearch && !deepDiveImportsLoading && (deepDiveImports?.totalMatches || 0) === 0 ? (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/20">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    {normalizedDeepDiveSearch} is not in the imported Deep Dive universe.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAddDeepDiveSymbol(normalizedDeepDiveSearch)}
+                      disabled={addingDeepDiveSymbol}
+                      className="btn-primary px-3 py-1.5 text-sm disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {addingDeepDiveSymbol ? 'Adding...' : `Add ${normalizedDeepDiveSearch}`}
+                    </button>
+                    {marketSearchCandidates.map((symbol) => (
+                      <button
+                        key={symbol}
+                        type="button"
+                        onClick={() => handleAddDeepDiveSymbol(symbol)}
+                        disabled={addingDeepDiveSymbol}
+                        className="btn-muted px-3 py-1.5 text-sm"
+                      >
+                        Add {symbol}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {deepDiveImportsLoading ? (
+                <LoadingSpinner label="Loading imported stocks..." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-[1300px] text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-left dark:border-slate-800">
+                        <th className="px-3 py-2">Symbol</th>
+                        <th className="px-3 py-2">Company</th>
+                        <th className="px-3 py-2">Latest Date</th>
+                        <th className="px-3 py-2">Open</th>
+                        <th className="px-3 py-2">High</th>
+                        <th className="px-3 py-2">Low</th>
+                        <th className="px-3 py-2">Close</th>
+                        <th className="px-3 py-2">Volume</th>
+                        <th className="px-3 py-2">Bars</th>
+                        <th className="px-3 py-2">Approx Years</th>
+                        <th className="px-3 py-2">Sector</th>
+                        <th className="px-3 py-2">Industry</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(deepDiveImports?.stocks || []).map((item) => (
+                        <tr key={item.symbol} className="table-row-hover">
+                          <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{item.symbol}</td>
+                          <td className="px-3 py-2">{item.companyName || '-'}</td>
+                          <td className="px-3 py-2">{item.latestDate || '-'}</td>
+                          <td className="px-3 py-2">{item.latestOpen ?? '-'}</td>
+                          <td className="px-3 py-2">{item.latestHigh ?? '-'}</td>
+                          <td className="px-3 py-2">{item.latestLow ?? '-'}</td>
+                          <td className="px-3 py-2">{item.latestClose ?? '-'}</td>
+                          <td className="px-3 py-2">{item.latestVolume ? numberFormatter.format(item.latestVolume) : '-'}</td>
+                          <td className="px-3 py-2">{numberFormatter.format(item.barsCount || 0)}</td>
+                          <td className="px-3 py-2">{item.approxYears ?? '-'}</td>
+                          <td className="px-3 py-2">{item.sector || '-'}</td>
+                          <td className="px-3 py-2">{item.industry || '-'}</td>
+                        </tr>
+                      ))}
+                      {!deepDiveImports?.stocks?.length ? (
+                        <tr>
+                          <td colSpan={12} className="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                            No stocks found for this search.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+                <p>
+                  Page {deepDiveImports?.page || 1} of {deepDiveImports?.totalPages || 1}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeepDivePage((current) => Math.max(1, current - 1))}
+                    disabled={deepDiveImportsLoading || (deepDiveImports?.page || 1) <= 1}
+                    className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ←
+                  </button>
+                  {buildPageNumbers(deepDiveImports?.page || 1, deepDiveImports?.totalPages || 1).map((pageNumber, index, pages) => (
+                    <span key={`bottom-imports-${pageNumber}`} className="flex items-center gap-2">
+                      {index > 0 && pageNumber - pages[index - 1] > 1 ? (
+                        <span className="text-slate-400">…</span>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setDeepDivePage(pageNumber)}
+                        disabled={deepDiveImportsLoading}
+                        className={`rounded-md px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                          (deepDiveImports?.page || 1) === pageNumber
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                            : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setDeepDivePage((current) => Math.min(deepDiveImports?.totalPages || 1, current + 1))}
+                    disabled={deepDiveImportsLoading || (deepDiveImports?.page || 1) >= (deepDiveImports?.totalPages || 1)}
+                    className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {deepDiveSection === 'errors' ? (
+            <section className="surface-card space-y-4 p-5">
+              <div>
+                <h2 className="text-lg font-semibold">Error Entries</h2>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Symbols that have no bars yet or whose latest sync recorded an error.
+                </p>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="space-y-1">
+                  <span className="text-sm font-medium">Search Errors</span>
+                  <input
+                    value={deepDiveErrorSearch}
+                    onChange={(event) => {
+                      setDeepDiveErrorSearch(event.target.value);
+                      setDeepDiveErrorPage(1);
+                    }}
+                    className="field-input"
+                    placeholder="Type symbol or company"
+                  />
+                </label>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeepDiveErrorSearch('');
+                      setDeepDiveErrorPage(1);
+                    }}
+                    className="btn-muted px-3 py-2 text-sm"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 dark:text-slate-300">
+                <p>
+                  Page {deepDiveErrors?.page || 1} of {deepDiveErrors?.totalPages || 1} | Matches {numberFormatter.format(deepDiveErrors?.totalMatches || 0)}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeepDiveErrorPage((current) => Math.max(1, current - 1))}
+                    disabled={deepDiveErrorsLoading || (deepDiveErrors?.page || 1) <= 1}
+                    className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  {buildPageNumbers(deepDiveErrors?.page || 1, deepDiveErrors?.totalPages || 1).map((pageNumber, index, pages) => (
+                    <span key={`top-errors-${pageNumber}`} className="flex items-center gap-2">
+                      {index > 0 && pageNumber - pages[index - 1] > 1 ? (
+                        <span className="text-slate-400">…</span>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setDeepDiveErrorPage(pageNumber)}
+                        disabled={deepDiveErrorsLoading}
+                        className={`rounded-md px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                          (deepDiveErrors?.page || 1) === pageNumber
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                            : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setDeepDiveErrorPage((current) => Math.min(deepDiveErrors?.totalPages || 1, current + 1))}
+                    disabled={deepDiveErrorsLoading || (deepDiveErrors?.page || 1) >= (deepDiveErrors?.totalPages || 1)}
+                    className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+
+              {deepDiveErrorsLoading ? (
+                <LoadingSpinner label="Loading error entries..." />
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[1100px] text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-left dark:border-slate-800">
+                          <th className="px-3 py-2">Issue</th>
+                          <th className="px-3 py-2">Symbol</th>
+                          <th className="px-3 py-2">Company</th>
+                          <th className="px-3 py-2">Sector</th>
+                          <th className="px-3 py-2">Industry</th>
+                          <th className="px-3 py-2">Latest Bar</th>
+                          <th className="px-3 py-2">Last Status</th>
+                          <th className="px-3 py-2">Last Error</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(deepDiveErrors?.rows || []).map((item) => (
+                          <tr key={`${item.issue}-${item.symbol}`} className="table-row-hover">
+                            <td className="px-3 py-2 font-medium">{item.issue}</td>
+                            <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{item.symbol}</td>
+                            <td className="px-3 py-2">{item.companyName || '-'}</td>
+                            <td className="px-3 py-2">{item.sector || '-'}</td>
+                            <td className="px-3 py-2">{item.industry || '-'}</td>
+                            <td className="px-3 py-2">{item.latestBarDate || '-'}</td>
+                            <td className="px-3 py-2">{item.lastStatus || '-'}</td>
+                            <td className="px-3 py-2">{item.lastError || '-'}</td>
+                          </tr>
+                        ))}
+                        {!deepDiveErrors?.rows?.length ? (
+                          <tr>
+                            <td colSpan={8} className="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                              No error entries found.
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+                    <p>
+                      Page {deepDiveErrors?.page || 1} of {deepDiveErrors?.totalPages || 1}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDeepDiveErrorPage((current) => Math.max(1, current - 1))}
+                        disabled={deepDiveErrorsLoading || (deepDiveErrors?.page || 1) <= 1}
+                        className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ←
+                      </button>
+                      {buildPageNumbers(deepDiveErrors?.page || 1, deepDiveErrors?.totalPages || 1).map((pageNumber, index, pages) => (
+                        <span key={`bottom-errors-${pageNumber}`} className="flex items-center gap-2">
+                          {index > 0 && pageNumber - pages[index - 1] > 1 ? (
+                            <span className="text-slate-400">…</span>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => setDeepDiveErrorPage(pageNumber)}
+                            disabled={deepDiveErrorsLoading}
+                            className={`rounded-md px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                              (deepDiveErrors?.page || 1) === pageNumber
+                                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                                : 'border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        </span>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setDeepDiveErrorPage((current) => Math.min(deepDiveErrors?.totalPages || 1, current + 1))}
+                        disabled={deepDiveErrorsLoading || (deepDiveErrors?.page || 1) >= (deepDiveErrors?.totalPages || 1)}
+                        className="btn-muted px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          ) : null}
+        </div>
+      ) : activeTab === 'general' ? (
       <form onSubmit={handleSubmit} className="surface-card max-w-xl space-y-4 p-5">
         <label className="block space-y-1">
           <span className="text-sm font-medium">Total Capital</span>
@@ -560,6 +1331,7 @@ const SettingsPage = () => {
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
+      ) : null}
     </div>
   );
 };

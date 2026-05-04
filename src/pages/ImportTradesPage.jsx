@@ -172,7 +172,7 @@ const getFilteredRows = (rows, filters) => {
 
 const initialFilters = { search: '', side: 'ALL', status: 'ALL', sortBy: 'dateAsc' };
 
-const ImportTradesPage = () => {
+const ImportTradesPage = ({ embedded = false }) => {
   const [fileName, setFileName] = useState('');
   const [csvText, setCsvText] = useState('');
   const [dhanFileName, setDhanFileName] = useState('');
@@ -374,7 +374,7 @@ const ImportTradesPage = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Import Trades</h1>
+      {!embedded ? <h1 className="text-2xl font-semibold">Import Trades</h1> : null}
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {success && <p className="text-sm text-emerald-700 dark:text-emerald-300">{success}</p>}
 
