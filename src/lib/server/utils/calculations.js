@@ -136,6 +136,18 @@ const getTradeOpenedOn = (trade) => {
   return firstEntryDate || trade?.entryDate || null;
 };
 
+const getPyramidCount = (trade) => Array.isArray(trade?.pyramids) ? trade.pyramids.length : 0;
+
+const hasPartialExits = (trade) => {
+  const exits = Array.isArray(trade?.exits) ? trade.exits : [];
+  if (!exits.length) return false;
+
+  const totalEntryQty = buildEntries(trade).reduce((acc, entry) => acc + toNumber(entry.qty), 0);
+  const exitedQty = exits.reduce((acc, exit) => acc + toNumber(exit.exitQty), 0);
+
+  return (exitedQty > EPSILON_QTY && exitedQty + EPSILON_QTY < totalEntryQty) || exits.length > 1;
+};
+
 const buildCalendarTradeClusters = (closedTrades) => {
   const tradePoints = closedTrades
     .map((trade) => {
@@ -482,7 +494,9 @@ export const buildDashboardAnalytics = (trades) => {
         openedOn: getTradeOpenedOn(trade),
         realizedPnL: round(trade.metrics.realizedPnL, 2),
         realizedR: round(calcNormalizedRFromStopLoss(trade), 4),
-        closedOn: getTradeClosedOn(trade)
+        closedOn: getTradeClosedOn(trade),
+        pyramidCount: getPyramidCount(trade),
+        hasPartialExits: hasPartialExits(trade)
       };
     })
     .sort((a, b) => new Date(b.closedOn) - new Date(a.closedOn));
@@ -495,7 +509,9 @@ export const buildDashboardAnalytics = (trades) => {
         openedOn: getTradeOpenedOn(trade),
         realizedPnL: round(trade.metrics.realizedPnL, 2),
         realizedR: round(calcNormalizedRFromStopLoss(trade), 4),
-        closedOn: getTradeClosedOn(trade)
+        closedOn: getTradeClosedOn(trade),
+        pyramidCount: getPyramidCount(trade),
+        hasPartialExits: hasPartialExits(trade)
       };
     })
     .sort((a, b) => new Date(b.closedOn) - new Date(a.closedOn));
