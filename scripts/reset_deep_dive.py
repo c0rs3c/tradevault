@@ -3,7 +3,8 @@ import argparse
 import os
 from pathlib import Path
 
-from pymongo import MongoClient
+from google.cloud import firestore
+from google.oauth2 import service_account
 
 
 DEEP_DIVE_COLLECTIONS_ALL = [
@@ -41,10 +42,35 @@ def load_dotenv():
                 os.environ[key] = value
 
 
+def get_db():
+    project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip() or None
+    raw = str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
+    if raw:
+        import json
+
+        info = json.loads(raw)
+        credentials = service_account.Credentials.from_service_account_info(info)
+        return firestore.Client(project=project_id or info.get("project_id"), credentials=credentials)
+    return firestore.Client(project=project_id)
+
+
+def delete_collection(db, name):
+    total = 0
+    while True:
+        docs = list(db.collection(name).limit(200).stream())
+        if not docs:
+            return total
+        batch = db.batch()
+        for doc in docs:
+            batch.delete(doc.reference)
+        batch.commit()
+        total += len(docs)
+
+
 def main():
     load_dotenv()
 
-    parser = argparse.ArgumentParser(description="Reset Deep Dive MongoDB collections")
+    parser = argparse.ArgumentParser(description="Reset Deep Dive Firestore collections")
     parser.add_argument("--confirm", action="store_true", help="Required to execute the reset")
     parser.add_argument(
         "--keep-lists",
@@ -56,30 +82,27 @@ def main():
     if not args.confirm:
         raise SystemExit("Refusing to run without --confirm")
 
-    mongo_uri = str(os.getenv("DEEP_DIVE_MONGO_URI", "")).strip()
-    if not mongo_uri:
-        raise SystemExit("Missing DEEP_DIVE_MONGO_URI")
+    project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip()
+    if (
+        not project_id
+        and not str(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")).strip()
+        and not str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
+    ):
+        raise SystemExit(
+            "Missing Firestore configuration. Set DEEP_DIVE_FIRESTORE_PROJECT_ID with GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY."
+        )
 
-    db_name = str(os.getenv("DEEP_DIVE_DB_NAME", "")).strip() or None
-    client = MongoClient(mongo_uri)
-    db = client.get_database(db_name) if db_name else client.get_default_database()
-
+    db = get_db()
     collections = DEEP_DIVE_COLLECTIONS_KEEP_LISTS if args.keep_lists else DEEP_DIVE_COLLECTIONS_ALL
 
     print(
-        f"[deep-dive-reset] database={db.name} mode={'keep-lists' if args.keep_lists else 'full'}",
+        f"[deep-dive-reset] project={project_id or '(default)'} mode={'keep-lists' if args.keep_lists else 'full'}",
         flush=True,
     )
 
-    try:
-        for name in collections:
-            if name in db.list_collection_names():
-                db[name].drop()
-                print(f"[deep-dive-reset] dropped {name}", flush=True)
-            else:
-                print(f"[deep-dive-reset] skipped {name} (not present)", flush=True)
-    finally:
-        client.close()
+    for name in collections:
+        removed = delete_collection(db, name)
+        print(f"[deep-dive-reset] cleared {name} ({removed}+ docs)", flush=True)
 
     print("[deep-dive-reset] done", flush=True)
 

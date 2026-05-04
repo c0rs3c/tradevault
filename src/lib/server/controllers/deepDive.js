@@ -1,4 +1,3 @@
-import { Types } from 'mongoose';
 import path from 'path';
 import { spawn } from 'child_process';
 import { connectDeepDiveDB } from '@/lib/server/deepDive/db';
@@ -19,6 +18,8 @@ const createError = (message, statusCode = 500) => {
   error.statusCode = statusCode;
   return error;
 };
+
+const isValidDeepDiveId = (value) => Boolean(String(value || '').trim());
 
 const toDateKey = (value) => {
   const date = value instanceof Date ? value : new Date(value);
@@ -348,7 +349,7 @@ export const createDeepDiveStockList = async ({ ownerUsername, title, descriptio
 };
 
 export const getDeepDiveStockList = async ({ ownerUsername, id }) => {
-  if (!Types.ObjectId.isValid(id)) throw createError('Invalid list id', 400);
+  if (!isValidDeepDiveId(id)) throw createError('Invalid list id', 400);
   const { DeepDiveStockList } = await getModels();
   await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
   const list = await DeepDiveStockList.findOne({ _id: id, ownerUsername }).lean();
@@ -366,7 +367,7 @@ export const getDeepDiveStockList = async ({ ownerUsername, id }) => {
 };
 
 export const updateDeepDiveStockList = async ({ ownerUsername, id, title, description, text }) => {
-  if (!Types.ObjectId.isValid(id)) throw createError('Invalid list id', 400);
+  if (!isValidDeepDiveId(id)) throw createError('Invalid list id', 400);
   const { DeepDiveStockList } = await getModels();
   const canonical = await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
   if (canonical && String(canonical._id) !== String(id)) {
@@ -408,7 +409,7 @@ export const updateDeepDiveStockList = async ({ ownerUsername, id, title, descri
 };
 
 export const deleteDeepDiveStockList = async ({ ownerUsername, id }) => {
-  if (!Types.ObjectId.isValid(id)) throw createError('Invalid list id', 400);
+  if (!isValidDeepDiveId(id)) throw createError('Invalid list id', 400);
   const { DeepDiveStockList } = await getModels();
   await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
   const deleted = await DeepDiveStockList.findOneAndDelete({ _id: id, ownerUsername }).lean();
@@ -742,7 +743,7 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
   const stockListId = String(payload?.stockListId || '').trim();
   let stockList = null;
   if (stockListId) {
-    if (!Types.ObjectId.isValid(stockListId)) {
+    if (!isValidDeepDiveId(stockListId)) {
       throw createError('Invalid stockListId', 400);
     }
     stockList = await DeepDiveStockList.findOne({ _id: stockListId, ownerUsername }).lean();

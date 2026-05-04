@@ -9,3 +9,4 @@ coverage
 tradebook
 .vercel
 .venv
+service-account-creds.json

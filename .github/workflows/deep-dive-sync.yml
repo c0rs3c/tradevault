@@ -33,8 +33,8 @@ jobs:
 
       - name: Run Deep Dive ingestion
         env:
-          DEEP_DIVE_MONGO_URI: ${{ secrets.DEEP_DIVE_MONGO_URI }}
-          DEEP_DIVE_DB_NAME: ${{ secrets.DEEP_DIVE_DB_NAME }}
+          DEEP_DIVE_FIRESTORE_PROJECT_ID: ${{ secrets.DEEP_DIVE_FIRESTORE_PROJECT_ID }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
           DEEP_DIVE_HISTORY_YEARS: ${{ vars.DEEP_DIVE_HISTORY_YEARS || '5' }}
           DEEP_DIVE_SYNC_OVERLAP_DAYS: ${{ vars.DEEP_DIVE_SYNC_OVERLAP_DAYS || '10' }}
           DEEP_DIVE_PROFILE_REFRESH_DAYS: ${{ vars.DEEP_DIVE_PROFILE_REFRESH_DAYS || '30' }}

@@ -1,43 +1,67 @@
-import mongoose from 'mongoose';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
-const DEEP_DIVE_MONGO_URI = String(process.env.DEEP_DIVE_MONGO_URI || '').trim();
-const DEEP_DIVE_DB_NAME = String(process.env.DEEP_DIVE_DB_NAME || '').trim();
+const DEEP_DIVE_FIRESTORE_PROJECT_ID = String(
+  process.env.DEEP_DIVE_FIRESTORE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || ''
+).trim();
+const FIREBASE_SERVICE_ACCOUNT_KEY = String(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '').trim();
 
-let cached = global.deepDiveMongoose;
+let cached = global.deepDiveFirestore;
 if (!cached) {
-  cached = global.deepDiveMongoose = { conn: null, promise: null, uri: null, dbName: null };
+  cached = global.deepDiveFirestore = { db: null, projectId: null, credentialKey: null };
 }
 
+const parseServiceAccount = () => {
+  if (!FIREBASE_SERVICE_ACCOUNT_KEY) return null;
+  try {
+    return JSON.parse(FIREBASE_SERVICE_ACCOUNT_KEY);
+  } catch {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY must be valid JSON');
+  }
+};
+
+const getOrCreateApp = () => {
+  const serviceAccount = parseServiceAccount();
+  const appName = 'deep-dive-firestore';
+  const existing = getApps().find((app) => app.name === appName);
+  if (existing) return existing;
+
+  if (serviceAccount) {
+    return initializeApp(
+      {
+        credential: cert(serviceAccount),
+        projectId: DEEP_DIVE_FIRESTORE_PROJECT_ID || serviceAccount.project_id
+      },
+      appName
+    );
+  }
+
+  return initializeApp(
+    {
+      projectId: DEEP_DIVE_FIRESTORE_PROJECT_ID || undefined
+    },
+    appName
+  );
+};
+
 export const connectDeepDiveDB = async () => {
-  if (!DEEP_DIVE_MONGO_URI) {
-    throw new Error('Missing DEEP_DIVE_MONGO_URI environment variable');
+  if (!DEEP_DIVE_FIRESTORE_PROJECT_ID && !process.env.GOOGLE_APPLICATION_CREDENTIALS && !FIREBASE_SERVICE_ACCOUNT_KEY) {
+    throw new Error(
+      'Missing Firestore configuration. Set DEEP_DIVE_FIRESTORE_PROJECT_ID with GOOGLE_APPLICATION_CREDENTIALS, or provide FIREBASE_SERVICE_ACCOUNT_KEY.'
+    );
   }
 
   if (
-    cached.conn &&
-    cached.uri === DEEP_DIVE_MONGO_URI &&
-    cached.dbName === DEEP_DIVE_DB_NAME
+    cached.db &&
+    cached.projectId === DEEP_DIVE_FIRESTORE_PROJECT_ID &&
+    cached.credentialKey === FIREBASE_SERVICE_ACCOUNT_KEY
   ) {
-    return cached.conn;
+    return cached.db;
   }
 
-  if (
-    cached.promise &&
-    cached.uri === DEEP_DIVE_MONGO_URI &&
-    cached.dbName === DEEP_DIVE_DB_NAME
-  ) {
-    cached.conn = await cached.promise;
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    cached.uri = DEEP_DIVE_MONGO_URI;
-    cached.dbName = DEEP_DIVE_DB_NAME;
-    cached.promise = mongoose
-      .createConnection(DEEP_DIVE_MONGO_URI, DEEP_DIVE_DB_NAME ? { dbName: DEEP_DIVE_DB_NAME } : {})
-      .asPromise();
-  }
-
-  cached.conn = await cached.promise;
-  return cached.conn;
+  const app = getOrCreateApp();
+  cached.db = getFirestore(app);
+  cached.projectId = DEEP_DIVE_FIRESTORE_PROJECT_ID;
+  cached.credentialKey = FIREBASE_SERVICE_ACCOUNT_KEY;
+  return cached.db;
 };

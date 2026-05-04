@@ -8,8 +8,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
+from google.cloud import firestore
+from google.oauth2 import service_account
 import yfinance as yf
-from pymongo import ASCENDING, DESCENDING, MongoClient, UpdateOne
 
 
 DEEP_DIVE_BENCHMARKS = [
@@ -123,48 +124,78 @@ def numeric(value):
     return number
 
 
+def document_to_dict(snapshot):
+    data = snapshot.to_dict() or {}
+    data["_id"] = snapshot.id
+    return data
+
+
+def get_service_account_info():
+    raw = str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
+    if not raw:
+        return None
+    import json
+
+    return json.loads(raw)
+
+
+def get_db():
+    project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip() or None
+    service_account_info = get_service_account_info()
+    if service_account_info:
+        credentials = service_account.Credentials.from_service_account_info(service_account_info)
+        return firestore.Client(project=project_id or service_account_info.get("project_id"), credentials=credentials)
+    return firestore.Client(project=project_id)
+
+
+def chunked(items, size):
+    for index in range(0, len(items), size):
+        yield items[index : index + size]
+
+
+def query_in_chunks(collection, field, values, chunk_size=30):
+    docs = []
+    for chunk in chunked(values, chunk_size):
+        docs.extend(collection.where(field, "in", list(chunk)).stream())
+    return docs
+
+
+def commit_sets_in_chunks(db, collection_name, rows, build_doc_id, chunk_size=400):
+    total = 0
+    for chunk in chunked(rows, chunk_size):
+        batch = db.batch()
+        for row in chunk:
+            ref = db.collection(collection_name).document(build_doc_id(row))
+            batch.set(ref, row, merge=True)
+            total += 1
+        batch.commit()
+    return total
+
+
 def ensure_benchmarks(db):
-    collection = db[SYMBOL_COLLECTION]
-    operations = []
+    batch = db.batch()
+    now = utc_now()
     for item in DEEP_DIVE_BENCHMARKS:
-        operations.append(
-            UpdateOne(
-                {"symbol": item["symbol"]},
-                {
-                    "$setOnInsert": {
-                        "symbol": item["symbol"],
-                        "assetType": "benchmark",
-                        "benchmarkKey": item["key"],
-                    },
-                    "$set": {
-                        "displayName": item["displayName"],
-                        "yfinanceTicker": item["yfinanceTicker"],
-                        "active": True,
-                        "updatedAt": utc_now(),
-                    },
-                },
-                upsert=True,
-            )
+        ref = db.collection(SYMBOL_COLLECTION).document(item["symbol"])
+        batch.set(
+            ref,
+            {
+                "symbol": item["symbol"],
+                "assetType": "benchmark",
+                "benchmarkKey": item["key"],
+                "displayName": item["displayName"],
+                "yfinanceTicker": item["yfinanceTicker"],
+                "active": True,
+                "updatedAt": now,
+                "createdAt": now,
+            },
+            merge=True,
         )
-    if operations:
-        collection.bulk_write(operations, ordered=False)
-
-
-def ensure_indexes(db):
-    db[SYMBOL_COLLECTION].create_index([("symbol", ASCENDING)], unique=True)
-    db[SYMBOL_COLLECTION].create_index([("assetType", ASCENDING), ("active", ASCENDING)])
-    db[LIST_COLLECTION].create_index([("ownerUsername", ASCENDING), ("title", ASCENDING)])
-    db[PRICE_COLLECTION].create_index([("symbol", ASCENDING), ("date", ASCENDING)], unique=True)
-    db[PRICE_COLLECTION].create_index([("assetType", ASCENDING), ("date", ASCENDING)])
-    db[PROFILE_COLLECTION].create_index([("symbol", ASCENDING)], unique=True)
-    db[PROFILE_COLLECTION].create_index([("sector", ASCENDING), ("industry", ASCENDING)])
-    db[STATE_COLLECTION].create_index([("symbol", ASCENDING)], unique=True)
-    db[STATE_COLLECTION].create_index([("assetType", ASCENDING), ("latestBarDate", DESCENDING)])
-    db[RUN_COLLECTION].create_index([("runType", ASCENDING), ("startedAt", DESCENDING)])
+    batch.commit()
 
 
 def ensure_stock_symbols(db):
-    lists = list(db[LIST_COLLECTION].find({}, {"symbols": 1}))
+    lists = [document_to_dict(doc) for doc in db.collection(LIST_COLLECTION).stream()]
     symbols = sorted(
         {
             normalize_symbol(symbol)
@@ -173,33 +204,29 @@ def ensure_stock_symbols(db):
             if normalize_symbol(symbol)
         }
     )
-    operations = []
-    for symbol in symbols:
-        operations.append(
-            UpdateOne(
-                {"symbol": symbol},
-                {
-                    "$setOnInsert": {"symbol": symbol, "assetType": "stock"},
-                    "$set": {
-                        "displayName": symbol,
-                        "yfinanceTicker": stock_ticker(symbol),
-                        "yfinanceTickers": stock_ticker_candidates(symbol),
-                        "active": True,
-                        "updatedAt": utc_now(),
-                    },
-                },
-                upsert=True,
-            )
-        )
-    if operations:
-        db[SYMBOL_COLLECTION].bulk_write(operations, ordered=False)
+    if not symbols:
+        return
+    now = utc_now()
+    rows = [
+        {
+            "symbol": symbol,
+            "assetType": "stock",
+            "displayName": symbol,
+            "yfinanceTicker": stock_ticker(symbol),
+            "yfinanceTickers": stock_ticker_candidates(symbol),
+            "active": True,
+            "updatedAt": now,
+            "createdAt": now,
+        }
+        for symbol in symbols
+    ]
+    commit_sets_in_chunks(db, SYMBOL_COLLECTION, rows, lambda row: row["symbol"])
 
 
 def load_active_symbols(db):
-    ensure_indexes(db)
     ensure_benchmarks(db)
     ensure_stock_symbols(db)
-    docs = list(db[SYMBOL_COLLECTION].find({"active": True}, {"_id": 0}))
+    docs = [document_to_dict(doc) for doc in db.collection(SYMBOL_COLLECTION).where("active", "==", True).stream()]
     docs.sort(key=lambda item: (item.get("assetType") != "benchmark", item.get("symbol", "")))
     return docs
 
@@ -266,7 +293,7 @@ class SyncSummary:
 
 def record_run(db, summary: SyncSummary, started_at: datetime, status: str):
     finished_at = utc_now()
-    db[RUN_COLLECTION].insert_one(
+    db.collection(RUN_COLLECTION).add(
         {
             "runType": summary.run_type,
             "status": status,
@@ -283,14 +310,16 @@ def record_run(db, summary: SyncSummary, started_at: datetime, status: str):
     )
 
 
+def load_sync_states(db, symbols):
+    if not symbols:
+        return {}
+    docs = query_in_chunks(db.collection(STATE_COLLECTION), "symbol", symbols)
+    return {doc.id: document_to_dict(doc) for doc in docs}
+
+
 def get_price_sync_targets(db, mode: str, history_years: int, overlap_days: int):
     symbol_docs = load_active_symbols(db)
-    states = {
-        item["symbol"]: item
-        for item in db[STATE_COLLECTION].find(
-            {"symbol": {"$in": [doc["symbol"] for doc in symbol_docs]}}, {"_id": 0}
-        )
-    }
+    states = load_sync_states(db, [doc["symbol"] for doc in symbol_docs])
     targets = []
     default_backfill_start = days_ago(history_years * 365)
 
@@ -317,19 +346,13 @@ def get_price_sync_targets(db, mode: str, history_years: int, overlap_days: int)
 def bulk_upsert_bars(db, bar_documents):
     if not bar_documents:
         return 0
-    operations = []
-    for bar in bar_documents:
-        operations.append(
-            UpdateOne(
-                {"symbol": bar["symbol"], "date": bar["date"]},
-                {"$set": bar, "$setOnInsert": {"createdAt": utc_now()}},
-                upsert=True,
-            )
-        )
-    if not operations:
-        return 0
-    result = db[PRICE_COLLECTION].bulk_write(operations, ordered=False)
-    return (result.upserted_count or 0) + (result.modified_count or 0)
+    rows = [{**bar, "createdAt": bar.get("createdAt") or utc_now()} for bar in bar_documents]
+    return commit_sets_in_chunks(
+        db,
+        PRICE_COLLECTION,
+        rows,
+        lambda row: f"{row['symbol']}_{row['date'].strftime('%Y-%m-%d')}",
+    )
 
 
 def fetch_history_for_ticker(ticker: str, start_key: str, end_date: str):
@@ -363,42 +386,37 @@ def fetch_docs_with_fallback(symbol_doc, start_key: str, end_date: str):
 
 def update_sync_state_for_success(db, symbol_doc, earliest_bar, latest_bar):
     now = utc_now()
-    db[STATE_COLLECTION].update_one(
-        {"symbol": symbol_doc["symbol"]},
-        {
-            "$set": {
-                "symbol": symbol_doc["symbol"],
-                "assetType": symbol_doc["assetType"],
-                "lastSyncedAt": now,
-                "lastAttemptedAt": now,
-                "lastStatus": "success",
-                "lastError": "",
-                "updatedAt": now,
-            },
-            "$min": {"earliestBarDate": earliest_bar},
-            "$max": {"latestBarDate": latest_bar},
-            "$setOnInsert": {"createdAt": now},
-        },
-        upsert=True,
-    )
+    ref = db.collection(STATE_COLLECTION).document(symbol_doc["symbol"])
+    snapshot = ref.get()
+    current = snapshot.to_dict() or {}
+    next_payload = {
+        "symbol": symbol_doc["symbol"],
+        "assetType": symbol_doc["assetType"],
+        "lastSyncedAt": now,
+        "lastAttemptedAt": now,
+        "lastStatus": "success",
+        "lastError": "",
+        "earliestBarDate": min(filter(None, [current.get("earliestBarDate"), earliest_bar])),
+        "latestBarDate": max(filter(None, [current.get("latestBarDate"), latest_bar])),
+        "updatedAt": now,
+        "createdAt": current.get("createdAt") or now,
+    }
+    ref.set(next_payload, merge=True)
 
 
 def update_sync_state_for_failure(db, symbol_doc, error_message):
     now = utc_now()
-    db[STATE_COLLECTION].update_one(
-        {"symbol": symbol_doc["symbol"]},
+    db.collection(STATE_COLLECTION).document(symbol_doc["symbol"]).set(
         {
-            "$set": {
-                "symbol": symbol_doc["symbol"],
-                "assetType": symbol_doc["assetType"],
-                "lastAttemptedAt": now,
-                "lastStatus": "failed",
-                "lastError": str(error_message)[:1000],
-                "updatedAt": now,
-            },
-            "$setOnInsert": {"createdAt": now},
+            "symbol": symbol_doc["symbol"],
+            "assetType": symbol_doc["assetType"],
+            "lastAttemptedAt": now,
+            "lastStatus": "failed",
+            "lastError": str(error_message)[:1000],
+            "updatedAt": now,
+            "createdAt": now,
         },
-        upsert=True,
+        merge=True,
     )
 
 
@@ -457,14 +475,12 @@ def sync_prices(db, mode: str, history_years: int, overlap_days: int, batch_size
                     if not docs:
                         docs, used_ticker, last_error = fetch_docs_with_fallback(symbol_doc, start_key, end_date)
                         if used_ticker and used_ticker != source_ticker:
-                            db[SYMBOL_COLLECTION].update_one(
-                                {"symbol": symbol_doc["symbol"]},
+                            db.collection(SYMBOL_COLLECTION).document(symbol_doc["symbol"]).set(
                                 {
-                                    "$set": {
-                                        "yfinanceTicker": used_ticker,
-                                        "updatedAt": utc_now(),
-                                    }
+                                    "yfinanceTicker": used_ticker,
+                                    "updatedAt": utc_now(),
                                 },
+                                merge=True,
                             )
                             symbol_doc["yfinanceTicker"] = used_ticker
                     if not docs:
@@ -519,14 +535,16 @@ def profile_due(profile_doc, threshold_days):
 
 
 def compute_average_traded_value(db, symbol):
-    cursor = (
-        db[PRICE_COLLECTION]
-        .find({"symbol": symbol}, {"close": 1, "adjClose": 1, "volume": 1})
-        .sort("date", -1)
+    docs = (
+        db.collection(PRICE_COLLECTION)
+        .where("symbol", "==", symbol)
+        .order_by("date", direction=firestore.Query.DESCENDING)
         .limit(20)
+        .stream()
     )
     values = []
-    for item in cursor:
+    for snapshot in docs:
+        item = snapshot.to_dict() or {}
         close_value = numeric(item.get("adjClose"))
         if close_value is None:
             close_value = numeric(item.get("close"))
@@ -539,15 +557,17 @@ def compute_average_traded_value(db, symbol):
     return sum(values) / len(values)
 
 
+def load_profiles(db, symbols):
+    if not symbols:
+        return {}
+    docs = query_in_chunks(db.collection(PROFILE_COLLECTION), "symbol", symbols)
+    return {doc.id: document_to_dict(doc) for doc in docs}
+
+
 def sync_profiles(db, refresh_days: int):
     summary = SyncSummary(run_type="sync_profiles")
     symbol_docs = [item for item in load_active_symbols(db) if item["assetType"] == "stock"]
-    profiles = {
-        item["symbol"]: item
-        for item in db[PROFILE_COLLECTION].find(
-            {"symbol": {"$in": [doc["symbol"] for doc in symbol_docs]}}, {"_id": 0}
-        )
-    }
+    profiles = load_profiles(db, [doc["symbol"] for doc in symbol_docs])
     due_docs = [doc for doc in symbol_docs if profile_due(profiles.get(doc["symbol"]), refresh_days)]
     summary.symbols_attempted = len(due_docs)
     if not due_docs:
@@ -594,27 +614,21 @@ def sync_profiles(db, refresh_days: int):
                 "sourceTimestamp": now,
                 "lastProfileSyncedAt": now,
                 "updatedAt": now,
+                "createdAt": now,
             }
-            db[PROFILE_COLLECTION].update_one(
-                {"symbol": symbol_doc["symbol"]},
-                {"$set": document, "$setOnInsert": {"createdAt": now}},
-                upsert=True,
-            )
-            db[STATE_COLLECTION].update_one(
-                {"symbol": symbol_doc["symbol"]},
+            db.collection(PROFILE_COLLECTION).document(symbol_doc["symbol"]).set(document, merge=True)
+            db.collection(STATE_COLLECTION).document(symbol_doc["symbol"]).set(
                 {
-                    "$set": {
-                        "symbol": symbol_doc["symbol"],
-                        "assetType": symbol_doc["assetType"],
-                        "lastProfileSyncedAt": now,
-                        "lastAttemptedAt": now,
-                        "lastStatus": "profile_success",
-                        "lastError": "",
-                        "updatedAt": now,
-                    },
-                    "$setOnInsert": {"createdAt": now},
+                    "symbol": symbol_doc["symbol"],
+                    "assetType": symbol_doc["assetType"],
+                    "lastProfileSyncedAt": now,
+                    "lastAttemptedAt": now,
+                    "lastStatus": "profile_success",
+                    "lastError": "",
+                    "updatedAt": now,
+                    "createdAt": now,
                 },
-                upsert=True,
+                merge=True,
             )
             summary.symbols_succeeded += 1
             log(f"sync_profiles: {index}/{summary.symbols_attempted} synced {symbol_doc['symbol']}")
@@ -655,13 +669,17 @@ def main():
     parser.add_argument("--batch-size", type=int, default=int(os.getenv("DEEP_DIVE_BATCH_SIZE", "25")))
     args = parser.parse_args()
 
-    mongo_uri = str(os.getenv("DEEP_DIVE_MONGO_URI", "")).strip()
-    if not mongo_uri:
-        raise SystemExit("Missing DEEP_DIVE_MONGO_URI")
+    project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip()
+    if (
+        not project_id
+        and not str(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")).strip()
+        and not str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
+    ):
+        raise SystemExit(
+            "Missing Firestore configuration. Set DEEP_DIVE_FIRESTORE_PROJECT_ID with GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY."
+        )
 
-    client = MongoClient(mongo_uri)
-    db_name = str(os.getenv("DEEP_DIVE_DB_NAME", "")).strip() or None
-    db = client.get_database(db_name) if db_name else client.get_default_database()
+    db = get_db()
     started_at = utc_now()
 
     try:
@@ -694,8 +712,6 @@ def main():
         record_run(db, failed, started_at, "failed")
         log(f"fatal failure in mode={args.mode} - {exc}")
         raise
-    finally:
-        client.close()
 
 
 if __name__ == "__main__":
