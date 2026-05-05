@@ -26,6 +26,16 @@ if (!cached) {
   };
 }
 
+const isMongoConnectionUsable = (connection) => {
+  const readyState = Number(connection?.readyState);
+  return readyState === 1;
+};
+
+const isMongoConnectionConnecting = (connection) => {
+  const readyState = Number(connection?.readyState);
+  return readyState === 2;
+};
+
 export const getDeepDiveDbProvider = () => {
   if (!['mongodb', 'firestore'].includes(DEEP_DIVE_DB_PROVIDER)) {
     throw new Error('DEEP_DIVE_DB_PROVIDER must be either "mongodb" or "firestore"');
@@ -96,7 +106,8 @@ const connectDeepDiveMongo = async () => {
   if (
     cached.mongoConn &&
     cached.mongoUri === DEEP_DIVE_MONGO_URI &&
-    cached.mongoDbName === DEEP_DIVE_DB_NAME
+    cached.mongoDbName === DEEP_DIVE_DB_NAME &&
+    isMongoConnectionUsable(cached.mongoConn)
   ) {
     return cached.mongoConn;
   }
@@ -104,10 +115,21 @@ const connectDeepDiveMongo = async () => {
   if (
     cached.mongoPromise &&
     cached.mongoUri === DEEP_DIVE_MONGO_URI &&
-    cached.mongoDbName === DEEP_DIVE_DB_NAME
+    cached.mongoDbName === DEEP_DIVE_DB_NAME &&
+    (isMongoConnectionUsable(cached.mongoConn) || isMongoConnectionConnecting(cached.mongoConn))
   ) {
     cached.mongoConn = await cached.mongoPromise;
     return cached.mongoConn;
+  }
+
+  if (cached.mongoConn && !isMongoConnectionUsable(cached.mongoConn) && !isMongoConnectionConnecting(cached.mongoConn)) {
+    try {
+      await cached.mongoConn.close();
+    } catch {
+      // Ignore close failures while replacing a stale connection.
+    }
+    cached.mongoConn = null;
+    cached.mongoPromise = null;
   }
 
   cached.mongoUri = DEEP_DIVE_MONGO_URI;
