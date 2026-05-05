@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import os
 from pathlib import Path
 
 from google.cloud import firestore
 from google.oauth2 import service_account
+from pymongo import MongoClient
 
 
 DEEP_DIVE_COLLECTIONS_ALL = [
@@ -46,12 +48,20 @@ def get_db():
     project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip() or None
     raw = str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
     if raw:
-        import json
-
         info = json.loads(raw)
         credentials = service_account.Credentials.from_service_account_info(info)
         return firestore.Client(project=project_id or info.get("project_id"), credentials=credentials)
     return firestore.Client(project=project_id)
+
+
+def get_mongo_db():
+    mongo_uri = str(os.getenv("DEEP_DIVE_MONGO_URI", "")).strip()
+    if not mongo_uri:
+        raise SystemExit("Missing DEEP_DIVE_MONGO_URI")
+    client = MongoClient(mongo_uri)
+    db_name = str(os.getenv("DEEP_DIVE_DB_NAME", "")).strip() or None
+    db = client.get_database(db_name) if db_name else client.get_default_database()
+    return client, db
 
 
 def delete_collection(db, name):
@@ -82,27 +92,41 @@ def main():
     if not args.confirm:
         raise SystemExit("Refusing to run without --confirm")
 
-    project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip()
-    if (
-        not project_id
-        and not str(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")).strip()
-        and not str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
-    ):
-        raise SystemExit(
-            "Missing Firestore configuration. Set DEEP_DIVE_FIRESTORE_PROJECT_ID with GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY."
-        )
+    provider = str(os.getenv("DEEP_DIVE_DB_PROVIDER", "mongodb")).strip().lower()
+    if provider not in {"mongodb", "firestore"}:
+        raise SystemExit('DEEP_DIVE_DB_PROVIDER must be "mongodb" or "firestore"')
 
-    db = get_db()
+    mongo_client = None
+    project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip()
+    if provider == "firestore":
+        if (
+            not project_id
+            and not str(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")).strip()
+            and not str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
+        ):
+            raise SystemExit(
+                "Missing Firestore configuration. Set DEEP_DIVE_FIRESTORE_PROJECT_ID with GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY."
+            )
+        db = get_db()
+    else:
+        mongo_client, db = get_mongo_db()
     collections = DEEP_DIVE_COLLECTIONS_KEEP_LISTS if args.keep_lists else DEEP_DIVE_COLLECTIONS_ALL
 
     print(
-        f"[deep-dive-reset] project={project_id or '(default)'} mode={'keep-lists' if args.keep_lists else 'full'}",
+        f"[deep-dive-reset] provider={provider} target={(project_id or getattr(db, 'name', '(default)'))} mode={'keep-lists' if args.keep_lists else 'full'}",
         flush=True,
     )
 
-    for name in collections:
-        removed = delete_collection(db, name)
-        print(f"[deep-dive-reset] cleared {name} ({removed}+ docs)", flush=True)
+    try:
+        for name in collections:
+            if provider == "firestore":
+                removed = delete_collection(db, name)
+            else:
+                removed = db[name].delete_many({}).deleted_count
+            print(f"[deep-dive-reset] cleared {name} ({removed}+ docs)", flush=True)
+    finally:
+        if mongo_client:
+            mongo_client.close()
 
     print("[deep-dive-reset] done", flush=True)
 

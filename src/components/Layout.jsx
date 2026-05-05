@@ -171,6 +171,10 @@ const Layout = ({ children }) => {
     { href: '/position-sizing', label: 'Position Sizing', exact: true, description: 'Risk and sizing calculator' },
     { href: '/market-trend', label: 'Market Trend', exact: true, description: 'Trend and breadth dashboard' }
   ];
+  const deepDiveMenuItems = [
+    { href: '/deep-dive', label: 'Overview', exact: true, description: 'Choose a deep-dive workflow' },
+    { href: '/deep-dive/rs', label: 'RS Deep Dive', exact: true, description: 'Relative-strength scanner and ranking' }
+  ];
   const settingsMenuItems = [
     {
       href: '/settings',
@@ -249,7 +253,7 @@ const Layout = ({ children }) => {
 
               <nav className="hidden items-center gap-2 md:flex">
                 <NavItem href="/dashboard" label="Dashboard" />
-                <NavItem href="/deep-dive" label="Deep Dive" exact />
+                <NavDropdown label="Deep Dive" items={deepDiveMenuItems} />
                 <NavItem href="/news" label="News" exact />
                 <NavDropdown label="Trades" items={tradesMenuItems} />
                 <NavDropdown label="Tools" items={toolsMenuItems} />
@@ -316,7 +320,11 @@ const Layout = ({ children }) => {
           {mobileMenuOpen && (
             <nav className="mt-3 flex flex-col gap-2 border-t border-slate-200/80 pt-3 dark:border-slate-800/80 md:hidden">
               <NavItem href="/dashboard" label="Dashboard" />
-              <NavItem href="/deep-dive" label="Deep Dive" exact />
+              <div className="space-y-2 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Deep Dive</p>
+                <NavItem href="/deep-dive" label="Overview" exact />
+                <NavItem href="/deep-dive/rs" label="RS Deep Dive" exact />
+              </div>
               <NavItem href="/news" label="News" exact />
               <div className="space-y-2 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Trades</p>

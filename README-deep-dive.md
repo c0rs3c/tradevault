@@ -1,8 +1,21 @@
 # Deep Dive Setup
 
+## Provider Selection
+
+Deep Dive now supports both MongoDB and Firestore through one env flag:
+
+```env
+DEEP_DIVE_DB_PROVIDER=mongodb
+```
+
+Allowed values:
+
+- `mongodb`: recommended for historical bar storage and backfills
+- `firestore`: supported, but slower for large historical datasets
+
 ## Firestore Configuration
 
-Deep Dive no longer uses `DEEP_DIVE_MONGO_URI` or `DEEP_DIVE_DB_NAME`. It now stores its data in Google Firestore.
+Use these only when `DEEP_DIVE_DB_PROVIDER=firestore`.
 
 Use one of these authentication paths:
 
@@ -63,6 +76,7 @@ Use the one-time migration script instead:
 ```env
 DEEP_DIVE_MONGO_URI=your-existing-mongo-uri
 DEEP_DIVE_DB_NAME=your-existing-mongo-db
+DEEP_DIVE_DB_PROVIDER=firestore
 DEEP_DIVE_FIRESTORE_PROJECT_ID=your-gcp-project-id
 GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
 ```
@@ -85,7 +99,40 @@ What it does:
 
 After that, start using the app against Firestore and use only incremental syncs going forward.
 
+## Symbol Repair
+
+If some Deep Dive symbols were migrated with `_` but should actually use `&`, run this one-time Firestore repair:
+
+```bash
+python3 scripts/replace_deep_dive_symbol_underscores.py --confirm
+```
+
+What it does:
+
+- moves symbol-keyed Firestore documents from `_` symbols to `&` symbols
+- rewrites price-bar document ids to match the corrected symbol
+- updates saved Deep Dive stock lists
+- updates `failedSymbols` inside ingestion-run logs
+
+For new list pastes, Deep Dive now normalizes symbols on input and automatically stores `&` instead of `_`.
+
 ## Initial Backfill Flow
+
+If you want Deep Dive to keep using MongoDB, set:
+
+```env
+DEEP_DIVE_DB_PROVIDER=mongodb
+DEEP_DIVE_MONGO_URI=your-deep-dive-mongo-uri
+DEEP_DIVE_DB_NAME=your-deep-dive-db-name
+```
+
+If you want Deep Dive to use Firestore, set:
+
+```env
+DEEP_DIVE_DB_PROVIDER=firestore
+DEEP_DIVE_FIRESTORE_PROJECT_ID=your-gcp-project-id
+GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
+```
 
 Recommended sequence:
 

@@ -86,6 +86,9 @@ Copy `.env.example` to `.env`:
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/trade-journal
 NEWS_MONGO_URI=mongodb://127.0.0.1:27017/trade-journal-news
+DEEP_DIVE_DB_PROVIDER=mongodb
+DEEP_DIVE_MONGO_URI=mongodb://127.0.0.1:27017/trade-journal-deep-dive
+DEEP_DIVE_DB_NAME=trade-journal-deep-dive
 DEEP_DIVE_FIRESTORE_PROJECT_ID=your-gcp-project-id
 GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
 QUOTE_PROVIDER=local_python
@@ -152,8 +155,8 @@ The hosted service also exposes `GET /health` for smoke checks.
 
 ## Deep Dive
 - `Deep Dive` is a separate research module at `/deep-dive`.
-- Historical prices, company profiles, sync state, and ingestion logs live in Firestore via `DEEP_DIVE_FIRESTORE_PROJECT_ID`.
-- The Deep Dive UI reads only stored Firestore-backed data and never calls `yfinance` during page load.
+- Historical prices, company profiles, sync state, and ingestion logs can live in MongoDB or Firestore, selected by `DEEP_DIVE_DB_PROVIDER`.
+- For large historical price-bar workloads, MongoDB is the recommended backend.
 - Stock lists created in the UI become the active research universe for hosted ingestion.
 - If you already have Deep Dive data in MongoDB, use `python3 scripts/migrate_deep_dive_to_firestore.py --confirm` once instead of rerunning a full backfill.
 - GitHub Actions workflow `.github/workflows/deep-dive-sync.yml` runs `scripts/deep_dive_ingest.py` on weekdays around 7:00 PM IST.
@@ -180,8 +183,10 @@ python3 scripts/deep_dive_ingest.py --mode sync_profiles
   - `python3 scripts/reset_deep_dive.py --confirm`
   - `python3 scripts/reset_deep_dive.py --confirm --keep-lists`
 - Recommended GitHub configuration:
+  - Variable or secret: `DEEP_DIVE_DB_PROVIDER`
   - Secret: `DEEP_DIVE_FIRESTORE_PROJECT_ID`
   - Secret: `FIREBASE_SERVICE_ACCOUNT_KEY` or a workflow-created `GOOGLE_APPLICATION_CREDENTIALS` file
+  - If using MongoDB instead: `DEEP_DIVE_MONGO_URI` and optional `DEEP_DIVE_DB_NAME`
   - Optional repo variables: `DEEP_DIVE_HISTORY_YEARS`, `DEEP_DIVE_SYNC_OVERLAP_DAYS`, `DEEP_DIVE_PROFILE_REFRESH_DAYS`, `DEEP_DIVE_BATCH_SIZE`
 - Default historical backfill horizon is `3 years` unless `DEEP_DIVE_HISTORY_YEARS` or `--history-years` overrides it.
 - Manual examples:

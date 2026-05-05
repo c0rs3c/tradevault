@@ -5,20 +5,6 @@ export const DEEP_DIVE_BENCHMARKS = [
     displayName: 'Nifty 50',
     yfinanceTicker: '^NSEI',
     assetType: 'benchmark'
-  },
-  {
-    key: 'MIDSML400',
-    symbol: 'MIDSML400',
-    displayName: 'Nifty MidSmallcap 400',
-    yfinanceTicker: '^CRSLDX',
-    assetType: 'benchmark'
-  },
-  {
-    key: 'CNXSMALLCAP',
-    symbol: 'CNXSMALLCAP',
-    displayName: 'Nifty Smallcap',
-    yfinanceTicker: '^CNXSC',
-    assetType: 'benchmark'
   }
 ];
 
@@ -32,6 +18,8 @@ export const normalizeDeepDiveSymbol = (value) => {
     .replace(/^NSE:/, '')
     .replace(/^BSE:/, '')
     .replace(/[-\s](EQ|BE|BZ|BL|SM|ST)$/i, '')
+    // Some NSE symbols are commonly pasted with "_" but Yahoo/NSE conventions expect "&".
+    .replace(/_/g, '&')
     .replace(/\s+/g, '');
 };
 

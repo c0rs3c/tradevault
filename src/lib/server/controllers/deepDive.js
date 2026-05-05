@@ -130,6 +130,15 @@ const getHighValue = (bar) => safeNumber(bar?.high);
 const getLowValue = (bar) => safeNumber(bar?.low);
 const getVolumeValue = (bar) => safeNumber(bar?.volume);
 
+const computeBoundaryGapPct = (startBar, endBar, trendReferencePct = null) => {
+  const startHigh = getHighValue(startBar);
+  const startLow = getLowValue(startBar);
+  const endHigh = getHighValue(endBar);
+  const endLow = getLowValue(endBar);
+  const useUpMove = Number.isFinite(trendReferencePct) ? trendReferencePct >= 0 : false;
+  return useUpMove ? pctChange(startLow, endHigh) : pctChange(startHigh, endLow);
+};
+
 const computeLiquidity20d = (bars, effectiveEndBar) => {
   if (!effectiveEndBar) return null;
   const eligible = bars.filter((bar) => bar.dateKey <= effectiveEndBar.dateKey);
@@ -147,27 +156,14 @@ const computeLiquidity20d = (bars, effectiveEndBar) => {
 };
 
 const getSortMetric = (row, sortBy) => {
-  if (!sortBy || sortBy === 'stockChangePct') return row.stockChangePct;
+  if (!sortBy || sortBy === 'changePct') return row.changePct;
   if (sortBy === 'symbol') return row.symbol;
   if (sortBy === 'companyName') return row.companyName || '';
   if (sortBy === 'sector') return row.sector || '';
   if (sortBy === 'industry') return row.industry || '';
   if (sortBy === 'liquidity20d') return row.liquidity20d;
-  if (sortBy === 'barsCount') return row.barsCount;
-  if (sortBy === 'approxYears') return row.approxYears;
-  if (sortBy.startsWith('xMultiple:')) {
-    const key = sortBy.split(':')[1];
-    return row.benchmarks?.[key]?.xMultiple ?? null;
-  }
-  if (sortBy.startsWith('rsRatio:')) {
-    const key = sortBy.split(':')[1];
-    return row.benchmarks?.[key]?.rsRatioPct ?? null;
-  }
-  if (sortBy.startsWith('benchmarkChangePct:')) {
-    const key = sortBy.split(':')[1];
-    return row.benchmarks?.[key]?.benchmarkChangePct ?? null;
-  }
-  return row.stockChangePct;
+  if (sortBy === 'xIndex') return row.xIndex;
+  return row.changePct;
 };
 
 const sortRows = (rows, sortBy, direction) => {
@@ -247,6 +243,7 @@ export const ensureDeepDiveBenchmarks = async () => {
           $set: {
             displayName: item.displayName,
             yfinanceTicker: item.yfinanceTicker,
+            yfinanceTickers: item.yfinanceTickers || [item.yfinanceTicker],
             active: true
           }
         },
@@ -813,13 +810,15 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
     const startClose = getCloseValue(startBar);
     const endClose = getCloseValue(endBar);
     const changePct = pctChange(startClose, endClose);
+    const periodGapPct = computeBoundaryGapPct(startBar, endBar, changePct);
     benchmarkStatsByKey[benchmark.key] = {
       benchmark,
       startBar,
       endBar,
       startClose,
       endClose,
-      changePct
+      changePct,
+      periodGapPct
     };
     effectiveDates[benchmark.key] = {
       startDate: startBar?.dateKey || null,
@@ -833,7 +832,12 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
       endDate: endBar?.dateKey || null,
       startClose: round(startClose, 4),
       endClose: round(endClose, 4),
-      changePct: round(changePct)
+      startHigh: round(getHighValue(startBar), 4),
+      startLow: round(getLowValue(startBar), 4),
+      endHigh: round(getHighValue(endBar), 4),
+      endLow: round(getLowValue(endBar), 4),
+      changePct: round(changePct),
+      periodGapPct: round(periodGapPct)
     });
   }
 
@@ -843,14 +847,14 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
     numberParam(payload?.minLiquidity20d) ?? DEEP_DIVE_DEFAULT_MIN_LIQUIDITY;
   const sectorFilter = String(payload?.sector || '').trim();
   const industryFilter = String(payload?.industry || '').trim();
-  const sortBy = String(payload?.sortBy || 'stockChangePct').trim();
+  const sortBy = String(payload?.sortBy || 'changePct').trim();
   const sortDirection = String(payload?.sortDirection || 'desc').trim().toLowerCase();
   const topN = numberParam(payload?.topN);
   const requestedPage = Math.max(1, Number(payload?.page) || 1);
-  const requestedPageSize = Math.min(250, Math.max(1, Number(payload?.pageSize) || 100));
+  const requestedPageSize = Math.min(5000, Math.max(1, Number(payload?.pageSize) || 100));
   const relativeBenchmarkKey = DEEP_DIVE_BENCHMARKS.some((item) => item.key === String(payload?.relativeBenchmarkKey || '').trim())
     ? String(payload.relativeBenchmarkKey).trim()
-    : 'MIDSML400';
+    : 'NIFTY';
   const benchmarkKeys = DEEP_DIVE_BENCHMARKS.map((item) => item.key);
   const minXMultiples = parsePerBenchmarkThresholds(payload?.minXMultiples, benchmarkKeys);
   const minRsRatios = parsePerBenchmarkThresholds(payload?.minRsRatios, benchmarkKeys);
@@ -866,6 +870,7 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
     const startClose = getCloseValue(startBar);
     const endClose = getCloseValue(endBar);
     const stockChangePct = pctChange(startClose, endClose);
+    const stockGapPct = computeBoundaryGapPct(startBar, endBar, stockChangePct);
     const liquidity20d = computeLiquidity20d(stockBars, endBar);
     const profile = profileBySymbol.get(symbol) || {};
     const syncState = syncStateBySymbol.get(symbol) || {};
@@ -934,7 +939,7 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
     const benchmarkMetrics = {};
     for (const benchmark of DEEP_DIVE_BENCHMARKS) {
       const benchmarkStats = benchmarkStatsByKey[benchmark.key];
-      const benchmarkChangePct = benchmarkStats.changePct;
+      const benchmarkGapPct = benchmarkStats.periodGapPct;
       const startRatio =
         Number.isFinite(startClose) && Number.isFinite(benchmarkStats.startClose) && benchmarkStats.startClose > 0
           ? startClose / benchmarkStats.startClose
@@ -948,16 +953,16 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
           ? ((endRatio / startRatio) - 1) * 100
           : null;
       const xMultiple =
-        Number.isFinite(stockChangePct) &&
-        Number.isFinite(benchmarkChangePct) &&
-        Math.abs(benchmarkChangePct) > 0.000001
-          ? stockChangePct / benchmarkChangePct
+        Number.isFinite(stockGapPct) &&
+        Number.isFinite(benchmarkGapPct) &&
+        Math.abs(benchmarkGapPct) > 0.000001
+          ? stockGapPct / benchmarkGapPct
           : null;
 
       benchmarkMetrics[benchmark.key] = {
         key: benchmark.key,
         displayName: benchmark.displayName,
-        benchmarkChangePct: round(benchmarkChangePct),
+        benchmarkGapPct: round(benchmarkGapPct),
         xMultiple: round(xMultiple, 3),
         rsRatioPct: round(rsRatioPct)
       };
@@ -971,7 +976,12 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
       summary: String(profile.summary || '').trim(),
       stockStartClose: round(startClose, 4),
       stockEndClose: round(endClose, 4),
+      stockStartHigh: round(getHighValue(startBar), 4),
+      stockStartLow: round(getLowValue(startBar), 4),
+      stockEndHigh: round(getHighValue(endBar), 4),
+      stockEndLow: round(getLowValue(endBar), 4),
       stockChangePct: round(stockChangePct),
+      changePct: round(stockGapPct),
       latestDate: latestBarDate,
       liquidity20d: round(liquidity20d, 2),
       barsCount: Number(stockBars.length || 0),
@@ -993,14 +1003,15 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
     };
     row.relativeBenchmarkKey = relativeBenchmarkKey;
     row.relativePerformanceMultiple = benchmarkMetrics[relativeBenchmarkKey]?.xMultiple ?? null;
+    row.xIndex = benchmarkMetrics[relativeBenchmarkKey]?.xMultiple ?? null;
     row.relativePerformancePct = round(
-      safePct(row.stockChangePct, benchmarkMetrics[relativeBenchmarkKey]?.benchmarkChangePct)
+      safePct(row.changePct, benchmarkMetrics[relativeBenchmarkKey]?.benchmarkGapPct)
     );
 
-    if (Number.isFinite(minStockChangePct) && (!Number.isFinite(row.stockChangePct) || row.stockChangePct < minStockChangePct)) {
+    if (Number.isFinite(minStockChangePct) && (!Number.isFinite(row.changePct) || row.changePct < minStockChangePct)) {
       continue;
     }
-    if (Number.isFinite(maxStockChangePct) && (!Number.isFinite(row.stockChangePct) || row.stockChangePct > maxStockChangePct)) {
+    if (Number.isFinite(maxStockChangePct) && (!Number.isFinite(row.changePct) || row.changePct > maxStockChangePct)) {
       continue;
     }
     if (Number.isFinite(minLiquidity20d) && (!Number.isFinite(row.liquidity20d) || row.liquidity20d < minLiquidity20d)) {

@@ -2,6 +2,7 @@
 import argparse
 import math
 import os
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,12 @@ from typing import List, Optional
 
 from google.cloud import firestore
 from google.oauth2 import service_account
+from google.cloud.firestore_v1.base_query import FieldFilter
+from google.api_core.exceptions import ResourceExhausted, TooManyRequests
+try:
+    from google.api_core.retry import RetryError
+except ImportError:  # google-api-core compatibility across local environments
+    from google.api_core.exceptions import RetryError
 import yfinance as yf
 
 
@@ -21,20 +28,6 @@ DEEP_DIVE_BENCHMARKS = [
         "yfinanceTicker": "^NSEI",
         "assetType": "benchmark",
     },
-    {
-        "key": "MIDSML400",
-        "symbol": "MIDSML400",
-        "displayName": "Nifty MidSmallcap 400",
-        "yfinanceTicker": "^CRSLDX",
-        "assetType": "benchmark",
-    },
-    {
-        "key": "CNXSMALLCAP",
-        "symbol": "CNXSMALLCAP",
-        "displayName": "CNX Smallcap",
-        "yfinanceTicker": "^CNXSC",
-        "assetType": "benchmark",
-    },
 ]
 
 PRICE_COLLECTION = "deep_dive_price_bars"
@@ -43,6 +36,10 @@ LIST_COLLECTION = "deep_dive_stock_lists"
 PROFILE_COLLECTION = "deep_dive_company_profiles"
 STATE_COLLECTION = "deep_dive_sync_state"
 RUN_COLLECTION = "deep_dive_ingestion_runs"
+DEEP_DIVE_DB_PROVIDER = str(os.getenv("DEEP_DIVE_DB_PROVIDER", "mongodb")).strip().lower()
+FIRESTORE_WRITE_CHUNK_SIZE = max(1, int(os.getenv("DEEP_DIVE_FIRESTORE_WRITE_CHUNK_SIZE", "100")))
+FIRESTORE_WRITE_DELAY_MS = max(0, int(os.getenv("DEEP_DIVE_FIRESTORE_WRITE_DELAY_MS", "150")))
+FIRESTORE_WRITE_MAX_RETRIES = max(0, int(os.getenv("DEEP_DIVE_FIRESTORE_WRITE_MAX_RETRIES", "8")))
 
 
 def log(message: str):
@@ -78,7 +75,23 @@ def normalize_symbol(value: str) -> str:
     for suffix in ("-EQ", "-BE", "-BZ", "-BL", "-SM", "-ST"):
         if upper.endswith(suffix):
             upper = upper[: -len(suffix)]
-    return upper.replace(" ", "")
+    # Normalize pasted symbols so Deep Dive consistently stores "&" instead of "_".
+    return upper.replace("_", "&").replace(" ", "")
+
+
+SYMBOL_ALIASES = {
+    "^NSEI": "NIFTY",
+    "NIFTY50": "NIFTY",
+    "NIFTY 50": "NIFTY",
+}
+
+
+def parse_symbols_arg(value: str) -> List[str]:
+    return [
+        SYMBOL_ALIASES.get(symbol, symbol)
+        for symbol in (normalize_symbol(item) for item in str(value or "").replace("\n", ",").split(","))
+        if symbol
+    ]
 
 
 def stock_ticker(symbol: str) -> str:
@@ -90,8 +103,6 @@ def stock_ticker_candidates(symbol: str) -> List[str]:
     if not normalized:
         return []
     candidates = [f"{normalized}.NS"]
-    if "_" in normalized:
-        candidates.append(f"{normalized.replace('_', '&')}.NS")
     return list(dict.fromkeys(candidates))
 
 
@@ -148,6 +159,18 @@ def get_db():
     return firestore.Client(project=project_id)
 
 
+def get_mongo_db():
+    from pymongo import ASCENDING, DESCENDING, MongoClient
+
+    mongo_uri = str(os.getenv("DEEP_DIVE_MONGO_URI", "")).strip()
+    if not mongo_uri:
+        raise SystemExit("Missing DEEP_DIVE_MONGO_URI")
+    client = MongoClient(mongo_uri)
+    db_name = str(os.getenv("DEEP_DIVE_DB_NAME", "")).strip() or None
+    db = client.get_database(db_name) if db_name else client.get_default_database()
+    return client, db, ASCENDING, DESCENDING
+
+
 def chunked(items, size):
     for index in range(0, len(items), size):
         yield items[index : index + size]
@@ -156,11 +179,39 @@ def chunked(items, size):
 def query_in_chunks(collection, field, values, chunk_size=30):
     docs = []
     for chunk in chunked(values, chunk_size):
-        docs.extend(collection.where(field, "in", list(chunk)).stream())
+        docs.extend(collection.where(filter=FieldFilter(field, "in", list(chunk))).stream())
     return docs
 
 
-def commit_sets_in_chunks(db, collection_name, rows, build_doc_id, chunk_size=400):
+def is_quota_error(exc):
+    if isinstance(exc, (ResourceExhausted, TooManyRequests)):
+        return True
+    if isinstance(exc, RetryError):
+        return "429" in str(exc) or "Quota exceeded" in str(exc)
+    return False
+
+
+def commit_with_backoff(batch, operation_name):
+    attempt = 0
+    while True:
+        try:
+            batch.commit()
+            if FIRESTORE_WRITE_DELAY_MS:
+                time.sleep(FIRESTORE_WRITE_DELAY_MS / 1000)
+            return
+        except Exception as exc:  # noqa: BLE001
+            if not is_quota_error(exc) or attempt >= FIRESTORE_WRITE_MAX_RETRIES:
+                raise
+            sleep_seconds = min(30, (2 ** attempt) * 1.5)
+            log(
+                f"{operation_name}: Firestore quota throttled, retrying in {round(sleep_seconds, 1)}s "
+                f"(attempt {attempt + 1}/{FIRESTORE_WRITE_MAX_RETRIES})"
+            )
+            time.sleep(sleep_seconds)
+            attempt += 1
+
+
+def commit_sets_in_chunks(db, collection_name, rows, build_doc_id, chunk_size=FIRESTORE_WRITE_CHUNK_SIZE):
     total = 0
     for chunk in chunked(rows, chunk_size):
         batch = db.batch()
@@ -168,7 +219,7 @@ def commit_sets_in_chunks(db, collection_name, rows, build_doc_id, chunk_size=40
             ref = db.collection(collection_name).document(build_doc_id(row))
             batch.set(ref, row, merge=True)
             total += 1
-        batch.commit()
+        commit_with_backoff(batch, f"commit:{collection_name}")
     return total
 
 
@@ -185,13 +236,14 @@ def ensure_benchmarks(db):
                 "benchmarkKey": item["key"],
                 "displayName": item["displayName"],
                 "yfinanceTicker": item["yfinanceTicker"],
+                "yfinanceTickers": item.get("yfinanceTickers") or [item["yfinanceTicker"]],
                 "active": True,
                 "updatedAt": now,
                 "createdAt": now,
             },
             merge=True,
         )
-    batch.commit()
+    commit_with_backoff(batch, f"commit:{SYMBOL_COLLECTION}:benchmarks")
 
 
 def ensure_stock_symbols(db):
@@ -226,7 +278,12 @@ def ensure_stock_symbols(db):
 def load_active_symbols(db):
     ensure_benchmarks(db)
     ensure_stock_symbols(db)
-    docs = [document_to_dict(doc) for doc in db.collection(SYMBOL_COLLECTION).where("active", "==", True).stream()]
+    docs = [
+        document_to_dict(doc)
+        for doc in db.collection(SYMBOL_COLLECTION)
+        .where(filter=FieldFilter("active", "==", True))
+        .stream()
+    ]
     docs.sort(key=lambda item: (item.get("assetType") != "benchmark", item.get("symbol", "")))
     return docs
 
@@ -317,8 +374,11 @@ def load_sync_states(db, symbols):
     return {doc.id: document_to_dict(doc) for doc in docs}
 
 
-def get_price_sync_targets(db, mode: str, history_years: int, overlap_days: int):
+def get_price_sync_targets(db, mode: str, history_years: int, overlap_days: int, selected_symbols=None):
     symbol_docs = load_active_symbols(db)
+    selected = set(selected_symbols or [])
+    if selected:
+        symbol_docs = [doc for doc in symbol_docs if doc["symbol"] in selected]
     states = load_sync_states(db, [doc["symbol"] for doc in symbol_docs])
     targets = []
     default_backfill_start = days_ago(history_years * 365)
@@ -420,9 +480,9 @@ def update_sync_state_for_failure(db, symbol_doc, error_message):
     )
 
 
-def sync_prices(db, mode: str, history_years: int, overlap_days: int, batch_size: int):
+def sync_prices(db, mode: str, history_years: int, overlap_days: int, batch_size: int, selected_symbols=None):
     summary = SyncSummary(run_type=mode)
-    targets = get_price_sync_targets(db, mode, history_years, overlap_days)
+    targets = get_price_sync_targets(db, mode, history_years, overlap_days, selected_symbols=selected_symbols)
     summary.symbols_attempted = len(targets)
     if not targets:
         log(f"{mode}: no symbols require price sync")
@@ -537,7 +597,7 @@ def profile_due(profile_doc, threshold_days):
 def compute_average_traded_value(db, symbol):
     docs = (
         db.collection(PRICE_COLLECTION)
-        .where("symbol", "==", symbol)
+        .where(filter=FieldFilter("symbol", "==", symbol))
         .order_by("date", direction=firestore.Query.DESCENDING)
         .limit(20)
         .stream()
@@ -667,31 +727,255 @@ def main():
     parser.add_argument("--overlap-days", type=int, default=int(os.getenv("DEEP_DIVE_SYNC_OVERLAP_DAYS", "10")))
     parser.add_argument("--profile-refresh-days", type=int, default=int(os.getenv("DEEP_DIVE_PROFILE_REFRESH_DAYS", "30")))
     parser.add_argument("--batch-size", type=int, default=int(os.getenv("DEEP_DIVE_BATCH_SIZE", "25")))
+    parser.add_argument(
+        "--symbols",
+        type=str,
+        default="",
+        help="Comma-separated symbols to limit processing, e.g. NIFTY or SBIN,INFY"
+    )
     args = parser.parse_args()
+    selected_symbols = parse_symbols_arg(args.symbols)
 
-    project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip()
-    if (
-        not project_id
-        and not str(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")).strip()
-        and not str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
-    ):
-        raise SystemExit(
-            "Missing Firestore configuration. Set DEEP_DIVE_FIRESTORE_PROJECT_ID with GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY."
-        )
+    if DEEP_DIVE_DB_PROVIDER not in {"mongodb", "firestore"}:
+        raise SystemExit('DEEP_DIVE_DB_PROVIDER must be "mongodb" or "firestore"')
 
-    db = get_db()
+    mongo_client = None
+    if DEEP_DIVE_DB_PROVIDER == "firestore":
+        project_id = str(os.getenv("DEEP_DIVE_FIRESTORE_PROJECT_ID", "")).strip()
+        if (
+            not project_id
+            and not str(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")).strip()
+            and not str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
+        ):
+            raise SystemExit(
+                "Missing Firestore configuration. Set DEEP_DIVE_FIRESTORE_PROJECT_ID with GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT_KEY."
+            )
+        db = get_db()
+    else:
+        mongo_client, db, ASCENDING, DESCENDING = get_mongo_db()
+        global firestore
+        global FieldFilter
+        global ResourceExhausted
+        global TooManyRequests
+        global RetryError
+        global query_in_chunks
+        global commit_sets_in_chunks
+        global ensure_benchmarks
+        global ensure_stock_symbols
+        global load_active_symbols
+        global record_run
+        global load_sync_states
+        global update_sync_state_for_success
+        global update_sync_state_for_failure
+        global compute_average_traded_value
+        global load_profiles
+        import pymongo
+
+        def query_in_chunks(collection, field, values, chunk_size=30):
+            docs = []
+            for chunk in chunked(values, chunk_size):
+                docs.extend(collection.find({field: {"$in": list(chunk)}}))
+            return docs
+
+        def commit_sets_in_chunks(db, collection_name, rows, build_doc_id, chunk_size=FIRESTORE_WRITE_CHUNK_SIZE):
+            if not rows:
+                return 0
+            operations = []
+            for row in rows:
+                created_at = row.get("createdAt") or utc_now()
+                set_payload = {key: value for key, value in row.items() if key != "createdAt"}
+                operations.append(
+                    pymongo.UpdateOne(
+                        {"_id": build_doc_id(row)},
+                        {"$set": set_payload, "$setOnInsert": {"createdAt": created_at}},
+                        upsert=True,
+                    )
+                )
+            db[collection_name].bulk_write(operations, ordered=False)
+            return len(rows)
+
+        def ensure_benchmarks(db):
+            operations = []
+            now = utc_now()
+            for item in DEEP_DIVE_BENCHMARKS:
+                operations.append(
+                    pymongo.UpdateOne(
+                        {"symbol": item["symbol"]},
+                        {
+                            "$setOnInsert": {
+                                "symbol": item["symbol"],
+                                "assetType": "benchmark",
+                                "benchmarkKey": item["key"],
+                                "createdAt": now,
+                            },
+                            "$set": {
+                                "displayName": item["displayName"],
+                                "yfinanceTicker": item["yfinanceTicker"],
+                                "yfinanceTickers": item.get("yfinanceTickers") or [item["yfinanceTicker"]],
+                                "active": True,
+                                "updatedAt": now,
+                            },
+                        },
+                        upsert=True,
+                    )
+                )
+            if operations:
+                db[SYMBOL_COLLECTION].bulk_write(operations, ordered=False)
+
+        def ensure_stock_symbols(db):
+            lists = list(db[LIST_COLLECTION].find({}, {"symbols": 1}))
+            symbols = sorted(
+                {
+                    normalize_symbol(symbol)
+                    for item in lists
+                    for symbol in item.get("symbols", [])
+                    if normalize_symbol(symbol)
+                }
+            )
+            if not symbols:
+                return
+            now = utc_now()
+            operations = []
+            for symbol in symbols:
+                operations.append(
+                    pymongo.UpdateOne(
+                        {"symbol": symbol},
+                        {
+                            "$setOnInsert": {"symbol": symbol, "assetType": "stock", "createdAt": now},
+                            "$set": {
+                                "displayName": symbol,
+                                "yfinanceTicker": stock_ticker(symbol),
+                                "yfinanceTickers": stock_ticker_candidates(symbol),
+                                "active": True,
+                                "updatedAt": now,
+                            },
+                        },
+                        upsert=True,
+                    )
+                )
+            db[SYMBOL_COLLECTION].bulk_write(operations, ordered=False)
+
+        def load_active_symbols(db):
+            ensure_benchmarks(db)
+            ensure_stock_symbols(db)
+            docs = list(db[SYMBOL_COLLECTION].find({"active": True}, {"_id": 0}))
+            docs.sort(key=lambda item: (item.get("assetType") != "benchmark", item.get("symbol", "")))
+            return docs
+
+        def record_run(db, summary: SyncSummary, started_at: datetime, status: str):
+            finished_at = utc_now()
+            db[RUN_COLLECTION].insert_one(
+                {
+                    "runType": summary.run_type,
+                    "status": status,
+                    "startedAt": started_at,
+                    "finishedAt": finished_at,
+                    "symbolsAttempted": summary.symbols_attempted,
+                    "symbolsSucceeded": summary.symbols_succeeded,
+                    "rowsUpserted": summary.rows_upserted,
+                    "failedSymbols": summary.failed_symbols,
+                    "errorSummary": summary.failed_symbols[0]["error"] if summary.failed_symbols else "",
+                    "createdAt": finished_at,
+                    "updatedAt": finished_at,
+                }
+            )
+
+        def load_sync_states(db, symbols):
+            if not symbols:
+                return {}
+            docs = list(db[STATE_COLLECTION].find({"symbol": {"$in": symbols}}, {"_id": 0}))
+            return {doc["symbol"]: doc for doc in docs}
+
+        def update_sync_state_for_success(db, symbol_doc, earliest_bar, latest_bar):
+            now = utc_now()
+            db[STATE_COLLECTION].update_one(
+                {"symbol": symbol_doc["symbol"]},
+                {
+                    "$set": {
+                        "symbol": symbol_doc["symbol"],
+                        "assetType": symbol_doc["assetType"],
+                        "lastSyncedAt": now,
+                        "lastAttemptedAt": now,
+                        "lastStatus": "success",
+                        "lastError": "",
+                        "updatedAt": now,
+                    },
+                    "$min": {"earliestBarDate": earliest_bar},
+                    "$max": {"latestBarDate": latest_bar},
+                    "$setOnInsert": {"createdAt": now},
+                },
+                upsert=True,
+            )
+
+        def update_sync_state_for_failure(db, symbol_doc, error_message):
+            now = utc_now()
+            db[STATE_COLLECTION].update_one(
+                {"symbol": symbol_doc["symbol"]},
+                {
+                    "$set": {
+                        "symbol": symbol_doc["symbol"],
+                        "assetType": symbol_doc["assetType"],
+                        "lastAttemptedAt": now,
+                        "lastStatus": "failed",
+                        "lastError": str(error_message)[:1000],
+                        "updatedAt": now,
+                    },
+                    "$setOnInsert": {"createdAt": now},
+                },
+                upsert=True,
+            )
+
+        def compute_average_traded_value(db, symbol):
+            cursor = db[PRICE_COLLECTION].find({"symbol": symbol}, {"close": 1, "adjClose": 1, "volume": 1}).sort("date", -1).limit(20)
+            values = []
+            for item in cursor:
+                close_value = numeric(item.get("adjClose"))
+                if close_value is None:
+                    close_value = numeric(item.get("close"))
+                volume_value = numeric(item.get("volume"))
+                if close_value is None or volume_value is None:
+                    continue
+                values.append(close_value * volume_value)
+            return (sum(values) / len(values)) if values else None
+
+        def load_profiles(db, symbols):
+            if not symbols:
+                return {}
+            docs = list(db[PROFILE_COLLECTION].find({"symbol": {"$in": symbols}}, {"_id": 0}))
+            return {doc["symbol"]: doc for doc in docs}
     started_at = utc_now()
 
     try:
         log(f"starting mode={args.mode}")
         if args.mode == "backfill_prices":
-            summary = sync_prices(db, args.mode, args.history_years, args.overlap_days, args.batch_size)
+            summary = sync_prices(
+                db,
+                args.mode,
+                args.history_years,
+                args.overlap_days,
+                args.batch_size,
+                selected_symbols=selected_symbols,
+            )
         elif args.mode == "sync_prices":
-            summary = sync_prices(db, args.mode, args.history_years, args.overlap_days, args.batch_size)
+            summary = sync_prices(
+                db,
+                args.mode,
+                args.history_years,
+                args.overlap_days,
+                args.batch_size,
+                selected_symbols=selected_symbols,
+            )
         elif args.mode == "sync_profiles":
             summary = sync_profiles(db, args.profile_refresh_days)
         else:
-            price_summary = sync_prices(db, "sync_prices", args.history_years, args.overlap_days, args.batch_size)
+            price_summary = sync_prices(
+                db,
+                "sync_prices",
+                args.history_years,
+                args.overlap_days,
+                args.batch_size,
+                selected_symbols=selected_symbols,
+            )
             profile_summary = sync_profiles(db, args.profile_refresh_days)
             summary = combined_summary("daily_sync", price_summary, profile_summary)
         status = "success" if not summary.failed_symbols else "partial_success"
@@ -712,6 +996,9 @@ def main():
         record_run(db, failed, started_at, "failed")
         log(f"fatal failure in mode={args.mode} - {exc}")
         raise
+    finally:
+        if mongo_client:
+            mongo_client.close()
 
 
 if __name__ == "__main__":
