@@ -119,10 +119,28 @@ def as_utc_midnight(value) -> Optional[datetime]:
         return None
 
 
+def as_market_date_utc(value) -> Optional[datetime]:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+    raw = str(value)[:10]
+    try:
+        parsed = datetime.fromisoformat(raw)
+        return datetime(parsed.year, parsed.month, parsed.day, tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 def days_ago(days: int) -> datetime:
     now = utc_now()
     date = now - timedelta(days=days)
     return datetime(date.year, date.month, date.day, tzinfo=timezone.utc)
+
+
+def current_market_date_utc() -> datetime:
+    now = utc_now()
+    return datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
 
 def numeric(value):
@@ -305,7 +323,7 @@ def dataframe_to_bar_documents(frame, symbol_doc, source_ticker=None):
     output = []
     for index, row in frame.iterrows():
         date_value = index.to_pydatetime() if hasattr(index, "to_pydatetime") else index
-        date_utc = as_utc_midnight(date_value)
+        date_utc = as_market_date_utc(date_value)
         if not date_utc:
             continue
         open_value = numeric(row.get("Open"))
@@ -333,6 +351,22 @@ def dataframe_to_bar_documents(frame, symbol_doc, source_ticker=None):
             }
         )
     return output
+
+
+def merge_bar_documents(primary_docs, extra_docs):
+    merged = {}
+    for row in primary_docs or []:
+        merged[row["date"]] = row
+    for row in extra_docs or []:
+        merged[row["date"]] = row
+    return [merged[key] for key in sorted(merged.keys())]
+
+
+def latest_row_has_missing_close(frame):
+    if frame is None or frame.empty:
+        return False
+    latest = frame.iloc[-1]
+    return numeric(latest.get("Close")) is None and numeric(latest.get("Adj Close")) is None
 
 
 @dataclass
@@ -382,6 +416,7 @@ def get_price_sync_targets(db, mode: str, history_years: int, overlap_days: int,
     states = load_sync_states(db, [doc["symbol"] for doc in symbol_docs])
     targets = []
     default_backfill_start = days_ago(history_years * 365)
+    current_date = current_market_date_utc()
 
     for doc in symbol_docs:
         state = states.get(doc["symbol"]) or {}
@@ -389,7 +424,10 @@ def get_price_sync_targets(db, mode: str, history_years: int, overlap_days: int,
         if mode == "backfill_prices" and latest_bar_date:
             continue
         if latest_bar_date:
-            start_date = latest_bar_date - timedelta(days=overlap_days)
+            days_since_latest = max(0, (current_date - latest_bar_date).days)
+            if days_since_latest <= 0:
+                continue
+            start_date = latest_bar_date
         else:
             start_date = default_backfill_start
         targets.append(
@@ -428,6 +466,14 @@ def fetch_history_for_ticker(ticker: str, start_key: str, end_date: str):
     )
 
 
+def fetch_latest_day_docs(symbol_doc, ticker):
+    try:
+      frame = yf.Ticker(ticker).history(period="1d", auto_adjust=False)
+    except Exception:
+      return []
+    return dataframe_to_bar_documents(frame, symbol_doc, ticker)
+
+
 def fetch_docs_with_fallback(symbol_doc, start_key: str, end_date: str):
     candidates = symbol_doc.get("yfinanceTickers") or [symbol_doc["yfinanceTicker"]]
     last_error = None
@@ -436,6 +482,8 @@ def fetch_docs_with_fallback(symbol_doc, start_key: str, end_date: str):
             frame = fetch_history_for_ticker(candidate, start_key, end_date)
             symbol_frame = extract_symbol_frame(frame, candidate)
             docs = dataframe_to_bar_documents(symbol_frame, symbol_doc, candidate)
+            if latest_row_has_missing_close(symbol_frame):
+                docs = merge_bar_documents(docs, fetch_latest_day_docs(symbol_doc, candidate))
             if docs:
                 return docs, candidate, None
             last_error = "No bars returned"
@@ -531,6 +579,8 @@ def sync_prices(db, mode: str, history_years: int, overlap_days: int, batch_size
                 try:
                     symbol_frame = extract_symbol_frame(frame, source_ticker)
                     docs = dataframe_to_bar_documents(symbol_frame, symbol_doc, source_ticker)
+                    if latest_row_has_missing_close(symbol_frame):
+                        docs = merge_bar_documents(docs, fetch_latest_day_docs(symbol_doc, source_ticker))
                     used_ticker = source_ticker
                     if not docs:
                         docs, used_ticker, last_error = fetch_docs_with_fallback(symbol_doc, start_key, end_date)
@@ -724,7 +774,7 @@ def main():
         choices=["backfill_prices", "sync_prices", "sync_profiles", "daily_sync"],
     )
     parser.add_argument("--history-years", type=int, default=int(os.getenv("DEEP_DIVE_HISTORY_YEARS", "3")))
-    parser.add_argument("--overlap-days", type=int, default=int(os.getenv("DEEP_DIVE_SYNC_OVERLAP_DAYS", "10")))
+    parser.add_argument("--overlap-days", type=int, default=int(os.getenv("DEEP_DIVE_SYNC_OVERLAP_DAYS", "1")))
     parser.add_argument("--profile-refresh-days", type=int, default=int(os.getenv("DEEP_DIVE_PROFILE_REFRESH_DAYS", "30")))
     parser.add_argument("--batch-size", type=int, default=int(os.getenv("DEEP_DIVE_BATCH_SIZE", "25")))
     parser.add_argument(
@@ -784,9 +834,13 @@ def main():
             for row in rows:
                 created_at = row.get("createdAt") or utc_now()
                 set_payload = {key: value for key, value in row.items() if key != "createdAt"}
+                if collection_name == PRICE_COLLECTION and row.get("symbol") and row.get("date"):
+                    filter_query = {"symbol": row["symbol"], "date": row["date"]}
+                else:
+                    filter_query = {"_id": build_doc_id(row)}
                 operations.append(
                     pymongo.UpdateOne(
-                        {"_id": build_doc_id(row)},
+                        filter_query,
                         {"$set": set_payload, "$setOnInsert": {"createdAt": created_at}},
                         upsert=True,
                     )

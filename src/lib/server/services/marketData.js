@@ -1,7 +1,7 @@
 import path from 'path';
 import { spawn } from 'child_process';
+import { resolvePythonBin } from '@/lib/server/utils/pythonRuntime';
 
-const PYTHON_BIN = process.env.MARKET_DATA_PYTHON || 'python3';
 const QUOTE_SCRIPT_PATH = path.resolve(process.cwd(), 'scripts/get_quote.py');
 const QUOTE_PROVIDER = String(process.env.QUOTE_PROVIDER || '').trim();
 const QUOTE_SERVICE_URL = String(process.env.QUOTE_SERVICE_URL || '').trim();
@@ -11,7 +11,8 @@ const REMOTE_QUOTE_TIMEOUT_MS = 15000;
 
 const fetchLocalPythonQuote = (symbol) =>
   new Promise((resolve, reject) => {
-    const child = spawn(PYTHON_BIN, [QUOTE_SCRIPT_PATH, symbol], {
+    const pythonBin = resolvePythonBin();
+    const child = spawn(pythonBin, [QUOTE_SCRIPT_PATH, symbol], {
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
@@ -27,7 +28,7 @@ const fetchLocalPythonQuote = (symbol) =>
     });
 
     child.on('error', (error) => {
-      reject(new Error(`Failed to run ${PYTHON_BIN}: ${error.message}`));
+      reject(new Error(`Failed to run ${pythonBin}: ${error.message}`));
     });
 
     child.on('close', (code) => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   createDeepDiveList,
+  fetchDeepDiveStatus,
   fetchDeepDiveErrors,
   deleteDeepDiveList,
   fetchDeepDiveImports,
@@ -14,6 +15,11 @@ import { useSettings } from '../contexts/SettingsContext';
 import { ACCENT_THEMES, DEFAULT_ACCENT } from '../utils/appearance';
 
 const numberFormatter = new Intl.NumberFormat('en-IN');
+const decimalFormatter2 = new Intl.NumberFormat('en-IN', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+const formatTablePrice = (value) => (value === null || value === undefined ? '-' : decimalFormatter2.format(Number(value)));
 const LoadingSpinner = ({ label = 'Loading...' }) => (
   <div className="flex items-center justify-center gap-3 py-8 text-sm text-slate-600 dark:text-slate-300">
     <span className="inline-flex h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700 dark:border-slate-700 dark:border-t-slate-100" />
@@ -44,6 +50,14 @@ const buildPageNumbers = (currentPage, totalPages) => {
 };
 
 const normalizeSearchText = (value) => String(value || '').trim().toUpperCase();
+const shiftDateInput = (value, deltaDays) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return raw;
+  date.setUTCDate(date.getUTCDate() + deltaDays);
+  return date.toISOString().slice(0, 10);
+};
 const matchesFuzzy = (candidate, query) => {
   const source = normalizeSearchText(candidate);
   const needle = normalizeSearchText(query);
@@ -114,6 +128,7 @@ const SettingsPage = () => {
   const [deepDiveImportsLoading, setDeepDiveImportsLoading] = useState(false);
   const [deepDiveSection, setDeepDiveSection] = useState('stocks');
   const [deepDiveSyncing, setDeepDiveSyncing] = useState(false);
+  const [deepDiveSyncProgress, setDeepDiveSyncProgress] = useState(null);
   const [createDeepDiveTitle, setCreateDeepDiveTitle] = useState('');
   const [createDeepDiveDescription, setCreateDeepDiveDescription] = useState('');
   const [createDeepDiveText, setCreateDeepDiveText] = useState('');
@@ -122,6 +137,7 @@ const SettingsPage = () => {
   const [deletingDeepDiveListId, setDeletingDeepDiveListId] = useState('');
   const [deepDiveSearch, setDeepDiveSearch] = useState('');
   const [deepDivePage, setDeepDivePage] = useState(1);
+  const [deepDiveAsOfDate, setDeepDiveAsOfDate] = useState('');
   const [deepDiveErrors, setDeepDiveErrors] = useState(null);
   const [deepDiveErrorsLoading, setDeepDiveErrorsLoading] = useState(false);
   const [deepDiveErrorSearch, setDeepDiveErrorSearch] = useState('');
@@ -213,10 +229,10 @@ const SettingsPage = () => {
     loadSymbolsMeta();
   }, []);
 
-  const loadDeepDiveImports = async ({ query = deepDiveSearch, page = deepDivePage } = {}) => {
+  const loadDeepDiveImports = async ({ query = deepDiveSearch, page = deepDivePage, asOfDate = deepDiveAsOfDate } = {}) => {
     setDeepDiveImportsLoading(true);
     try {
-      const data = await fetchDeepDiveImports({ q: query, page, pageSize: 100 });
+      const data = await fetchDeepDiveImports({ q: query, page, pageSize: 100, asOfDate });
       setDeepDiveImports(data);
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to load Deep Dive imports');
@@ -244,7 +260,7 @@ const SettingsPage = () => {
       else loadDeepDiveImports();
     }, 250);
     return () => clearTimeout(timer);
-  }, [activeTab, deepDiveSection, deepDiveSearch, deepDivePage, deepDiveErrorSearch, deepDiveErrorPage]);
+  }, [activeTab, deepDiveSection, deepDiveSearch, deepDivePage, deepDiveAsOfDate, deepDiveErrorSearch, deepDiveErrorPage]);
 
   const handleRefreshSymbols = async () => {
     setRefreshingSymbols(true);
@@ -362,13 +378,13 @@ const SettingsPage = () => {
         description: '',
         text: normalized
       });
-      await triggerDeepDiveSync({ mode: 'daily_sync' });
+      await triggerDeepDiveSync({ mode: 'sync_prices' });
       setCreateDeepDiveText('');
       setDeepDiveSearch(normalized);
       setDeepDivePage(1);
       await loadDeepDiveImports({ query: normalized, page: 1 });
       await loadDeepDiveErrors({ query: '', page: 1 });
-      alert(`Added ${normalized} and fetched Deep Dive data`);
+      alert(`Added ${normalized} and fetched latest Deep Dive price data`);
     } catch (error) {
       alert(error.response?.data?.message || error.message || `Failed to add ${normalized}`);
     } finally {
@@ -378,20 +394,48 @@ const SettingsPage = () => {
 
   const handleDeepDiveSync = async () => {
     setDeepDiveSyncing(true);
+    setDeepDiveSyncProgress({
+      status: 'running',
+      current: 0,
+      total: 0,
+      currentSymbol: '',
+      message: 'Starting Deep Dive price sync...'
+    });
+    let progressTimer = null;
     try {
-      const result = await triggerDeepDiveSync({ mode: 'daily_sync' });
+      const refreshProgress = async () => {
+        try {
+          const status = await fetchDeepDiveStatus();
+          setDeepDiveSyncProgress(status?.activeSync || null);
+        } catch {
+          // Progress display is non-critical.
+        }
+      };
+
+      await refreshProgress();
+      progressTimer = setInterval(refreshProgress, 1000);
+
+      const result = await triggerDeepDiveSync({ mode: 'sync_prices' });
       await loadDeepDiveImports();
+      await loadDeepDiveErrors({ query: '', page: 1 });
       const summary = result?.summary;
       if (summary) {
         alert(
-          `Deep Dive sync finished. Attempted: ${summary.symbolsAttempted || 0}, succeeded: ${summary.symbolsSucceeded || 0}, rows: ${summary.rowsUpserted || 0}.`
+          `Deep Dive price sync finished. Attempted: ${summary.symbolsAttempted || 0}, succeeded: ${summary.symbolsSucceeded || 0}, rows: ${summary.rowsUpserted || 0}.`
         );
       } else {
-        alert('Deep Dive sync finished');
+        alert('Deep Dive price sync finished');
       }
     } catch (error) {
       alert(error.response?.data?.message || error.message || 'Failed to sync Deep Dive data');
     } finally {
+      if (progressTimer) clearInterval(progressTimer);
+      try {
+        const status = await fetchDeepDiveStatus();
+        setDeepDiveSyncProgress(status?.activeSync || null);
+      } catch {
+        setDeepDiveSyncProgress(null);
+      }
       setDeepDiveSyncing(false);
     }
   };
@@ -479,6 +523,27 @@ const SettingsPage = () => {
                 {deepDiveSyncing ? 'Fetching Latest Data...' : 'Fetch Latest Data'}
               </button>
             </div>
+
+            {deepDiveSyncProgress ? (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/70">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-medium">
+                    Progress: {numberFormatter.format(Number(deepDiveSyncProgress.current || 0))}
+                    {deepDiveSyncProgress.total ? `/${numberFormatter.format(Number(deepDiveSyncProgress.total || 0))}` : ''}
+                  </span>
+                  {deepDiveSyncProgress.currentSymbol ? <span>Symbol: {deepDiveSyncProgress.currentSymbol}</span> : null}
+                  {deepDiveSyncProgress.currentBatch && deepDiveSyncProgress.totalBatches ? (
+                    <span>
+                      Batch: {deepDiveSyncProgress.currentBatch}/{deepDiveSyncProgress.totalBatches}
+                    </span>
+                  ) : null}
+                  <span className="capitalize text-slate-500 dark:text-slate-400">{deepDiveSyncProgress.status}</span>
+                </div>
+                {deepDiveSyncProgress.message ? (
+                  <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">{deepDiveSyncProgress.message}</div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/70">
@@ -598,7 +663,7 @@ const SettingsPage = () => {
                 </p>
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_16rem_auto]">
                 <label className="space-y-1">
                   <span className="text-sm font-medium">Search Imported Stock</span>
                   <input
@@ -611,11 +676,53 @@ const SettingsPage = () => {
                     placeholder="Type symbol like RELIANCE or INF"
                   />
                 </label>
+                <label className="space-y-1">
+                  <span className="text-sm font-medium">Table Date</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = shiftDateInput(deepDiveAsOfDate || deepDiveImports?.summary?.latestAvailableDate, -1);
+                        setDeepDiveAsOfDate(next);
+                        setDeepDivePage(1);
+                      }}
+                      className="btn-muted px-3 py-2 text-sm"
+                      aria-label="Previous day"
+                    >
+                      ↓
+                    </button>
+                    <input
+                      type="date"
+                      value={deepDiveAsOfDate}
+                      max={deepDiveImports?.summary?.latestAvailableDate || undefined}
+                      onChange={(event) => {
+                        setDeepDiveAsOfDate(event.target.value);
+                        setDeepDivePage(1);
+                      }}
+                      className="field-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const candidate = shiftDateInput(deepDiveAsOfDate, 1);
+                        const maxDate = deepDiveImports?.summary?.latestAvailableDate || '';
+                        const next = candidate && maxDate && candidate > maxDate ? maxDate : candidate;
+                        setDeepDiveAsOfDate(next);
+                        setDeepDivePage(1);
+                      }}
+                      className="btn-muted px-3 py-2 text-sm"
+                      aria-label="Next day"
+                    >
+                      ↑
+                    </button>
+                  </div>
+                </label>
                 <div className="flex items-end">
                   <button
                     type="button"
                     onClick={() => {
                       setDeepDiveSearch('');
+                      setDeepDiveAsOfDate('');
                       setDeepDivePage(1);
                     }}
                     className="btn-muted px-3 py-2 text-sm"
@@ -706,7 +813,7 @@ const SettingsPage = () => {
                       <tr className="border-b border-slate-200 text-left dark:border-slate-800">
                         <th className="px-3 py-2">Symbol</th>
                         <th className="px-3 py-2">Company</th>
-                        <th className="px-3 py-2">Latest Date</th>
+                        <th className="px-3 py-2">{deepDiveAsOfDate ? 'Selected Date' : 'Latest Date'}</th>
                         <th className="px-3 py-2">Open</th>
                         <th className="px-3 py-2">High</th>
                         <th className="px-3 py-2">Low</th>
@@ -719,15 +826,31 @@ const SettingsPage = () => {
                       </tr>
                     </thead>
                     <tbody>
+                      {deepDiveImports?.benchmarkRow ? (
+                        <tr key={deepDiveImports.benchmarkRow.symbol} className="border-b border-slate-200 bg-amber-50/60 dark:border-slate-800 dark:bg-amber-950/10">
+                          <td className="px-3 py-2 font-semibold text-slate-900 dark:text-slate-100">{deepDiveImports.benchmarkRow.symbol}</td>
+                          <td className="px-3 py-2">{deepDiveImports.benchmarkRow.companyName || '-'}</td>
+                          <td className="px-3 py-2">{deepDiveImports.benchmarkRow.latestDate || '-'}</td>
+                          <td className="px-3 py-2">{formatTablePrice(deepDiveImports.benchmarkRow.latestOpen)}</td>
+                          <td className="px-3 py-2">{formatTablePrice(deepDiveImports.benchmarkRow.latestHigh)}</td>
+                          <td className="px-3 py-2">{formatTablePrice(deepDiveImports.benchmarkRow.latestLow)}</td>
+                          <td className="px-3 py-2">{formatTablePrice(deepDiveImports.benchmarkRow.latestClose)}</td>
+                          <td className="px-3 py-2">{deepDiveImports.benchmarkRow.latestVolume ? numberFormatter.format(deepDiveImports.benchmarkRow.latestVolume) : '-'}</td>
+                          <td className="px-3 py-2">{numberFormatter.format(deepDiveImports.benchmarkRow.barsCount || 0)}</td>
+                          <td className="px-3 py-2">{deepDiveImports.benchmarkRow.approxYears ?? '-'}</td>
+                          <td className="px-3 py-2">{deepDiveImports.benchmarkRow.sector || '-'}</td>
+                          <td className="px-3 py-2">{deepDiveImports.benchmarkRow.industry || '-'}</td>
+                        </tr>
+                      ) : null}
                       {(deepDiveImports?.stocks || []).map((item) => (
                         <tr key={item.symbol} className="table-row-hover">
                           <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{item.symbol}</td>
                           <td className="px-3 py-2">{item.companyName || '-'}</td>
                           <td className="px-3 py-2">{item.latestDate || '-'}</td>
-                          <td className="px-3 py-2">{item.latestOpen ?? '-'}</td>
-                          <td className="px-3 py-2">{item.latestHigh ?? '-'}</td>
-                          <td className="px-3 py-2">{item.latestLow ?? '-'}</td>
-                          <td className="px-3 py-2">{item.latestClose ?? '-'}</td>
+                          <td className="px-3 py-2">{formatTablePrice(item.latestOpen)}</td>
+                          <td className="px-3 py-2">{formatTablePrice(item.latestHigh)}</td>
+                          <td className="px-3 py-2">{formatTablePrice(item.latestLow)}</td>
+                          <td className="px-3 py-2">{formatTablePrice(item.latestClose)}</td>
                           <td className="px-3 py-2">{item.latestVolume ? numberFormatter.format(item.latestVolume) : '-'}</td>
                           <td className="px-3 py-2">{numberFormatter.format(item.barsCount || 0)}</td>
                           <td className="px-3 py-2">{item.approxYears ?? '-'}</td>

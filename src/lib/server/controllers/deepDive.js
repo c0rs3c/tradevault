@@ -8,10 +8,68 @@ import {
   normalizeDeepDiveSymbol,
   defaultStockYfinanceTicker
 } from '@/lib/server/deepDive/constants';
+import { resolvePythonBin } from '@/lib/server/utils/pythonRuntime';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const PYTHON_BIN = process.env.MARKET_DATA_PYTHON || 'python3';
 const DEEP_DIVE_INGEST_SCRIPT_PATH = path.resolve(process.cwd(), 'scripts/deep_dive_ingest.py');
+const PRICE_SYNC_RUN_TYPES = ['sync_prices', 'daily_sync', 'backfill_prices'];
+const NIFTY_BENCHMARK = DEEP_DIVE_BENCHMARKS.find((item) => item.key === 'NIFTY') || DEEP_DIVE_BENCHMARKS[0];
+const DEEP_DIVE_SHARED_OWNER = '__shared_deep_dive__';
+let activeDeepDiveSync = null;
+
+const createActiveSyncState = (mode, pythonBin) => ({
+  mode,
+  pythonBin,
+  status: 'running',
+  startedAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  current: 0,
+  total: 0,
+  currentSymbol: '',
+  currentBatch: 0,
+  totalBatches: 0,
+  message: 'Starting Deep Dive sync...',
+  recentLines: []
+});
+
+const pushActiveSyncLine = (line) => {
+  if (!activeDeepDiveSync || !line) return;
+
+  activeDeepDiveSync.updatedAt = new Date().toISOString();
+  activeDeepDiveSync.message = line;
+  activeDeepDiveSync.recentLines = [...activeDeepDiveSync.recentLines, line].slice(-5);
+
+  const progressMatch = line.match(/(\d+)\/(\d+)\s+(?:synced|failed|no bars for)\s+([A-Z0-9&._-]+)/i);
+  if (progressMatch) {
+    activeDeepDiveSync.current = Number(progressMatch[1]) || activeDeepDiveSync.current;
+    activeDeepDiveSync.total = Number(progressMatch[2]) || activeDeepDiveSync.total;
+    activeDeepDiveSync.currentSymbol = progressMatch[3] || activeDeepDiveSync.currentSymbol;
+  }
+
+  const batchMatch = line.match(/batch\s+(\d+)\/(\d+)\s+\((\d+)-(\d+)\s+of\s+(\d+)\)/i);
+  if (batchMatch) {
+    activeDeepDiveSync.currentBatch = Number(batchMatch[1]) || activeDeepDiveSync.currentBatch;
+    activeDeepDiveSync.totalBatches = Number(batchMatch[2]) || activeDeepDiveSync.totalBatches;
+    activeDeepDiveSync.current = Number(batchMatch[3]) || activeDeepDiveSync.current;
+    activeDeepDiveSync.total = Number(batchMatch[5]) || activeDeepDiveSync.total;
+  }
+
+  const prepMatch = line.match(/preparing to sync prices for\s+(\d+)\s+symbol/i);
+  if (prepMatch) {
+    activeDeepDiveSync.total = Number(prepMatch[1]) || activeDeepDiveSync.total;
+  }
+};
+
+const finishActiveSync = (status, message) => {
+  if (!activeDeepDiveSync) return;
+  activeDeepDiveSync.status = status;
+  activeDeepDiveSync.updatedAt = new Date().toISOString();
+  activeDeepDiveSync.finishedAt = new Date().toISOString();
+  if (message) {
+    activeDeepDiveSync.message = message;
+    activeDeepDiveSync.recentLines = [...activeDeepDiveSync.recentLines, message].slice(-5);
+  }
+};
 
 const createError = (message, statusCode = 500) => {
   const error = new Error(message);
@@ -108,6 +166,13 @@ const numberParam = (value) => {
   return Number.isFinite(num) ? num : null;
 };
 
+const selectedDateToUtcStart = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 const compareMaybeNumber = (a, b) => {
   if (a === b) return 0;
   if (a === null || a === undefined) return 1;
@@ -190,11 +255,11 @@ const getModels = async () => {
   return getDeepDiveModels(connection);
 };
 
-const consolidateOwnerStockLists = async (DeepDiveStockList, ownerUsername) => {
-  const lists = await DeepDiveStockList.find({ ownerUsername }).sort({ updatedAt: -1, createdAt: -1 }).lean();
+const consolidateOwnerStockLists = async (DeepDiveStockList) => {
+  const lists = await DeepDiveStockList.find({}).sort({ updatedAt: -1, createdAt: -1 }).lean();
   if (!lists.length) return null;
 
-  const canonical = lists[0];
+  const canonical = lists.find((item) => item.ownerUsername === DEEP_DIVE_SHARED_OWNER) || lists[0];
   const mergedSymbols = [
     ...new Set(
       lists.flatMap((item) => (item.symbols || []).map((symbol) => normalizeDeepDiveSymbol(symbol)).filter(Boolean))
@@ -206,6 +271,7 @@ const consolidateOwnerStockLists = async (DeepDiveStockList, ownerUsername) => {
     { _id: canonical._id },
     {
       $set: {
+        ownerUsername: DEEP_DIVE_SHARED_OWNER,
         title: canonical.title || 'Deep Dive Universe',
         description: canonical.description || '',
         symbols: mergedSymbols,
@@ -280,7 +346,7 @@ const upsertStockSymbols = async (symbols) => {
 export const listDeepDiveStockLists = async ({ ownerUsername }) => {
   await ensureDeepDiveBenchmarks();
   const { DeepDiveStockList } = await getModels();
-  const canonical = await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
+  const canonical = await consolidateOwnerStockLists(DeepDiveStockList);
   const lists = canonical ? [canonical] : [];
   return {
     lists: lists.map((item) => ({
@@ -304,7 +370,7 @@ export const createDeepDiveStockList = async ({ ownerUsername, title, descriptio
   await upsertStockSymbols(symbols);
 
   const { DeepDiveStockList } = await getModels();
-  const existing = await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
+  const existing = await consolidateOwnerStockLists(DeepDiveStockList);
   const nextTitle = String(title || '').trim() || existing?.title || 'Deep Dive Universe';
   const nextDescription = String(description || '').trim() || existing?.description || '';
   const mergedSymbols = [...new Set([...(existing?.symbols || []), ...symbols])];
@@ -313,9 +379,10 @@ export const createDeepDiveStockList = async ({ ownerUsername, title, descriptio
   let created;
   if (existing?._id) {
     created = await DeepDiveStockList.findOneAndUpdate(
-      { _id: existing._id, ownerUsername },
+      { _id: existing._id, ownerUsername: DEEP_DIVE_SHARED_OWNER },
       {
         $set: {
+          ownerUsername: DEEP_DIVE_SHARED_OWNER,
           title: nextTitle,
           description: nextDescription,
           sourceText,
@@ -326,7 +393,7 @@ export const createDeepDiveStockList = async ({ ownerUsername, title, descriptio
     ).lean();
   } else {
     created = await DeepDiveStockList.create({
-      ownerUsername,
+      ownerUsername: DEEP_DIVE_SHARED_OWNER,
       title: nextTitle,
       description: nextDescription,
       sourceText,
@@ -348,8 +415,8 @@ export const createDeepDiveStockList = async ({ ownerUsername, title, descriptio
 export const getDeepDiveStockList = async ({ ownerUsername, id }) => {
   if (!isValidDeepDiveId(id)) throw createError('Invalid list id', 400);
   const { DeepDiveStockList } = await getModels();
-  await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
-  const list = await DeepDiveStockList.findOne({ _id: id, ownerUsername }).lean();
+  await consolidateOwnerStockLists(DeepDiveStockList);
+  const list = await DeepDiveStockList.findOne({ _id: id, ownerUsername: DEEP_DIVE_SHARED_OWNER }).lean();
   if (!list) throw createError('Stock list not found', 404);
   return {
     id: String(list._id),
@@ -366,7 +433,7 @@ export const getDeepDiveStockList = async ({ ownerUsername, id }) => {
 export const updateDeepDiveStockList = async ({ ownerUsername, id, title, description, text }) => {
   if (!isValidDeepDiveId(id)) throw createError('Invalid list id', 400);
   const { DeepDiveStockList } = await getModels();
-  const canonical = await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
+  const canonical = await consolidateOwnerStockLists(DeepDiveStockList);
   if (canonical && String(canonical._id) !== String(id)) {
     throw createError('Only the consolidated Deep Dive universe can be updated', 400);
   }
@@ -388,8 +455,8 @@ export const updateDeepDiveStockList = async ({ ownerUsername, id, title, descri
   }
 
   const updated = await DeepDiveStockList.findOneAndUpdate(
-    { _id: id, ownerUsername },
-    { $set: updates },
+    { _id: id, ownerUsername: DEEP_DIVE_SHARED_OWNER },
+    { $set: { ...updates, ownerUsername: DEEP_DIVE_SHARED_OWNER } },
     { new: true }
   ).lean();
   if (!updated) throw createError('Stock list not found', 404);
@@ -408,8 +475,8 @@ export const updateDeepDiveStockList = async ({ ownerUsername, id, title, descri
 export const deleteDeepDiveStockList = async ({ ownerUsername, id }) => {
   if (!isValidDeepDiveId(id)) throw createError('Invalid list id', 400);
   const { DeepDiveStockList } = await getModels();
-  await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
-  const deleted = await DeepDiveStockList.findOneAndDelete({ _id: id, ownerUsername }).lean();
+  await consolidateOwnerStockLists(DeepDiveStockList);
+  const deleted = await DeepDiveStockList.findOneAndDelete({ _id: id, ownerUsername: DEEP_DIVE_SHARED_OWNER }).lean();
   if (!deleted) throw createError('Stock list not found', 404);
   return { id, deleted: true };
 };
@@ -419,7 +486,7 @@ export const getDeepDiveStatus = async () => {
   const { DeepDiveSyncState, DeepDiveIngestionRun } = await getModels();
   const [syncStates, latestRun] = await Promise.all([
     DeepDiveSyncState.find({}).lean(),
-    DeepDiveIngestionRun.findOne({}).sort({ startedAt: -1 }).lean()
+    DeepDiveIngestionRun.findOne({ runType: { $in: PRICE_SYNC_RUN_TYPES } }).sort({ startedAt: -1 }).lean()
   ]);
 
   const benchmarkStatuses = DEEP_DIVE_BENCHMARKS.map((item) => {
@@ -444,6 +511,7 @@ export const getDeepDiveStatus = async () => {
 
   return {
     latestAvailableDate: latestAvailableDate ? toDateKey(latestAvailableDate) : null,
+    activeSync: activeDeepDiveSync,
     benchmarkStatuses,
     latestRun: latestRun
       ? {
@@ -460,7 +528,7 @@ export const getDeepDiveStatus = async () => {
   };
 };
 
-export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', page = 1, pageSize = 100 }) => {
+export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', page = 1, pageSize = 100, asOfDate = '' }) => {
   await ensureDeepDiveBenchmarks();
   const {
     DeepDiveStockList,
@@ -470,9 +538,10 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
     DeepDiveIngestionRun
   } = await getModels();
 
-  const canonical = await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
+  const canonical = await consolidateOwnerStockLists(DeepDiveStockList);
   const lists = canonical ? [canonical] : [];
   const stockSymbols = [...new Set((canonical?.symbols || []).map((symbol) => normalizeDeepDiveSymbol(symbol)).filter(Boolean))];
+  const selectedDate = selectedDateToUtcStart(asOfDate);
 
   const normalizedQuery = normalizeSearchText(query);
   const matchedSymbols = normalizedQuery
@@ -491,7 +560,7 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
   const [profiles, syncStates, latestRun, allSyncStates] = await Promise.all([
     DeepDiveCompanyProfile.find({ symbol: { $in: pageSymbols } }).lean(),
     DeepDiveSyncState.find({ symbol: { $in: pageSymbols } }).lean(),
-    DeepDiveIngestionRun.findOne({}).sort({ startedAt: -1 }).lean()
+    DeepDiveIngestionRun.findOne({ runType: { $in: PRICE_SYNC_RUN_TYPES } }).sort({ startedAt: -1 }).lean()
     ,
     DeepDiveSyncState.find({ symbol: { $in: stockSymbols } }).select({ symbol: 1, latestBarDate: 1 }).lean()
   ]);
@@ -499,24 +568,37 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
   const profileBySymbol = new Map(profiles.map((item) => [item.symbol, item]));
   const syncStateBySymbol = new Map(syncStates.map((item) => [item.symbol, item]));
 
-  const barSnapshots = await Promise.all(
-    pageSymbols.map(async (symbol) => {
-      const [latestBar, firstBar, barsCount] = await Promise.all([
-        DeepDivePriceBar.findOne({ symbol }).sort({ date: -1 }).select({
-          date: 1,
-          open: 1,
-          high: 1,
-          low: 1,
-          close: 1,
-          adjClose: 1,
-          volume: 1
-        }).lean(),
-        DeepDivePriceBar.findOne({ symbol }).sort({ date: 1 }).select({ date: 1 }).lean(),
-        DeepDivePriceBar.countDocuments({ symbol })
-      ]);
+  const loadBarSnapshot = async (symbol) => {
+    const [selectedBar, latestBar, firstBar, barsCount] = await Promise.all([
+      selectedDate
+        ? DeepDivePriceBar.findOne({ symbol, date: selectedDate }).select({
+            date: 1,
+            open: 1,
+            high: 1,
+            low: 1,
+            close: 1,
+            adjClose: 1,
+            volume: 1
+          }).lean()
+        : Promise.resolve(null),
+      DeepDivePriceBar.findOne({ symbol }).sort({ date: -1 }).select({
+        date: 1,
+        open: 1,
+        high: 1,
+        low: 1,
+        close: 1,
+        adjClose: 1,
+        volume: 1
+      }).lean(),
+      DeepDivePriceBar.findOne({ symbol }).sort({ date: 1 }).select({ date: 1 }).lean(),
+      DeepDivePriceBar.countDocuments({ symbol })
+    ]);
 
-      return [symbol, { latestBar, firstBar, barsCount }];
-    })
+    return [symbol, { selectedBar, latestBar, firstBar, barsCount }];
+  };
+
+  const barSnapshots = await Promise.all(
+    pageSymbols.map((symbol) => loadBarSnapshot(symbol))
   );
 
   const barSnapshotBySymbol = new Map(barSnapshots);
@@ -524,6 +606,7 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
   const stocks = pageSymbols
     .map((symbol) => {
       const snapshot = barSnapshotBySymbol.get(symbol) || {};
+      const displayedBar = (selectedDate ? snapshot.selectedBar : snapshot.latestBar) || {};
       const latestBar = snapshot.latestBar || {};
       const firstBar = snapshot.firstBar || {};
       const profile = profileBySymbol.get(symbol) || {};
@@ -534,12 +617,12 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
         companyName: String(profile.companyName || '').trim(),
         sector: String(profile.sector || '').trim(),
         industry: String(profile.industry || '').trim(),
-        latestDate: latestBar.date ? toDateKey(latestBar.date) : null,
-        latestOpen: round(safeNumber(latestBar.open), 4),
-        latestHigh: round(safeNumber(latestBar.high), 4),
-        latestLow: round(safeNumber(latestBar.low), 4),
-        latestClose: round(safeNumber(latestBar.adjClose) ?? safeNumber(latestBar.close), 4),
-        latestVolume: round(safeNumber(latestBar.volume), 0),
+        latestDate: displayedBar.date ? toDateKey(displayedBar.date) : null,
+        latestOpen: round(safeNumber(displayedBar.open), 4),
+        latestHigh: round(safeNumber(displayedBar.high), 4),
+        latestLow: round(safeNumber(displayedBar.low), 4),
+        latestClose: round(safeNumber(displayedBar.adjClose) ?? safeNumber(displayedBar.close), 4),
+        latestVolume: round(safeNumber(displayedBar.volume), 0),
         barsCount,
         approxYears: round(barsCount / 252, 1),
         firstBarDate: firstBar.date ? toDateKey(firstBar.date) : null,
@@ -550,6 +633,31 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
       };
     })
     .sort((a, b) => String(a.symbol || '').localeCompare(String(b.symbol || '')));
+
+  const benchmarkProfile = await DeepDiveCompanyProfile.findOne({ symbol: NIFTY_BENCHMARK.symbol }).lean();
+  const benchmarkSnapshotEntries = await loadBarSnapshot(NIFTY_BENCHMARK.symbol);
+  const benchmarkSnapshot = benchmarkSnapshotEntries[1] || {};
+  const benchmarkDisplayedBar = (selectedDate ? benchmarkSnapshot.selectedBar : benchmarkSnapshot.latestBar) || {};
+  const benchmarkRow = {
+    symbol: 'NIFTY50',
+    companyName: NIFTY_BENCHMARK.displayName,
+    sector: 'Benchmark',
+    industry: 'Index',
+    latestDate: benchmarkDisplayedBar.date ? toDateKey(benchmarkDisplayedBar.date) : null,
+    latestOpen: round(safeNumber(benchmarkDisplayedBar.open), 4),
+    latestHigh: round(safeNumber(benchmarkDisplayedBar.high), 4),
+    latestLow: round(safeNumber(benchmarkDisplayedBar.low), 4),
+    latestClose: round(safeNumber(benchmarkDisplayedBar.adjClose) ?? safeNumber(benchmarkDisplayedBar.close), 4),
+    latestVolume: round(safeNumber(benchmarkDisplayedBar.volume), 0),
+    barsCount: Number(benchmarkSnapshot.barsCount || 0),
+    approxYears: round(Number(benchmarkSnapshot.barsCount || 0) / 252, 1),
+    firstBarDate: benchmarkSnapshot.firstBar?.date ? toDateKey(benchmarkSnapshot.firstBar.date) : null,
+    lastSyncedAt: null,
+    lastProfileSyncedAt: benchmarkProfile?.lastProfileSyncedAt || null,
+    lastStatus: 'success',
+    lastError: '',
+    pinned: true
+  };
 
   return {
     lists: lists.map((item) => ({
@@ -570,6 +678,7 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
         .sort((a, b) => b.localeCompare(a))[0] || null
     },
     query: normalizedQuery,
+    asOfDate: selectedDate ? toDateKey(selectedDate) : null,
     page: currentPage,
     pageSize: safePageSize,
     totalMatches,
@@ -586,6 +695,7 @@ export const getDeepDiveImportInventory = async ({ ownerUsername, query = '', pa
           failedSymbols: latestRun.failedSymbols || []
         }
       : null,
+    benchmarkRow,
     stocks
   };
 };
@@ -598,7 +708,7 @@ export const getDeepDiveErrorInventory = async ({ ownerUsername, query = '', pag
     DeepDiveSyncState
   } = await getModels();
 
-  const canonical = await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
+  const canonical = await consolidateOwnerStockLists(DeepDiveStockList);
   const stockSymbols = [...new Set((canonical?.symbols || []).map((symbol) => normalizeDeepDiveSymbol(symbol)).filter(Boolean))];
   const normalizedQuery = normalizeSearchText(query);
 
@@ -666,25 +776,61 @@ const runDeepDiveIngestionScript = ({ mode = 'daily_sync' } = {}) =>
     const normalizedMode = ['backfill_prices', 'sync_prices', 'sync_profiles', 'daily_sync'].includes(mode)
       ? mode
       : 'daily_sync';
-    const child = spawn(PYTHON_BIN, [DEEP_DIVE_INGEST_SCRIPT_PATH, '--mode', normalizedMode], {
+    const pythonBin = resolvePythonBin();
+    activeDeepDiveSync = createActiveSyncState(normalizedMode, pythonBin);
+    const child = spawn(pythonBin, [DEEP_DIVE_INGEST_SCRIPT_PATH, '--mode', normalizedMode], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: process.env
     });
 
     let stdout = '';
     let stderr = '';
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+
+    const flushBufferedLines = (buffer, sink) => {
+      const lines = buffer.split('\n');
+      const pending = lines.pop() || '';
+      lines
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .forEach((line) => {
+          sink += `${line}\n`;
+          pushActiveSyncLine(line);
+        });
+      return { pending, sink };
+    };
 
     child.stdout.on('data', (chunk) => {
-      stdout += chunk.toString();
+      stdoutBuffer += chunk.toString();
+      const flushed = flushBufferedLines(stdoutBuffer, stdout);
+      stdoutBuffer = flushed.pending;
+      stdout = flushed.sink;
     });
     child.stderr.on('data', (chunk) => {
-      stderr += chunk.toString();
+      stderrBuffer += chunk.toString();
+      const flushed = flushBufferedLines(stderrBuffer, stderr);
+      stderrBuffer = flushed.pending;
+      stderr = flushed.sink;
     });
     child.on('error', (error) => {
-      reject(new Error(`Failed to run ${PYTHON_BIN}: ${error.message}`));
+      finishActiveSync('failed', `Failed to run ${pythonBin}: ${error.message}`);
+      reject(new Error(`Failed to run ${pythonBin}: ${error.message}`));
     });
     child.on('close', (code) => {
+      if (stdoutBuffer.trim()) {
+        const line = stdoutBuffer.trim();
+        stdout += `${line}\n`;
+        pushActiveSyncLine(line);
+      }
+      if (stderrBuffer.trim()) {
+        const line = stderrBuffer.trim();
+        stderr += `${line}\n`;
+        pushActiveSyncLine(line);
+      }
+
       if (code !== 0) {
+        finishActiveSync('failed', stderr.trim() || stdout.trim() || `Deep Dive sync failed (exit ${code})`);
         reject(new Error(stderr.trim() || stdout.trim() || `Deep Dive sync failed (exit ${code})`));
         return;
       }
@@ -703,6 +849,12 @@ const runDeepDiveIngestionScript = ({ mode = 'daily_sync' } = {}) =>
         }
       }
 
+      if (summary && activeDeepDiveSync) {
+        activeDeepDiveSync.current = Number(summary.symbolsAttempted || activeDeepDiveSync.current);
+        activeDeepDiveSync.total = Number(summary.symbolsAttempted || activeDeepDiveSync.total);
+      }
+      finishActiveSync('success', `Finished ${normalizedMode}`);
+
       resolve({
         mode: normalizedMode,
         summary,
@@ -717,8 +869,8 @@ export const triggerDeepDiveSync = async ({ mode = 'daily_sync' } = {}) => {
   return result;
 };
 
-const loadAllImportedSymbols = async (DeepDiveStockList, ownerUsername) => {
-  const canonical = await consolidateOwnerStockLists(DeepDiveStockList, ownerUsername);
+const loadAllImportedSymbols = async (DeepDiveStockList) => {
+  const canonical = await consolidateOwnerStockLists(DeepDiveStockList);
   return [...new Set((canonical?.symbols || []).map((symbol) => normalizeDeepDiveSymbol(symbol)).filter(Boolean))];
 };
 
@@ -743,7 +895,8 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
     if (!isValidDeepDiveId(stockListId)) {
       throw createError('Invalid stockListId', 400);
     }
-    stockList = await DeepDiveStockList.findOne({ _id: stockListId, ownerUsername }).lean();
+    await consolidateOwnerStockLists(DeepDiveStockList);
+    stockList = await DeepDiveStockList.findOne({ _id: stockListId, ownerUsername: DEEP_DIVE_SHARED_OWNER }).lean();
     if (!stockList) throw createError('Stock list not found', 404);
   }
 
@@ -754,7 +907,7 @@ const buildRsDataset = async ({ ownerUsername, payload }) => {
     ? [...new Set(selectedSymbolsOverride)]
     : stockList
       ? [...new Set((stockList.symbols || []).map((item) => normalizeDeepDiveSymbol(item)).filter(Boolean))]
-      : await loadAllImportedSymbols(DeepDiveStockList, ownerUsername);
+      : await loadAllImportedSymbols(DeepDiveStockList);
 
   if (!stockSymbols.length) {
     return {

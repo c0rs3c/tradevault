@@ -26,16 +26,20 @@ export const deleteDeepDiveList = async (id) => {
 };
 
 export const fetchDeepDiveStatus = async () => {
-  const { data } = await http.get('/deep-dive/status');
+  const { data } = await http.get('/deep-dive/status', {
+    params: { _ts: Date.now() }
+  });
   return data;
 };
 
-export const fetchDeepDiveImports = async ({ q = '', page = 1, pageSize = 100 } = {}) => {
+export const fetchDeepDiveImports = async ({ q = '', page = 1, pageSize = 100, asOfDate = '' } = {}) => {
   const { data } = await http.get('/deep-dive/imports', {
     params: {
       q,
       page,
-      pageSize
+      pageSize,
+      asOfDate,
+      _ts: Date.now()
     }
   });
   return data;
