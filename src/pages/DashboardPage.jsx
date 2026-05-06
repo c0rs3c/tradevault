@@ -1317,12 +1317,12 @@ const DashboardPage = () => {
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <section>
+          <section className="min-w-0">
             <h3 className="text-base font-semibold text-emerald-700 dark:text-emerald-300">
               Winning Trades ({filteredWinningTrades.length})
             </h3>
-            <div className="mt-2 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+            <div className="mt-2 w-full overflow-x-auto">
+              <table className="min-w-[36rem] text-left text-sm md:min-w-full">
                 <thead className="table-head">
                   <tr>
                     <th className="px-3 py-2">Symbol</th>
@@ -1406,12 +1406,12 @@ const DashboardPage = () => {
             )}
           </section>
 
-          <section>
+          <section className="min-w-0">
             <h3 className="text-base font-semibold text-red-700 dark:text-red-300">
               Losing Trades ({filteredLosingTrades.length})
             </h3>
-            <div className="mt-2 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+            <div className="mt-2 w-full overflow-x-auto">
+              <table className="min-w-[36rem] text-left text-sm md:min-w-full">
                 <thead className="table-head">
                   <tr>
                     <th className="px-3 py-2">Symbol</th>
