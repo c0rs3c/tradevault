@@ -75,6 +75,11 @@ export const addStopLossAdjustment = async (id, payload) => {
   return data;
 };
 
+export const deleteStopLossAdjustment = async (id, sid) => {
+  const { data } = await http.delete(`/trades/${id}/stop-loss-adjustments/${sid}`);
+  return data;
+};
+
 export const fetchDashboard = async ({ forceRefreshCmp = false } = {}) => {
   const { data } = await http.get('/trades/dashboard', {
     params: forceRefreshCmp ? { forceRefreshCmp: 1 } : undefined

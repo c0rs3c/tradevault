@@ -33,7 +33,9 @@ const StopLossAdjustmentSchema = new mongoose.Schema(
   {
     date: { type: Date, default: Date.now },
     qty: { type: Number, required: true, min: 0.000001 },
-    stopLoss: { type: Number, required: true, min: 0.000001 }
+    stopLoss: { type: Number, required: true, min: 0.000001 },
+    targetType: { type: String, enum: ['BASE', 'PYRAMID'], default: 'BASE' },
+    targetEntryId: { type: String, trim: true }
   },
   { _id: true }
 );

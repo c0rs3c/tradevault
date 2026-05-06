@@ -1,7 +1,7 @@
 import Trade from '../models/Trade';
 import Settings from '../models/Settings';
 import ImportBatch from '../models/ImportBatch';
-import { calcTradeMetrics, buildDashboardAnalytics } from '../utils/calculations';
+import { calcTradeMetrics, buildDashboardAnalytics, getOpenLotsForTrade } from '../utils/calculations';
 import { fetchSymbolQuote } from '../services/marketData';
 import { deleteObjectByKey } from '../services/objectStorage';
 import { parseCsv } from '../utils/csv';
@@ -871,11 +871,19 @@ export const addStopLossAdjustment = async (id, payload) => {
   const qty = Number(payload.qty || 0);
   const stopLoss = Number(payload.stopLoss || 0);
   const date = payload.date ? new Date(payload.date) : new Date();
+  const targetType = String(payload.targetType || 'BASE').trim().toUpperCase();
+  const targetEntryId = String(payload.targetEntryId || '').trim();
   if (qty <= 0 || stopLoss <= 0) {
     throw createError('Quantity and stop loss must be greater than 0', 400);
   }
   if (Number.isNaN(date.getTime())) {
     throw createError('Invalid stop loss adjustment date', 400);
+  }
+  if (!['BASE', 'PYRAMID'].includes(targetType)) {
+    throw createError('Invalid stop loss adjustment target', 400);
+  }
+  if (targetType === 'PYRAMID' && !targetEntryId) {
+    throw createError('Pyramid stop loss adjustment requires a target entry id', 400);
   }
 
   const openQty = getTotalEntryQty(trade) - getTotalExitQty(trade);
@@ -886,11 +894,47 @@ export const addStopLossAdjustment = async (id, payload) => {
     throw createError('Adjustment quantity cannot exceed current open quantity', 400);
   }
 
+  const targetOpenQty = getOpenLotsForTrade(trade)
+    .filter((lot) =>
+      targetType === 'PYRAMID'
+        ? lot.sourceType === 'PYRAMID' && lot.sourceId === targetEntryId
+        : lot.sourceType === 'BASE'
+    )
+    .reduce((acc, lot) => acc + Number(lot.qty || 0), 0);
+  if (targetOpenQty <= 1e-9) {
+    throw createError(
+      targetType === 'PYRAMID'
+        ? 'Cannot adjust stop loss for a pyramid that has no open quantity'
+        : 'Cannot adjust stop loss for the base entry because it has no open quantity',
+      400
+    );
+  }
+  if (qty > targetOpenQty + 1e-9) {
+    throw createError('Adjustment quantity cannot exceed the open quantity of the selected entry', 400);
+  }
+
   trade.stopLossAdjustments.push({
     date,
     qty,
-    stopLoss
+    stopLoss,
+    targetType,
+    targetEntryId: targetType === 'PYRAMID' ? targetEntryId : 'BASE'
   });
+  await trade.save();
+  invalidateTradeCaches();
+
+  const totalCapital = await getTotalCapital();
+  return withMetrics(trade, totalCapital);
+};
+
+export const deleteStopLossAdjustment = async (id, sid) => {
+  const trade = await Trade.findById(id);
+  if (!trade) throw createError('Trade not found', 404);
+
+  const adjustment = trade.stopLossAdjustments.id(sid);
+  if (!adjustment) throw createError('Stop loss adjustment not found', 404);
+
+  adjustment.deleteOne();
   await trade.save();
   invalidateTradeCaches();
 

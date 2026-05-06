@@ -23,6 +23,8 @@ const calcDirectionalRiskPerUnit = ({ side, entryPrice, stopLoss }) => {
 const buildEntries = (trade) => {
   const base = {
     label: 'BASE',
+    sourceType: 'BASE',
+    sourceId: 'BASE',
     entryDate: trade.entryDate,
     entryPrice: toNumber(trade.entryPrice),
     qty: toNumber(trade.entryQty),
@@ -31,6 +33,8 @@ const buildEntries = (trade) => {
 
   const pyramids = (trade.pyramids || []).map((pyramid) => ({
     label: 'PYRAMID',
+    sourceType: 'PYRAMID',
+    sourceId: String(pyramid._id || ''),
     entryDate: pyramid.entryDate || pyramid.date,
     entryPrice: toNumber(pyramid.price),
     qty: toNumber(pyramid.qty),
@@ -215,7 +219,9 @@ const buildFifoResult = ({ entries, exits, side }) => {
     qtyRemaining: toNumber(entry.qty),
     entryPrice: toNumber(entry.entryPrice),
     entryDate: entry.entryDate,
-    stopLoss: toNumber(entry.stopLoss)
+    stopLoss: toNumber(entry.stopLoss),
+    sourceType: entry.sourceType || 'BASE',
+    sourceId: entry.sourceId || 'BASE'
   }));
   const sortedExits = [...(exits || [])].sort((a, b) => new Date(a.exitDate) - new Date(b.exitDate));
   const exitPnlEvents = [];
@@ -257,7 +263,9 @@ const buildFifoResult = ({ entries, exits, side }) => {
     .map((lot) => ({
       qty: lot.qtyRemaining,
       entryPrice: lot.entryPrice,
-      stopLoss: lot.stopLoss
+      stopLoss: lot.stopLoss,
+      sourceType: lot.sourceType,
+      sourceId: lot.sourceId
     }));
 
   return {
@@ -275,6 +283,8 @@ const calcOpenCapitalAtRisk = (openLots, stopLossAdjustments, side = 'LONG') => 
     qty: toNumber(lot.qty),
     entryPrice: toNumber(lot.entryPrice),
     stopLoss: toNumber(lot.stopLoss),
+    sourceType: lot.sourceType || 'BASE',
+    sourceId: lot.sourceId || 'BASE',
     isAdjusted: false,
     adjustedAt: null
   }));
@@ -286,12 +296,26 @@ const calcOpenCapitalAtRisk = (openLots, stopLossAdjustments, side = 'LONG') => 
   for (const adjustment of adjustments) {
     let remainingQty = toNumber(adjustment.qty);
     const adjustedStopLoss = toNumber(adjustment.stopLoss);
+    const targetType = String(adjustment.targetType || '').toUpperCase();
+    const targetEntryId = String(adjustment.targetEntryId || '');
     if (remainingQty <= EPSILON_QTY || adjustedStopLoss <= 0) continue;
 
+    const matchesTarget = (segment) => {
+      if (targetType === 'PYRAMID' && targetEntryId) {
+        return segment.sourceType === 'PYRAMID' && segment.sourceId === targetEntryId;
+      }
+      if (targetType === 'BASE') {
+        return segment.sourceType === 'BASE';
+      }
+      return true;
+    };
+
     const adjustedSegments = segments
-      .filter((segment) => segment.isAdjusted && segment.qty > EPSILON_QTY)
+      .filter((segment) => segment.isAdjusted && segment.qty > EPSILON_QTY && matchesTarget(segment))
       .sort((a, b) => new Date(b.adjustedAt || 0) - new Date(a.adjustedAt || 0));
-    const baseSegments = segments.filter((segment) => !segment.isAdjusted && segment.qty > EPSILON_QTY);
+    const baseSegments = segments.filter(
+      (segment) => !segment.isAdjusted && segment.qty > EPSILON_QTY && matchesTarget(segment)
+    );
     const pools = [adjustedSegments, baseSegments];
 
     for (const pool of pools) {
@@ -305,6 +329,8 @@ const calcOpenCapitalAtRisk = (openLots, stopLossAdjustments, side = 'LONG') => 
           qty: matchedQty,
           entryPrice: segment.entryPrice,
           stopLoss: adjustedStopLoss,
+          sourceType: segment.sourceType,
+          sourceId: segment.sourceId,
           isAdjusted: true,
           adjustedAt: adjustment.date || new Date()
         });
@@ -335,6 +361,12 @@ const calcUnrealizedPnL = ({ openQty, lastPrice, avgEntryPrice, side }) => {
   const pnl =
     side === 'SHORT' ? openQty * (avgEntryPrice - marketPrice) : openQty * (marketPrice - avgEntryPrice);
   return pnl;
+};
+
+export const getOpenLotsForTrade = (trade) => {
+  const entries = buildEntries(trade);
+  const exits = trade.exits || [];
+  return buildFifoResult({ entries, exits, side: trade.side }).openLots;
 };
 
 export const calcTradeMetrics = (trade, totalCapital = 0) => {

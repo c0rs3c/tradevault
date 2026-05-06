@@ -87,6 +87,16 @@ const toMonthIndex = (value) => {
   return parsed.getUTCMonth();
 };
 
+const diffInCalendarDaysInclusive = (start, end = new Date()) => {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 0;
+  const startUtc = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+  const endUtc = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+  const diffDays = Math.floor((endUtc - startUtc) / (24 * 60 * 60 * 1000));
+  return Math.max(0, diffDays) + 1;
+};
+
 const getDaysInMonth = (year, monthIndex) => new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
 
 const tradeDotSizeClass = (count) => {
@@ -225,6 +235,23 @@ const OpenTradeActionButtons = ({ tradeId, compact = false }) => {
     </div>
   );
 };
+
+const SortArrow = ({ active = false, direction = 'desc' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className={`h-3 w-3 ${active ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'} ${
+      direction === 'asc' ? 'rotate-180' : ''
+    }`}
+    aria-hidden="true"
+  >
+    <path d="M12 5v14" strokeLinecap="round" />
+    <path d="m8 15 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 const CalendarTradeTooltip = ({ trade, className = '' }) => (
   <span className={`pointer-events-none absolute z-[80] hidden w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-[11px] text-slate-700 shadow-lg group-hover:block group-focus-visible:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 ${className}`}>
@@ -460,6 +487,7 @@ const DashboardPage = () => {
   const [chartTrade, setChartTrade] = useState(null);
   const [chartLoadingTradeId, setChartLoadingTradeId] = useState('');
   const [refreshingCmp, setRefreshingCmp] = useState(false);
+  const [openTradesSort, setOpenTradesSort] = useState({ key: 'earliestEntryDate', direction: 'asc' });
 
   useEffect(() => {
     const load = async ({ silent = false } = {}) => {
@@ -642,6 +670,7 @@ const DashboardPage = () => {
           positionSizePercent: totalCapital ? (positionSizeValue / totalCapital) * 100 : 0,
           riskPercent: totalCapital ? (group.capitalAtRisk / totalCapital) * 100 : 0,
           unrealizedPnL: group.unrealizedAllKnown ? group.unrealizedPnL : null,
+          holdingDays: diffInCalendarDaysInclusive(group.earliestEntryDate),
           pyramidCount,
           hasPartialExits
         };
@@ -652,6 +681,20 @@ const DashboardPage = () => {
     () => groupedOpenTrades.filter((group) => !excludedOpenPositionIds.includes(group.id)),
     [groupedOpenTrades, excludedOpenPositionIds]
   );
+  const sortedGroupedOpenTrades = useMemo(() => {
+    const list = [...groupedOpenTrades];
+    const factor = openTradesSort.direction === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      if (openTradesSort.key === 'positionSizeValue') {
+        return (Number(a.positionSizeValue || 0) - Number(b.positionSizeValue || 0)) * factor;
+      }
+      if (openTradesSort.key === 'capitalAtRisk') {
+        return (Number(a.capitalAtRisk || 0) - Number(b.capitalAtRisk || 0)) * factor;
+      }
+      return (new Date(a.earliestEntryDate) - new Date(b.earliestEntryDate)) * factor;
+    });
+    return list;
+  }, [groupedOpenTrades, openTradesSort]);
   const totalCapitalAtRiskIncluded = includedGroupedOpenTrades.reduce(
     (acc, group) => acc + Number(group.capitalAtRisk || 0),
     0
@@ -689,6 +732,13 @@ const DashboardPage = () => {
     } finally {
       setRefreshingCmp(false);
     }
+  };
+  const toggleOpenTradesSort = (key) => {
+    setOpenTradesSort((current) => (
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'desc' }
+    ));
   };
   const toggleDashboardPosition = async (groupId) => {
     const nextExcluded = excludedOpenPositionIds.includes(groupId)
@@ -869,8 +919,33 @@ const DashboardPage = () => {
                 <th className="px-3 py-2">Avg Entry</th>
                 <th className="px-3 py-2">CMP</th>
                 <th className="px-3 py-2">Open Qty</th>
-                <th className="px-3 py-2">Position Size (Rs / %)</th>
-                <th className="px-3 py-2">Cpital at Risk (Rs / %)</th>
+                <th className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleOpenTradesSort('positionSizeValue')}
+                    className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                  >
+                    Position Size (Rs / %)
+                    <SortArrow
+                      active={openTradesSort.key === 'positionSizeValue'}
+                      direction={openTradesSort.direction}
+                    />
+                  </button>
+                </th>
+                <th className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleOpenTradesSort('capitalAtRisk')}
+                    className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                  >
+                    Cpital at Risk (Rs / %)
+                    <SortArrow
+                      active={openTradesSort.key === 'capitalAtRisk'}
+                      direction={openTradesSort.direction}
+                    />
+                  </button>
+                </th>
+                <th className="px-3 py-2">Holding Days</th>
                 <th className="px-3 py-2">Realized P&L</th>
                 <th className="px-3 py-2">Unrealized P&L</th>
                 <th className="px-3 py-2">Actions</th>
@@ -878,7 +953,7 @@ const DashboardPage = () => {
               </tr>
             </thead>
             <tbody>
-              {groupedOpenTrades.map((group) => {
+              {sortedGroupedOpenTrades.map((group) => {
                 const canExpand = group.side === 'LONG' && group.trades.length > 1;
                 const isHidden = Boolean(hiddenGroups[group.id]);
                 const isExcluded = excludedOpenPositionIds.includes(group.id);
@@ -1013,6 +1088,7 @@ const DashboardPage = () => {
                       <td className="px-3 py-2">
                         {isHidden ? '••••' : `${money(group.capitalAtRisk)} (${group.riskPercent.toFixed(2)}%)`}
                       </td>
+                      <td className="px-3 py-2">{isHidden ? '••••' : group.holdingDays}</td>
                       <td className={`px-3 py-2 ${isHidden ? '' : pnlTextClass(group.realizedPnL)}`}>
                         {isHidden ? '••••' : money(group.realizedPnL)}
                       </td>
@@ -1082,7 +1158,7 @@ const DashboardPage = () => {
                     </tr>
                     {canExpand && expandedGroups[group.id] && (
                       <tr className="border-b-2 border-slate-300 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/70">
-                        <td className="px-3 py-2 text-xs" colSpan={11}>
+                        <td className="px-3 py-2 text-xs" colSpan={12}>
                           <div className="space-y-2">
                             {isHidden ? (
                               <p className="text-slate-600 dark:text-slate-300">Data hidden for this position.</p>
@@ -1119,7 +1195,7 @@ const DashboardPage = () => {
               })}
               {!groupedOpenTrades.length && (
                 <tr>
-                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={10}>
+                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={11}>
                     No open trades.
                   </td>
                 </tr>

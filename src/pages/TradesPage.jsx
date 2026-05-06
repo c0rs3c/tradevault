@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   addStopLossAdjustment,
+  deleteStopLossAdjustment,
   deleteTradeScreenshotUpload,
   deleteExit,
   deletePyramid,
@@ -45,6 +46,10 @@ const entryRisk = (entryPrice, stopLoss, qty, side = 'LONG') => {
       : Math.max(entry - stop, 0);
   return perUnitRisk * quantity;
 };
+
+const EPSILON_QTY = 1e-9;
+
+const entrySourceKey = (sourceType, sourceId) => `${String(sourceType || 'BASE').toUpperCase()}::${sourceId || 'BASE'}`;
 
 const stopLossPercent = (entryPrice, stopLoss) => {
   const entry = Number(entryPrice || 0);
@@ -95,18 +100,187 @@ const capitalAllocated = (trade) => {
   return avgEntryPrice * totalEntryQty;
 };
 
-const tradeEntries = (trade) => [
-  {
-    entryPrice: Number(trade?.entryPrice || 0),
-    qty: Number(trade?.entryQty || 0),
-    stopLoss: Number(trade?.stopLoss || 0)
-  },
-  ...((trade?.pyramids || []).map((p) => ({
-    entryPrice: Number(p?.price || 0),
-    qty: Number(p?.qty || 0),
-    stopLoss: Number(p?.stopLoss || 0)
-  })))
-];
+const buildTradeEntries = (trade) =>
+  [
+    {
+      sourceType: 'BASE',
+      sourceId: 'BASE',
+      label: 'Base Entry',
+      entryDate: trade?.entryDate,
+      entryPrice: Number(trade?.entryPrice || 0),
+      qty: Number(trade?.entryQty || 0),
+      stopLoss: Number(trade?.stopLoss || 0)
+    },
+    ...((trade?.pyramids || []).map((p) => ({
+      sourceType: 'PYRAMID',
+      sourceId: String(p?._id || ''),
+      label: 'Pyramid',
+      entryDate: p?.entryDate || p?.date,
+      entryPrice: Number(p?.price || 0),
+      qty: Number(p?.qty || 0),
+      stopLoss: Number(p?.stopLoss || 0)
+    })))
+  ].sort((a, b) => new Date(a.entryDate) - new Date(b.entryDate));
+
+const buildOpenLots = (trade) => {
+  const lots = buildTradeEntries(trade).map((entry) => ({
+    qtyRemaining: Number(entry.qty || 0),
+    entryPrice: Number(entry.entryPrice || 0),
+    stopLoss: Number(entry.stopLoss || 0),
+    sourceType: entry.sourceType,
+    sourceId: entry.sourceId
+  }));
+  const exits = [...(trade?.exits || [])].sort((a, b) => new Date(a.exitDate) - new Date(b.exitDate));
+
+  exits.forEach((exit) => {
+    let remainingExitQty = Number(exit?.exitQty || 0);
+    for (const lot of lots) {
+      if (remainingExitQty <= EPSILON_QTY) break;
+      if (lot.qtyRemaining <= EPSILON_QTY) continue;
+      const matchedQty = Math.min(remainingExitQty, lot.qtyRemaining);
+      lot.qtyRemaining -= matchedQty;
+      remainingExitQty -= matchedQty;
+    }
+  });
+
+  return lots
+    .filter((lot) => lot.qtyRemaining > EPSILON_QTY)
+    .map((lot) => ({
+      qty: lot.qtyRemaining,
+      entryPrice: lot.entryPrice,
+      stopLoss: lot.stopLoss,
+      sourceType: lot.sourceType,
+      sourceId: lot.sourceId
+    }));
+};
+
+const applyStopLossAdjustmentsToLots = (openLots, adjustments = []) => {
+  let segments = openLots.map((lot) => ({
+    qty: Number(lot.qty || 0),
+    entryPrice: Number(lot.entryPrice || 0),
+    stopLoss: Number(lot.stopLoss || 0),
+    sourceType: lot.sourceType || 'BASE',
+    sourceId: lot.sourceId || 'BASE',
+    isAdjusted: false,
+    adjustedAt: null
+  }));
+
+  const sortedAdjustments = [...adjustments].sort((a, b) => new Date(a?.date || 0) - new Date(b?.date || 0));
+  for (const adjustment of sortedAdjustments) {
+    let remainingQty = Number(adjustment?.qty || 0);
+    const adjustedStopLoss = Number(adjustment?.stopLoss || 0);
+    const targetType = String(adjustment?.targetType || '').toUpperCase();
+    const targetEntryId = String(adjustment?.targetEntryId || '');
+    if (remainingQty <= EPSILON_QTY || adjustedStopLoss <= 0) continue;
+
+    const matchesTarget = (segment) => {
+      if (targetType === 'PYRAMID' && targetEntryId) {
+        return segment.sourceType === 'PYRAMID' && segment.sourceId === targetEntryId;
+      }
+      if (targetType === 'BASE') {
+        return segment.sourceType === 'BASE';
+      }
+      return true;
+    };
+
+    const adjustedSegments = segments
+      .filter((segment) => segment.isAdjusted && segment.qty > EPSILON_QTY && matchesTarget(segment))
+      .sort((a, b) => new Date(b.adjustedAt || 0) - new Date(a.adjustedAt || 0));
+    const baseSegments = segments.filter(
+      (segment) => !segment.isAdjusted && segment.qty > EPSILON_QTY && matchesTarget(segment)
+    );
+
+    for (const pool of [adjustedSegments, baseSegments]) {
+      for (const segment of pool) {
+        if (remainingQty <= EPSILON_QTY) break;
+        if (segment.qty <= EPSILON_QTY) continue;
+        const matchedQty = Math.min(remainingQty, segment.qty);
+        segment.qty -= matchedQty;
+        remainingQty -= matchedQty;
+        segments.push({
+          qty: matchedQty,
+          entryPrice: segment.entryPrice,
+          stopLoss: adjustedStopLoss,
+          sourceType: segment.sourceType,
+          sourceId: segment.sourceId,
+          isAdjusted: true,
+          adjustedAt: adjustment?.date || new Date()
+        });
+      }
+      if (remainingQty <= EPSILON_QTY) break;
+    }
+
+    segments = segments.filter((segment) => segment.qty > EPSILON_QTY);
+  }
+
+  return segments;
+};
+
+const buildEntryRiskSnapshot = (trade) => {
+  const segments = applyStopLossAdjustmentsToLots(buildOpenLots(trade), trade?.stopLossAdjustments || []);
+  return segments.reduce((acc, segment) => {
+    const key = entrySourceKey(segment.sourceType, segment.sourceId);
+    if (!acc[key]) {
+      acc[key] = { openQty: 0, capitalAtRisk: 0, stopLosses: new Set() };
+    }
+    acc[key].openQty += Number(segment.qty || 0);
+    acc[key].capitalAtRisk += entryRisk(segment.entryPrice, segment.stopLoss, segment.qty, trade?.side);
+    if (Number(segment.stopLoss || 0) > 0) {
+      acc[key].stopLosses.add(Number(segment.stopLoss));
+    }
+    return acc;
+  }, {});
+};
+
+const getStopLossDisplay = (snapshot, fallbackStopLoss) => {
+  const stopLosses = snapshot ? [...snapshot.stopLosses] : [];
+  if (!stopLosses.length) return Number(fallbackStopLoss || 0).toFixed(2);
+  if (stopLosses.length === 1) return stopLosses[0].toFixed(2);
+  return 'Mixed';
+};
+
+const getEntryTargetMeta = (trade, targetType = 'BASE', targetEntryId = 'BASE') => {
+  const snapshotByEntry = buildEntryRiskSnapshot(trade);
+  const key = entrySourceKey(targetType, targetEntryId);
+  const snapshot = snapshotByEntry[key];
+  if (targetType === 'PYRAMID') {
+    const pyramid = (trade?.pyramids || []).find((item) => String(item?._id || '') === String(targetEntryId || ''));
+    return {
+      key,
+      label: pyramid
+        ? `Pyramid ${new Date(pyramid.date).toLocaleDateString()} @ ${pyramid.price}`
+        : 'Pyramid',
+      openQty: Number(snapshot?.openQty || 0),
+      capitalAtRisk: Number(snapshot?.capitalAtRisk || 0),
+      stopLossDisplay: getStopLossDisplay(snapshot, pyramid?.stopLoss)
+    };
+  }
+
+  return {
+    key,
+    label: 'Base Entry',
+    openQty: Number(snapshot?.openQty || 0),
+    capitalAtRisk: Number(snapshot?.capitalAtRisk || 0),
+    stopLossDisplay: getStopLossDisplay(snapshot, trade?.stopLoss)
+  };
+};
+
+const getStopLossHistoryForTarget = (trade, targetType = 'BASE', targetEntryId = 'BASE') =>
+  [...(trade?.stopLossAdjustments || [])]
+    .filter((adjustment) => {
+      const adjustmentType = String(adjustment?.targetType || 'BASE').toUpperCase();
+      const adjustmentTargetId = String(adjustment?.targetEntryId || 'BASE');
+      return adjustmentType === String(targetType || 'BASE').toUpperCase()
+        && adjustmentTargetId === String(targetEntryId || 'BASE');
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+const tradeEntries = (trade) =>
+  buildTradeEntries(trade).map((entry) => ({
+    entryPrice: Number(entry.entryPrice || 0),
+    qty: Number(entry.qty || 0),
+    stopLoss: Number(entry.stopLoss || 0)
+  }));
 
 const tradeStopLossPercent = (trade) => {
   const entries = tradeEntries(trade).filter((e) => e.entryPrice > 0 && e.qty > 0 && e.stopLoss > 0);
@@ -524,17 +698,25 @@ const TradesPage = () => {
     setExpandedTradeIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const startStopLossAdjustment = (trade) => {
+  const startStopLossAdjustment = (trade, targetType = 'BASE', targetEntryId = 'BASE') => {
+    const target = getEntryTargetMeta(trade, targetType, targetEntryId);
+    if (target.openQty <= EPSILON_QTY) {
+      alert('No open quantity available for this entry.');
+      return;
+    }
     setEditingBase(null);
     setEditingPyramid(null);
     setEditingExit(null);
     setExpandedTradeIds((prev) => ({ ...prev, [trade._id]: true }));
     setEditingStopLossAdjustment({
       tradeId: trade._id,
+      targetType,
+      targetEntryId,
+      targetLabel: target.label,
       values: {
         date: todayInputDate(),
-        qty: String(trade?.metrics?.openQty || ''),
-        stopLoss: ''
+        qty: String(target.openQty || ''),
+        stopLoss: target.stopLossDisplay !== 'Mixed' ? target.stopLossDisplay : ''
       }
     });
   };
@@ -544,15 +726,21 @@ const TradesPage = () => {
     const payload = {
       date: editingStopLossAdjustment.values.date,
       qty: Number(editingStopLossAdjustment.values.qty),
-      stopLoss: Number(editingStopLossAdjustment.values.stopLoss)
+      stopLoss: Number(editingStopLossAdjustment.values.stopLoss),
+      targetType: editingStopLossAdjustment.targetType || 'BASE',
+      targetEntryId: editingStopLossAdjustment.targetEntryId || 'BASE'
     };
     if (!payload.date || payload.qty <= 0 || payload.stopLoss <= 0) {
       alert('Date, quantity, and stop loss are required and must be valid.');
       return;
     }
-    const openQty = Number(trade?.metrics?.openQty || 0);
-    if (payload.qty > openQty + 1e-9) {
-      alert('Adjustment quantity cannot exceed open quantity.');
+    const target = getEntryTargetMeta(
+      trade,
+      editingStopLossAdjustment.targetType || 'BASE',
+      editingStopLossAdjustment.targetEntryId || 'BASE'
+    );
+    if (payload.qty > target.openQty + 1e-9) {
+      alert('Adjustment quantity cannot exceed the open quantity of the selected entry.');
       return;
     }
     try {
@@ -561,6 +749,16 @@ const TradesPage = () => {
       setEditingStopLossAdjustment(null);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to add stop loss adjustment');
+    }
+  };
+
+  const handleDeleteStopLossAdjustment = async (tradeId, adjustmentId) => {
+    if (!window.confirm('Delete this SL change?')) return;
+    try {
+      const updatedTrade = await deleteStopLossAdjustment(tradeId, adjustmentId);
+      upsertTrade(updatedTrade);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete stop loss adjustment');
     }
   };
 
@@ -791,29 +989,6 @@ const TradesPage = () => {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => startStopLossAdjustment(trade)}
-                        className="group relative rounded border border-cyan-400/80 bg-cyan-50 p-1.5 text-cyan-700 transition-colors duration-200 hover:bg-cyan-100 dark:border-cyan-500/60 dark:bg-cyan-950/30 dark:text-cyan-200 dark:hover:bg-cyan-900/50"
-                        aria-label="Adjust stop loss"
-                        title="Adjust stop loss"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.9"
-                          className="h-3.5 w-3.5"
-                          aria-hidden="true"
-                        >
-                          <path d="M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5Z" strokeLinejoin="round" />
-                          <path d="M9 12h6" strokeLinecap="round" />
-                        </svg>
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
-                          Adjust SL
-                        </span>
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => toggleExpanded(trade._id)}
                         className="group relative rounded border border-violet-400/80 bg-violet-50 p-1.5 text-violet-700 transition-colors duration-200 hover:bg-violet-100 dark:border-violet-500/60 dark:bg-violet-950/30 dark:text-violet-200 dark:hover:bg-violet-900/50"
                         aria-label="View entries/exits"
@@ -914,13 +1089,31 @@ const TradesPage = () => {
                               </button>
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              className="btn-muted px-2 py-1 text-xs"
-                              onClick={() => startEditBase(trade)}
-                            >
-                              Edit
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {trade.metrics?.status === 'OPEN' && (
+                                <button
+                                  type="button"
+                                  className="btn-muted px-2 py-1 text-xs"
+                                  onClick={() => startStopLossAdjustment(trade, 'BASE', 'BASE')}
+                                >
+                                  Adjust SL
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn-muted px-2 py-1 text-xs"
+                                onClick={() => startEditBase(trade)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-danger px-2 py-1 text-xs"
+                                onClick={() => handleDelete(trade._id)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           )}
                         </div>
                         {editingBase?.tradeId === trade._id ? (
@@ -1042,6 +1235,12 @@ const TradesPage = () => {
                             <p>
                               Stop Loss: {Number(trade.stopLoss || 0).toFixed(2)} ({stopLossPercent(trade.entryPrice, trade.stopLoss).toFixed(2)}%)
                             </p>
+                            {trade.metrics?.status === 'OPEN' && (
+                              <p>
+                                Current SL: {getEntryTargetMeta(trade, 'BASE', 'BASE').stopLossDisplay} | Capital at Risk:{' '}
+                                {money(getEntryTargetMeta(trade, 'BASE', 'BASE').capitalAtRisk)}
+                              </p>
+                            )}
                             {trade.strategy && <p>Strategy: {trade.strategy}</p>}
                             {trade.notes && <p>Notes: {trade.notes}</p>}
                             {(trade.screenshots || []).length ? (
@@ -1059,205 +1258,325 @@ const TradesPage = () => {
                             ) : null}
                           </div>
                         )}
-                      </div>
-
-                      <div className="rounded border border-cyan-400/60 bg-cyan-50 px-3 py-2 dark:border-cyan-600/40 dark:bg-cyan-950/20">
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <p className="font-semibold text-cyan-700 dark:text-cyan-300">Stop Loss Changes</p>
-                          {editingStopLossAdjustment?.tradeId === trade._id ? (
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                className="btn-primary px-2 py-1 text-xs"
-                                onClick={() => saveStopLossAdjustment(trade)}
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-muted px-2 py-1 text-xs"
-                                onClick={() => setEditingStopLossAdjustment(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn-muted px-2 py-1 text-xs"
-                              onClick={() => startStopLossAdjustment(trade)}
-                            >
-                              Add SL Change
-                            </button>
-                          )}
-                        </div>
-                        {editingStopLossAdjustment?.tradeId === trade._id && (
-                          <div className="mb-2 grid gap-2 md:grid-cols-3">
-                            <input
-                              type="date"
-                              className="field-input py-1 text-xs"
-                              value={editingStopLossAdjustment.values.date}
-                              onChange={(e) =>
-                                setEditingStopLossAdjustment((prev) => ({
-                                  ...prev,
-                                  values: { ...prev.values, date: e.target.value }
-                                }))
-                              }
-                            />
-                            <input
-                              type="number"
-                              step="0.0001"
-                              className="field-input py-1 text-xs"
-                              value={editingStopLossAdjustment.values.qty}
-                              onChange={(e) =>
-                                setEditingStopLossAdjustment((prev) => ({
-                                  ...prev,
-                                  values: { ...prev.values, qty: e.target.value }
-                                }))
-                              }
-                              placeholder="Qty"
-                            />
-                            <input
-                              type="number"
-                              step="0.0001"
-                              className="field-input py-1 text-xs"
-                              value={editingStopLossAdjustment.values.stopLoss}
-                              onChange={(e) =>
-                                setEditingStopLossAdjustment((prev) => ({
-                                  ...prev,
-                                  values: { ...prev.values, stopLoss: e.target.value }
-                                }))
-                              }
-                              placeholder="SL Price"
-                            />
+                        <div className="mt-3 rounded border border-cyan-400/60 bg-cyan-50 px-3 py-2 dark:border-cyan-600/40 dark:bg-cyan-950/20">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <p className="font-semibold text-cyan-700 dark:text-cyan-300">SL Change History</p>
+                            {editingStopLossAdjustment?.tradeId === trade._id &&
+                            editingStopLossAdjustment?.targetType === 'BASE' &&
+                            editingStopLossAdjustment?.targetEntryId === 'BASE' ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="btn-primary px-2 py-1 text-xs"
+                                  onClick={() => saveStopLossAdjustment(trade)}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-muted px-2 py-1 text-xs"
+                                  onClick={() => setEditingStopLossAdjustment(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
-                        )}
-                        {!!trade.stopLossAdjustments?.length ? (
-                          <div className="space-y-1 text-cyan-800 dark:text-cyan-200">
-                            {[...trade.stopLossAdjustments]
-                              .sort((a, b) => new Date(b.date) - new Date(a.date))
-                              .map((adj) => (
+                          {editingStopLossAdjustment?.tradeId === trade._id &&
+                          editingStopLossAdjustment?.targetType === 'BASE' &&
+                          editingStopLossAdjustment?.targetEntryId === 'BASE' ? (
+                            <div className="mb-2 space-y-2">
+                              <div className="grid gap-2 md:grid-cols-3">
+                                <input
+                                  type="date"
+                                  className="field-input py-1 text-xs"
+                                  value={editingStopLossAdjustment.values.date}
+                                  onChange={(e) =>
+                                    setEditingStopLossAdjustment((prev) => ({
+                                      ...prev,
+                                      values: { ...prev.values, date: e.target.value }
+                                    }))
+                                  }
+                                />
+                                <input
+                                  type="number"
+                                  step="0.0001"
+                                  className="field-input py-1 text-xs"
+                                  value={editingStopLossAdjustment.values.qty}
+                                  onChange={(e) =>
+                                    setEditingStopLossAdjustment((prev) => ({
+                                      ...prev,
+                                      values: { ...prev.values, qty: e.target.value }
+                                    }))
+                                  }
+                                  placeholder="Qty"
+                                />
+                                <input
+                                  type="number"
+                                  step="0.0001"
+                                  className="field-input py-1 text-xs"
+                                  value={editingStopLossAdjustment.values.stopLoss}
+                                  onChange={(e) =>
+                                    setEditingStopLossAdjustment((prev) => ({
+                                      ...prev,
+                                      values: { ...prev.values, stopLoss: e.target.value }
+                                    }))
+                                  }
+                                  placeholder="SL Price"
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                          <p className="mb-2 text-[11px] text-cyan-800/80 dark:text-cyan-200/80">
+                            Current capital-at-risk uses the latest effective SL adjustment for this base entry.
+                          </p>
+                          {getStopLossHistoryForTarget(trade, 'BASE', 'BASE').length ? (
+                            <div className="space-y-1 text-cyan-800 dark:text-cyan-200">
+                              {getStopLossHistoryForTarget(trade, 'BASE', 'BASE').map((adj) => (
                                 <div
                                   key={adj._id}
-                                  className="rounded border border-cyan-300/70 bg-cyan-100/60 px-2 py-1 dark:border-cyan-700/50 dark:bg-cyan-950/30"
+                                  className="flex items-center justify-between gap-2 rounded border border-cyan-300/70 bg-cyan-100/60 px-2 py-1 dark:border-cyan-700/50 dark:bg-cyan-950/30"
                                 >
-                                  Date: {new Date(adj.date).toLocaleDateString()} | Qty: {adj.qty} | SL: {adj.stopLoss}
+                                  <p>
+                                    Date: {new Date(adj.date).toLocaleDateString()} | Qty: {adj.qty} | SL: {adj.stopLoss}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    className="btn-danger px-2 py-1 text-xs"
+                                    onClick={() => handleDeleteStopLossAdjustment(trade._id, adj._id)}
+                                  >
+                                    Delete
+                                  </button>
                                 </div>
                               ))}
-                          </div>
-                        ) : (
-                          <p className="text-cyan-800 dark:text-cyan-200">None</p>
-                        )}
+                            </div>
+                          ) : (
+                            <p className="text-cyan-800 dark:text-cyan-200">None</p>
+                          )}
+                        </div>
                       </div>
 
                       <div className="rounded border border-amber-400/60 bg-amber-50 px-3 py-2 dark:border-amber-600/40 dark:bg-amber-950/20">
                         <p className="mb-1 font-semibold text-amber-700 dark:text-amber-300">Pyramids</p>
                         {!!trade.pyramids?.length ? (
                           <div className="space-y-1 text-amber-800 dark:text-amber-200">
-                            {trade.pyramids.map((p) => (
-                              <div
-                                key={p._id}
-                                className="rounded border border-amber-300/70 bg-amber-100/60 px-2 py-1 dark:border-amber-700/50 dark:bg-amber-950/30"
-                              >
-                                {editingPyramid?.tradeId === trade._id && editingPyramid?.pyramidId === p._id ? (
-                                  <div className="space-y-2">
-                                    <div className="grid gap-2 md:grid-cols-4">
-                                      <input
-                                        type="date"
-                                        className="field-input py-1 text-xs"
-                                        value={editingPyramid.values.date}
-                                        onChange={(e) =>
-                                          setEditingPyramid((prev) => ({
-                                            ...prev,
-                                            values: { ...prev.values, date: e.target.value }
-                                          }))
-                                        }
-                                      />
-                                      <input
-                                        type="number"
-                                        step="0.0001"
-                                        className="field-input py-1 text-xs"
-                                        value={editingPyramid.values.price}
-                                        onChange={(e) =>
-                                          setEditingPyramid((prev) => ({
-                                            ...prev,
-                                            values: { ...prev.values, price: e.target.value }
-                                          }))
-                                        }
-                                        placeholder="Price"
-                                      />
-                                      <input
-                                        type="number"
-                                        step="0.0001"
-                                        className="field-input py-1 text-xs"
-                                        value={editingPyramid.values.qty}
-                                        onChange={(e) =>
-                                          setEditingPyramid((prev) => ({
-                                            ...prev,
-                                            values: { ...prev.values, qty: e.target.value }
-                                          }))
-                                        }
-                                        placeholder="Qty"
-                                      />
-                                      <input
-                                        type="number"
-                                        step="0.0001"
-                                        className="field-input py-1 text-xs"
-                                        value={editingPyramid.values.stopLoss}
-                                        onChange={(e) =>
-                                          setEditingPyramid((prev) => ({
-                                            ...prev,
-                                            values: { ...prev.values, stopLoss: e.target.value }
-                                          }))
-                                        }
-                                        placeholder="Stop Loss"
-                                      />
+                            {trade.pyramids.map((p) => {
+                              const pyramidRiskMeta = getEntryTargetMeta(trade, 'PYRAMID', String(p._id || ''));
+                              return (
+                                <div
+                                  key={p._id}
+                                  className="rounded border border-amber-300/70 bg-amber-100/60 px-2 py-1 dark:border-amber-700/50 dark:bg-amber-950/30"
+                                >
+                                  {editingPyramid?.tradeId === trade._id && editingPyramid?.pyramidId === p._id ? (
+                                    <div className="space-y-2">
+                                      <div className="grid gap-2 md:grid-cols-4">
+                                        <input
+                                          type="date"
+                                          className="field-input py-1 text-xs"
+                                          value={editingPyramid.values.date}
+                                          onChange={(e) =>
+                                            setEditingPyramid((prev) => ({
+                                              ...prev,
+                                              values: { ...prev.values, date: e.target.value }
+                                            }))
+                                          }
+                                        />
+                                        <input
+                                          type="number"
+                                          step="0.0001"
+                                          className="field-input py-1 text-xs"
+                                          value={editingPyramid.values.price}
+                                          onChange={(e) =>
+                                            setEditingPyramid((prev) => ({
+                                              ...prev,
+                                              values: { ...prev.values, price: e.target.value }
+                                            }))
+                                          }
+                                          placeholder="Price"
+                                        />
+                                        <input
+                                          type="number"
+                                          step="0.0001"
+                                          className="field-input py-1 text-xs"
+                                          value={editingPyramid.values.qty}
+                                          onChange={(e) =>
+                                            setEditingPyramid((prev) => ({
+                                              ...prev,
+                                              values: { ...prev.values, qty: e.target.value }
+                                            }))
+                                          }
+                                          placeholder="Qty"
+                                        />
+                                        <input
+                                          type="number"
+                                          step="0.0001"
+                                          className="field-input py-1 text-xs"
+                                          value={editingPyramid.values.stopLoss}
+                                          onChange={(e) =>
+                                            setEditingPyramid((prev) => ({
+                                              ...prev,
+                                              values: { ...prev.values, stopLoss: e.target.value }
+                                            }))
+                                          }
+                                          placeholder="Stop Loss"
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          className="btn-primary px-2 py-1 text-xs"
+                                          onClick={() => saveEditPyramid(trade._id, p._id)}
+                                        >
+                                          Update
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn-muted px-2 py-1 text-xs"
+                                          onClick={() => setEditingPyramid(null)}
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        className="btn-primary px-2 py-1 text-xs"
-                                        onClick={() => saveEditPyramid(trade._id, p._id)}
-                                      >
-                                        Update
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn-muted px-2 py-1 text-xs"
-                                        onClick={() => setEditingPyramid(null)}
-                                      >
-                                        Cancel
-                                      </button>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <p>
+                                          Date: {new Date(p.date).toLocaleDateString()} | Price: {p.price} | Qty: {p.qty} | Initial Stop:{' '}
+                                          {p.stopLoss} ({stopLossPercent(p.price, p.stopLoss).toFixed(2)}%)
+                                          {trade.metrics.status === 'OPEN'
+                                            ? ` | Current SL: ${pyramidRiskMeta.stopLossDisplay} | Open Qty: ${pyramidRiskMeta.openQty} | Capital at Risk: ${money(
+                                                pyramidRiskMeta.capitalAtRisk
+                                              )}`
+                                            : ''}
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                          {trade.metrics?.status === 'OPEN' && pyramidRiskMeta.openQty > EPSILON_QTY && (
+                                            <button
+                                              type="button"
+                                              className="btn-muted px-2 py-1 text-xs"
+                                              onClick={() => startStopLossAdjustment(trade, 'PYRAMID', String(p._id || ''))}
+                                            >
+                                              Adjust SL
+                                            </button>
+                                          )}
+                                          <button
+                                            type="button"
+                                            className="btn-muted px-2 py-1 text-xs"
+                                            onClick={() => startEditPyramid(trade, p)}
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn-danger px-2 py-1 text-xs"
+                                            onClick={() => handleDeletePyramid(trade._id, p._id)}
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <div className="rounded border border-cyan-400/60 bg-cyan-50 px-3 py-2 dark:border-cyan-600/40 dark:bg-cyan-950/20">
+                                        <div className="mb-1 flex items-center justify-between gap-2">
+                                          <p className="font-semibold text-cyan-700 dark:text-cyan-300">SL Change History</p>
+                                          {editingStopLossAdjustment?.tradeId === trade._id &&
+                                          editingStopLossAdjustment?.targetType === 'PYRAMID' &&
+                                          editingStopLossAdjustment?.targetEntryId === String(p._id || '') ? (
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                className="btn-primary px-2 py-1 text-xs"
+                                                onClick={() => saveStopLossAdjustment(trade)}
+                                              >
+                                                Save
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="btn-muted px-2 py-1 text-xs"
+                                                onClick={() => setEditingStopLossAdjustment(null)}
+                                              >
+                                                Cancel
+                                              </button>
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                        {editingStopLossAdjustment?.tradeId === trade._id &&
+                                        editingStopLossAdjustment?.targetType === 'PYRAMID' &&
+                                        editingStopLossAdjustment?.targetEntryId === String(p._id || '') ? (
+                                          <div className="mb-2 space-y-2">
+                                            <div className="grid gap-2 md:grid-cols-3">
+                                              <input
+                                                type="date"
+                                                className="field-input py-1 text-xs"
+                                                value={editingStopLossAdjustment.values.date}
+                                                onChange={(e) =>
+                                                  setEditingStopLossAdjustment((prev) => ({
+                                                    ...prev,
+                                                    values: { ...prev.values, date: e.target.value }
+                                                  }))
+                                                }
+                                              />
+                                              <input
+                                                type="number"
+                                                step="0.0001"
+                                                className="field-input py-1 text-xs"
+                                                value={editingStopLossAdjustment.values.qty}
+                                                onChange={(e) =>
+                                                  setEditingStopLossAdjustment((prev) => ({
+                                                    ...prev,
+                                                    values: { ...prev.values, qty: e.target.value }
+                                                  }))
+                                                }
+                                                placeholder="Qty"
+                                              />
+                                              <input
+                                                type="number"
+                                                step="0.0001"
+                                                className="field-input py-1 text-xs"
+                                                value={editingStopLossAdjustment.values.stopLoss}
+                                                onChange={(e) =>
+                                                  setEditingStopLossAdjustment((prev) => ({
+                                                    ...prev,
+                                                    values: { ...prev.values, stopLoss: e.target.value }
+                                                  }))
+                                                }
+                                                placeholder="SL Price"
+                                              />
+                                            </div>
+                                          </div>
+                                        ) : null}
+                                        <p className="mb-2 text-[11px] text-cyan-800/80 dark:text-cyan-200/80">
+                                          Current capital-at-risk uses the latest effective SL adjustment for this pyramid.
+                                        </p>
+                                        {getStopLossHistoryForTarget(trade, 'PYRAMID', String(p._id || '')).length ? (
+                                          <div className="space-y-1 text-cyan-800 dark:text-cyan-200">
+                                            {getStopLossHistoryForTarget(trade, 'PYRAMID', String(p._id || '')).map((adj) => (
+                                              <div
+                                                key={adj._id}
+                                                className="flex items-center justify-between gap-2 rounded border border-cyan-300/70 bg-cyan-100/60 px-2 py-1 dark:border-cyan-700/50 dark:bg-cyan-950/30"
+                                              >
+                                                <p>
+                                                  Date: {new Date(adj.date).toLocaleDateString()} | Qty: {adj.qty} | SL: {adj.stopLoss}
+                                                </p>
+                                                <button
+                                                  type="button"
+                                                  className="btn-danger px-2 py-1 text-xs"
+                                                  onClick={() => handleDeleteStopLossAdjustment(trade._id, adj._id)}
+                                                >
+                                                  Delete
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-cyan-800 dark:text-cyan-200">None</p>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <p>
-                                      Date: {new Date(p.date).toLocaleDateString()} | Price: {p.price} | Qty: {p.qty} | Stop: {p.stopLoss} ({stopLossPercent(p.price, p.stopLoss).toFixed(2)}%)
-                                      {trade.metrics.status === 'OPEN'
-                                        ? ` | Capital at Risk: ${money(entryRisk(p.price, p.stopLoss, p.qty, trade.side))}`
-                                        : ''}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        className="btn-muted px-2 py-1 text-xs"
-                                        onClick={() => startEditPyramid(trade, p)}
-                                      >
-                                        Edit
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn-danger px-2 py-1 text-xs"
-                                        onClick={() => handleDeletePyramid(trade._id, p._id)}
-                                      >
-                                        Delete
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : (
                           <p className="text-amber-800 dark:text-amber-200">None</p>
