@@ -35,6 +35,13 @@ const pnlTextClass = (value) => {
   return 'text-slate-900 dark:text-slate-100';
 };
 
+const formatSignedPercent = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 'N/A';
+  const sign = num > 0 ? '+' : '';
+  return `${sign}${num.toFixed(2)}%`;
+};
+
 const monthLabel = (monthKey) => {
   if (!monthKey) return '';
   const parsed = new Date(`${monthKey}-01T00:00:00.000Z`);
@@ -661,11 +668,14 @@ const DashboardPage = () => {
       .map((group) => {
         const avgEntryPrice = group.openQty ? group.avgEntryValue / group.openQty : 0;
         const positionSizeValue = group.avgEntryValue;
+        const cmpChangePercent =
+          group.cmp !== null && avgEntryPrice > 0 ? ((group.cmp - avgEntryPrice) / avgEntryPrice) * 100 : null;
         const pyramidCount = group.trades.reduce((acc, trade) => acc + getTradePyramidCount(trade), 0);
         const hasPartialExits = group.trades.some((trade) => getTradeHasPartialExits(trade));
         return {
           ...group,
           avgEntryPrice,
+          cmpChangePercent,
           positionSizeValue,
           positionSizePercent: totalCapital ? (positionSizeValue / totalCapital) * 100 : 0,
           riskPercent: totalCapital ? (group.capitalAtRisk / totalCapital) * 100 : 0,
@@ -918,6 +928,7 @@ const DashboardPage = () => {
                 <th className="px-3 py-2">Symbol</th>
                 <th className="px-3 py-2">Avg Entry</th>
                 <th className="px-3 py-2">CMP</th>
+                <th className="px-3 py-2">Change %</th>
                 <th className="px-3 py-2">Open Qty</th>
                 <th className="px-3 py-2">
                   <button
@@ -1079,6 +1090,13 @@ const DashboardPage = () => {
                       <td className="px-3 py-2">
                         {isHidden ? '••••' : group.cmp === null ? 'N/A' : group.cmp.toFixed(2)}
                       </td>
+                      <td
+                        className={`px-3 py-2 ${
+                          isHidden || group.cmpChangePercent === null ? '' : pnlTextClass(group.cmpChangePercent)
+                        }`}
+                      >
+                        {isHidden ? '••••' : formatSignedPercent(group.cmpChangePercent)}
+                      </td>
                       <td className="px-3 py-2">{isHidden ? '••••' : group.openQty}</td>
                       <td className="px-3 py-2">
                         {isHidden
@@ -1158,7 +1176,7 @@ const DashboardPage = () => {
                     </tr>
                     {canExpand && expandedGroups[group.id] && (
                       <tr className="border-b-2 border-slate-300 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/70">
-                        <td className="px-3 py-2 text-xs" colSpan={12}>
+                        <td className="px-3 py-2 text-xs" colSpan={13}>
                           <div className="space-y-2">
                             {isHidden ? (
                               <p className="text-slate-600 dark:text-slate-300">Data hidden for this position.</p>
@@ -1195,7 +1213,7 @@ const DashboardPage = () => {
               })}
               {!groupedOpenTrades.length && (
                 <tr>
-                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={11}>
+                  <td className="px-3 py-4 text-slate-600 dark:text-slate-400" colSpan={13}>
                     No open trades.
                   </td>
                 </tr>
