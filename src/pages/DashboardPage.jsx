@@ -171,6 +171,61 @@ const TradeStructureIndicators = ({
   );
 };
 
+const OpenTradeActionButtons = ({ tradeId, compact = false }) => {
+  if (!tradeId) return null;
+
+  const baseButtonClass = compact
+    ? 'group relative inline-flex h-6 w-6 items-center justify-center rounded border transition-colors duration-200'
+    : 'group relative inline-flex h-7 w-7 items-center justify-center rounded border transition-colors duration-200';
+  const iconClass = compact ? 'h-3 w-3' : 'h-3.5 w-3.5';
+  const tooltipClass =
+    'pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900';
+
+  return (
+    <div className="flex items-center gap-1 whitespace-nowrap">
+      <Link
+        href={`/trades/${tradeId}?openModal=pyramid&source=dashboard`}
+        className={`${baseButtonClass} border-emerald-500/70 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50`}
+        aria-label="Pyramid"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className={iconClass}
+          aria-hidden="true"
+        >
+          <path d="m12 4 8 14H4L12 4Z" />
+          <path d="M8.8 12.2h6.4M7.2 15h9.6" strokeLinecap="round" />
+        </svg>
+        <span className={tooltipClass}>Pyramid</span>
+      </Link>
+      <Link
+        href={`/trades/${tradeId}?openModal=exit&source=dashboard`}
+        className={`${baseButtonClass} border-rose-500/70 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-500/60 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-900/50`}
+        aria-label="Exit"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          className={iconClass}
+          aria-hidden="true"
+        >
+          <path d="M10 5h7v14h-7" />
+          <path d="M14 12H4" strokeLinecap="round" />
+          <path d="m7.5 8.5-3.5 3.5 3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className={tooltipClass}>Exit</span>
+      </Link>
+    </div>
+  );
+};
+
 const CalendarTradeTooltip = ({ trade, className = '' }) => (
   <span className={`pointer-events-none absolute z-[80] hidden w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-[11px] text-slate-700 shadow-lg group-hover:block group-focus-visible:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 ${className}`}>
     <span className="block font-semibold text-slate-900 dark:text-slate-100">{trade.symbol || 'Trade'}</span>
@@ -818,6 +873,7 @@ const DashboardPage = () => {
                 <th className="px-3 py-2">Cpital at Risk (Rs / %)</th>
                 <th className="px-3 py-2">Realized P&L</th>
                 <th className="px-3 py-2">Unrealized P&L</th>
+                <th className="px-3 py-2">Actions</th>
                 <th className="px-3 py-2">Dash</th>
               </tr>
             </thead>
@@ -826,6 +882,8 @@ const DashboardPage = () => {
                 const canExpand = group.side === 'LONG' && group.trades.length > 1;
                 const isHidden = Boolean(hiddenGroups[group.id]);
                 const isExcluded = excludedOpenPositionIds.includes(group.id);
+                const primaryTrade = group.trades[0] || null;
+                const isSingleTrade = group.trades.length === 1;
                 return (
                   <Fragment key={group.id}>
                     <tr className={isExcluded ? 'table-row-hover opacity-70' : 'table-row-hover'}>
@@ -903,8 +961,8 @@ const DashboardPage = () => {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => openChartForTrade({ id: group.trades[0]?._id })}
-                              disabled={!group.trades[0]?._id || chartLoadingTradeId === String(group.trades[0]?._id)}
+                              onClick={() => openChartForTrade({ id: primaryTrade?._id })}
+                              disabled={!primaryTrade?._id || chartLoadingTradeId === String(primaryTrade?._id)}
                               className="underline decoration-dotted underline-offset-2 hover:text-sky-600 disabled:cursor-wait disabled:opacity-60 dark:hover:text-sky-300"
                               title="Open chart"
                             >
@@ -914,9 +972,9 @@ const DashboardPage = () => {
                               pyramidCount={group.pyramidCount}
                               hasPartialExits={group.hasPartialExits}
                             />
-                            {group.trades[0]?._id ? (
+                            {primaryTrade?._id ? (
                               <Link
-                                href={`/trades/${group.trades[0]._id}`}
+                                href={`/trades/${primaryTrade._id}`}
                                 className="group relative inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                 aria-label={`Details for ${group.symbol}`}
                               >
@@ -970,6 +1028,15 @@ const DashboardPage = () => {
                         )}
                       </td>
                       <td className="px-3 py-2">
+                        {isHidden ? (
+                          '••••'
+                        ) : isSingleTrade ? (
+                          <OpenTradeActionButtons tradeId={primaryTrade?._id} />
+                        ) : (
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Expand for trade actions</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
                         <button
                           type="button"
                           onClick={() => toggleDashboardPosition(group.id)}
@@ -1015,7 +1082,7 @@ const DashboardPage = () => {
                     </tr>
                     {canExpand && expandedGroups[group.id] && (
                       <tr className="border-b-2 border-slate-300 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/70">
-                        <td className="px-3 py-2 text-xs" colSpan={10}>
+                        <td className="px-3 py-2 text-xs" colSpan={11}>
                           <div className="space-y-2">
                             {isHidden ? (
                               <p className="text-slate-600 dark:text-slate-300">Data hidden for this position.</p>
@@ -1024,9 +1091,23 @@ const DashboardPage = () => {
                                 .slice()
                                 .sort((a, b) => new Date(a.entryDate) - new Date(b.entryDate))
                                 .map((trade) => (
-                                  <p key={trade._id} className="text-slate-700 dark:text-slate-300">
-                                    {formatDisplayDate(trade.entryDate)} | Entry: {trade.entryPrice} | Qty: {trade.entryQty} | Open Qty: {trade.metrics.openQty}
-                                  </p>
+                                  <div
+                                    key={trade._id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-white/80 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300"
+                                  >
+                                    <p>
+                                      {formatDisplayDate(trade.entryDate)} | Entry: {trade.entryPrice} | Qty: {trade.entryQty} | Open Qty: {trade.metrics.openQty}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <OpenTradeActionButtons tradeId={trade._id} compact />
+                                      <Link
+                                        href={`/trades/${trade._id}`}
+                                        className="rounded border border-slate-300 px-2 py-1 text-[11px] text-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                                      >
+                                        Details
+                                      </Link>
+                                    </div>
+                                  </div>
                                 ))
                             )}
                           </div>
