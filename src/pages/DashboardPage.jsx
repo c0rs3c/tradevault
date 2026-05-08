@@ -260,6 +260,57 @@ const SortArrow = ({ active = false, direction = 'desc' }) => (
   </svg>
 );
 
+const DashboardLoadingState = () => (
+  <div className="space-y-4 animate-pulse">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={`summary-${index}`} className="surface-card p-4">
+          <div className="h-3 w-28 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="mt-4 h-8 w-36 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="mt-3 h-2 w-full rounded bg-slate-100 dark:bg-slate-900" />
+        </div>
+      ))}
+    </div>
+
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="surface-card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-5 w-40 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-9 w-28 rounded-md bg-slate-200 dark:bg-slate-800" />
+        </div>
+        <div className="mt-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={`row-${index}`} className="grid grid-cols-6 gap-3">
+              <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="surface-card p-4">
+          <div className="h-5 w-32 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="mt-4 h-48 rounded-xl bg-slate-100 dark:bg-slate-900" />
+        </div>
+        <div className="surface-card p-4">
+          <div className="h-5 w-36 rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="mt-4 h-40 rounded-xl bg-slate-100 dark:bg-slate-900" />
+        </div>
+      </div>
+    </div>
+
+    <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent dark:border-slate-500" />
+      Loading dashboard...
+    </div>
+  </div>
+);
+
 const CalendarTradeTooltip = ({ trade, className = '' }) => (
   <span className={`pointer-events-none absolute z-[80] hidden w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-[11px] text-slate-700 shadow-lg group-hover:block group-focus-visible:block dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 ${className}`}>
     <span className="block font-semibold text-slate-900 dark:text-slate-100">{trade.symbol || 'Trade'}</span>
@@ -722,7 +773,7 @@ const DashboardPage = () => {
   const hasKnownUnrealizedPnL = includedGroupedOpenTrades.some((group) => group.unrealizedPnL !== null);
   const dashboardCards = settings?.dashboardCards || {};
 
-  if (loading) return <p>Loading dashboard...</p>;
+  if (loading) return <DashboardLoadingState />;
   if (error) return <p className="text-red-600">{error}</p>;
 
   const toggleGroup = (id) => {
