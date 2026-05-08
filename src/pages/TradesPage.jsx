@@ -374,6 +374,12 @@ const monthGroupLabel = (dateValue) => {
   }).format(date);
 };
 
+const monthFilterValue = (dateValue) => {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 7);
+};
+
 const buildTradesCopyPayload = (trades) => {
   const groups = [];
   const groupsByKey = trades.reduce((acc, trade) => {
@@ -418,6 +424,7 @@ const TradesPage = () => {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [monthFilter, setMonthFilter] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'entryDate', direction: 'desc' });
   const [liveLoading, setLiveLoading] = useState(false);
   const [editingBase, setEditingBase] = useState(null);
@@ -533,6 +540,10 @@ const TradesPage = () => {
       list = list.filter((trade) => trade.metrics.status === statusFilter);
     }
 
+    if (monthFilter) {
+      list = list.filter((trade) => monthFilterValue(trade.entryDate) === monthFilter);
+    }
+
     list.sort((a, b) => {
       if (sortConfig.key === 'symbol') {
         return sortConfig.direction === 'asc'
@@ -573,7 +584,7 @@ const TradesPage = () => {
     });
 
     return list;
-  }, [trades, search, statusFilter, sortConfig, quotesByTradeId]);
+  }, [trades, search, statusFilter, monthFilter, sortConfig, quotesByTradeId]);
   const chartTradeIndex = useMemo(() => {
     if (!chartTrade?._id) return -1;
     return filtered.findIndex((trade) => trade._id === chartTrade._id);
@@ -936,6 +947,18 @@ const TradesPage = () => {
             </select>
           </label>
 
+          <label className="space-y-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Month
+            </span>
+            <input
+              type="month"
+              className="field-input py-1.5 text-sm"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+            />
+          </label>
+
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
@@ -961,6 +984,7 @@ const TradesPage = () => {
               onClick={() => {
                 setSearch('');
                 setStatusFilter('ALL');
+                setMonthFilter('');
                 setSortConfig({ key: 'entryDate', direction: 'desc' });
               }}
             >
