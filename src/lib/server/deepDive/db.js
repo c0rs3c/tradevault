@@ -26,6 +26,25 @@ if (!cached) {
   };
 }
 
+const createDeepDiveUnavailableError = (message, cause) => {
+  const error = new Error(message);
+  error.statusCode = 503;
+  if (cause) error.cause = cause;
+  return error;
+};
+
+const isMongoDnsOrConnectionError = (error) => {
+  const message = String(error?.message || '');
+  return [
+    'querySrv',
+    'ECONNREFUSED',
+    'ENOTFOUND',
+    'ETIMEOUT',
+    'failed to connect',
+    'Server selection timed out'
+  ].some((fragment) => message.includes(fragment));
+};
+
 const isMongoConnectionUsable = (connection) => {
   const readyState = Number(connection?.readyState);
   return readyState === 1;
@@ -91,11 +110,18 @@ const connectDeepDiveFirestore = async () => {
     return cached.firestoreDb;
   }
 
-  const app = getOrCreateFirestoreApp();
-  cached.firestoreDb = getFirestore(app);
-  cached.firestoreProjectId = DEEP_DIVE_FIRESTORE_PROJECT_ID;
-  cached.firestoreCredentialKey = FIREBASE_SERVICE_ACCOUNT_KEY;
-  return cached.firestoreDb;
+  try {
+    const app = getOrCreateFirestoreApp();
+    cached.firestoreDb = getFirestore(app);
+    cached.firestoreProjectId = DEEP_DIVE_FIRESTORE_PROJECT_ID;
+    cached.firestoreCredentialKey = FIREBASE_SERVICE_ACCOUNT_KEY;
+    return cached.firestoreDb;
+  } catch (error) {
+    throw createDeepDiveUnavailableError(
+      'Deep Dive data source is unavailable. Check the configured Firestore project and credentials.',
+      error
+    );
+  }
 };
 
 const connectDeepDiveMongo = async () => {
@@ -138,8 +164,20 @@ const connectDeepDiveMongo = async () => {
     .createConnection(DEEP_DIVE_MONGO_URI, DEEP_DIVE_DB_NAME ? { dbName: DEEP_DIVE_DB_NAME } : {})
     .asPromise();
 
-  cached.mongoConn = await cached.mongoPromise;
-  return cached.mongoConn;
+  try {
+    cached.mongoConn = await cached.mongoPromise;
+    return cached.mongoConn;
+  } catch (error) {
+    cached.mongoConn = null;
+    cached.mongoPromise = null;
+    if (isMongoDnsOrConnectionError(error)) {
+      throw createDeepDiveUnavailableError(
+        'Deep Dive data source is unavailable. Check DEEP_DIVE_MONGO_URI and network access to the configured MongoDB cluster.',
+        error
+      );
+    }
+    throw error;
+  }
 };
 
 export const connectDeepDiveDB = async () => {

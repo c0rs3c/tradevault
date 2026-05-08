@@ -169,6 +169,12 @@ const Layout = ({ children }) => {
   ];
   const toolsMenuItems = [
     { href: '/position-sizing', label: 'Position Sizing', exact: true, description: 'Risk and sizing calculator' },
+    {
+      href: '/risk-reward-simulator',
+      label: 'Risk-Reward Simulator',
+      exact: true,
+      description: 'Expectancy and annual return simulator'
+    },
     { href: '/market-trend', label: 'Market Trend', exact: true, description: 'Trend and breadth dashboard' }
   ];
   const deepDiveMenuItems = [
@@ -335,6 +341,7 @@ const Layout = ({ children }) => {
               <div className="space-y-2 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tools</p>
                 <NavItem href="/position-sizing" label="Position Sizing" exact />
+                <NavItem href="/risk-reward-simulator" label="Risk-Reward Simulator" exact />
                 <NavItem href="/market-trend" label="Market Trend" exact />
               </div>
               <div className="space-y-2 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80">

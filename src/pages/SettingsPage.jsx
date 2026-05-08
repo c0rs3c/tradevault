@@ -142,6 +142,7 @@ const SettingsPage = () => {
   const [deepDiveErrorsLoading, setDeepDiveErrorsLoading] = useState(false);
   const [deepDiveErrorSearch, setDeepDiveErrorSearch] = useState('');
   const [deepDiveErrorPage, setDeepDiveErrorPage] = useState(1);
+  const [deepDiveLoadError, setDeepDiveLoadError] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -234,8 +235,10 @@ const SettingsPage = () => {
     try {
       const data = await fetchDeepDiveImports({ q: query, page, pageSize: 100, asOfDate });
       setDeepDiveImports(data);
+      setDeepDiveLoadError('');
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to load Deep Dive imports');
+      setDeepDiveImports(null);
+      setDeepDiveLoadError(error.response?.data?.message || 'Failed to load Deep Dive imports');
     } finally {
       setDeepDiveImportsLoading(false);
     }
@@ -246,8 +249,10 @@ const SettingsPage = () => {
     try {
       const data = await fetchDeepDiveErrors({ q: query, page, pageSize: 100 });
       setDeepDiveErrors(data);
+      setDeepDiveLoadError('');
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to load Deep Dive errors');
+      setDeepDiveErrors(null);
+      setDeepDiveLoadError(error.response?.data?.message || 'Failed to load Deep Dive errors');
     } finally {
       setDeepDiveErrorsLoading(false);
     }
@@ -542,6 +547,12 @@ const SettingsPage = () => {
                 {deepDiveSyncProgress.message ? (
                   <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">{deepDiveSyncProgress.message}</div>
                 ) : null}
+              </div>
+            ) : null}
+
+            {deepDiveLoadError ? (
+              <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-200">
+                {deepDiveLoadError}
               </div>
             ) : null}
 
