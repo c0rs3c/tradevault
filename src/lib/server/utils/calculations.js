@@ -514,13 +514,28 @@ export const buildDashboardAnalytics = (trades) => {
     if (trade.symbol) acc[monthKey].add(trade.symbol);
     return acc;
   }, {});
+  const monthlySymbolPnlsMap = closedTrades.reduce((acc, trade) => {
+    const closedOn = getTradeClosedOn(trade);
+    const parsedDate = new Date(closedOn);
+    if (Number.isNaN(parsedDate.getTime())) return acc;
+    const monthKey = parsedDate.toISOString().slice(0, 7);
+    const symbol = String(trade.symbol || '').trim();
+    if (!symbol) return acc;
+    if (!acc[monthKey]) acc[monthKey] = new Map();
+    acc[monthKey].set(symbol, (acc[monthKey].get(symbol) || 0) + toNumber(trade?.metrics?.realizedPnL));
+    return acc;
+  }, {});
   const monthlyPnL = Object.keys(monthlyMap)
     .sort()
     .map((month) => ({
       month,
       pnl: round(monthlyMap[month], 2),
       tradesInBar: monthlyTradesInBarMap[month] || 0,
-      symbols: Array.from(monthlySymbolsMap[month] || [])
+      symbols: Array.from(monthlySymbolsMap[month] || []),
+      symbolPnls: Array.from(monthlySymbolPnlsMap[month]?.entries() || []).map(([symbol, pnl]) => ({
+        symbol,
+        pnl: round(pnl, 2)
+      }))
     }));
 
   const closedWins = closedTrades.filter((trade) => trade.metrics.realizedPnL > 0);

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -525,6 +525,36 @@ const EquityTooltip = ({ active, payload, label }) => {
   );
 };
 
+const EquitySelectionDetails = ({ point }) => {
+  if (!point) {
+    return (
+      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+        Focus the chart and use the left/right arrow keys to move across dates.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-900/60">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="font-medium text-slate-900 dark:text-slate-100">{formatDisplayDate(point.date)}</span>
+        <span className={pnlTextClass(point.eventPnl)}>P&L: {money(point.eventPnl)}</span>
+        <span className="text-slate-700 dark:text-slate-300">Equity: {money(point.equity)}</span>
+      </div>
+      {(point.symbolPnls || []).length ? (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {(point.symbolPnls || []).map((item) => (
+            <span key={item.symbol} className="inline-flex items-center gap-2">
+              <span className="text-slate-700 dark:text-slate-300">{item.symbol}</span>
+              <span className={pnlTextClass(item.pnl)}>{money(item.pnl)}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 const MonthlyPnlTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload || {};
@@ -536,6 +566,38 @@ const MonthlyPnlTooltip = ({ active, payload, label }) => {
         Trades in bar: {Number(point.tradesInBar || 0)}
       </p>
       <p className="text-slate-700 dark:text-slate-300">Symbols: {symbolText(point.symbols)}</p>
+    </div>
+  );
+};
+
+const MonthlyPnlSelectionDetails = ({ point }) => {
+  if (!point) {
+    return (
+      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+        Click a monthly bar to pin its details here.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-900/60">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="font-medium text-slate-900 dark:text-slate-100">{monthLabel(point.month)}</span>
+        <span className={pnlTextClass(point.pnl)}>P&L: {money(point.pnl)}</span>
+        <span className="text-slate-700 dark:text-slate-300">Trades: {Number(point.tradesInBar || 0)}</span>
+      </div>
+      {(point.symbolPnls || []).length ? (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {(point.symbolPnls || []).map((item) => (
+            <span key={item.symbol} className="inline-flex items-center gap-1">
+              <span className="text-slate-700 dark:text-slate-300">{item.symbol}</span>
+              <span className={pnlTextClass(item.pnl)}>({money(item.pnl)})</span>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-2 text-slate-700 dark:text-slate-300">Symbols: {symbolText(point.symbols)}</div>
+      )}
     </div>
   );
 };
@@ -557,6 +619,9 @@ const DashboardPage = () => {
   const [chartLoadingTradeId, setChartLoadingTradeId] = useState('');
   const [refreshingCmp, setRefreshingCmp] = useState(false);
   const [openTradesSort, setOpenTradesSort] = useState({ key: 'earliestEntryDate', direction: 'asc' });
+  const [selectedEquityIndex, setSelectedEquityIndex] = useState(null);
+  const [selectedMonthlyPnlIndex, setSelectedMonthlyPnlIndex] = useState(null);
+  const equityCurveFocusRef = useRef(null);
 
   useEffect(() => {
     const load = async ({ silent = false } = {}) => {
@@ -595,7 +660,54 @@ const DashboardPage = () => {
   const winningTrades = analytics.winningTrades || [];
   const losingTrades = analytics.losingTrades || [];
   const equityCurve = analytics.equityCurve || [];
+  const equityCurveChartData = useMemo(
+    () => equityCurve
+      .map((point) => {
+        const parsed = new Date(point.date);
+        const dateTs = parsed.getTime();
+        if (Number.isNaN(dateTs)) return null;
+        return {
+          ...point,
+          dateTs
+        };
+      })
+      .filter(Boolean),
+    [equityCurve]
+  );
+  const equityCurveMonthTickDates = useMemo(
+    () => {
+      if (!equityCurveChartData.length) return [];
+      const start = new Date(equityCurveChartData[0].dateTs);
+      const end = new Date(equityCurveChartData[equityCurveChartData.length - 1].dateTs);
+      const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+      const endMonth = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1);
+      const ticks = [];
+
+      while (cursor.getTime() <= endMonth) {
+        ticks.push(cursor.getTime());
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+
+      return ticks;
+    },
+    [equityCurveChartData]
+  );
+  const equityCurveDomain = useMemo(
+    () => {
+      if (!equityCurveChartData.length) return ['auto', 'auto'];
+      return [equityCurveChartData[0].dateTs, equityCurveChartData[equityCurveChartData.length - 1].dateTs];
+    },
+    [equityCurveChartData]
+  );
+  const selectedEquityPoint =
+    selectedEquityIndex === null || selectedEquityIndex < 0 || selectedEquityIndex >= equityCurveChartData.length
+      ? null
+      : equityCurveChartData[selectedEquityIndex];
   const monthlyPnL = analytics.monthlyPnL || [];
+  const selectedMonthlyPnlPoint =
+    selectedMonthlyPnlIndex === null || selectedMonthlyPnlIndex < 0 || selectedMonthlyPnlIndex >= monthlyPnL.length
+      ? null
+      : monthlyPnL[selectedMonthlyPnlIndex];
   const calendarTradeClusters = analytics.calendarTradeClusters || [];
   const latestMonthly = monthlyPnL.length ? monthlyPnL[monthlyPnL.length - 1] : null;
   const monthlyLabel = latestMonthly?.month ? ` (${monthLabel(latestMonthly.month)})` : '';
@@ -784,6 +896,28 @@ const DashboardPage = () => {
   const hasKnownUnrealizedPnL = includedGroupedOpenTrades.some((group) => group.unrealizedPnL !== null);
   const dashboardCards = settings?.dashboardCards || {};
 
+  useEffect(() => {
+    if (!equityCurveChartData.length) {
+      setSelectedEquityIndex(null);
+      return;
+    }
+    setSelectedEquityIndex((current) => {
+      if (current === null) return equityCurveChartData.length - 1;
+      return Math.min(current, equityCurveChartData.length - 1);
+    });
+  }, [equityCurveChartData]);
+
+  useEffect(() => {
+    if (!monthlyPnL.length) {
+      setSelectedMonthlyPnlIndex(null);
+      return;
+    }
+    setSelectedMonthlyPnlIndex((current) => {
+      if (current === null) return monthlyPnL.length - 1;
+      return Math.min(current, monthlyPnL.length - 1);
+    });
+  }, [monthlyPnL]);
+
   if (loading) return <DashboardLoadingState />;
   if (error) return <p className="text-red-600">{error}</p>;
 
@@ -811,6 +945,27 @@ const DashboardPage = () => {
         ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
         : { key, direction: 'desc' }
     ));
+  };
+  const handleEquityCurveKeyDown = (event) => {
+    if (!equityCurveChartData.length) return;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      setSelectedEquityIndex((current) => Math.max((current ?? equityCurveChartData.length - 1) - 1, 0));
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      setSelectedEquityIndex((current) => Math.min((current ?? -1) + 1, equityCurveChartData.length - 1));
+    }
+  };
+  const handleEquityCurveSelection = (state) => {
+    const index = Number(state?.activeTooltipIndex);
+    if (!Number.isInteger(index) || index < 0 || index >= equityCurveChartData.length) return;
+    setSelectedEquityIndex(index);
+  };
+  const handleMonthlyPnlSelection = (state) => {
+    const index = Number(state?.activeTooltipIndex);
+    if (!Number.isInteger(index) || index < 0 || index >= monthlyPnL.length) return;
+    setSelectedMonthlyPnlIndex(index);
   };
   const toggleDashboardPosition = async (groupId) => {
     const nextExcluded = excludedOpenPositionIds.includes(groupId)
@@ -1288,18 +1443,70 @@ const DashboardPage = () => {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="surface-card p-4">
           <h2 className="text-lg font-semibold">Equity Curve</h2>
-          <div className="mt-4 h-72">
+          <div
+            ref={equityCurveFocusRef}
+            className="mt-4 rounded-lg outline-none focus:ring-2 focus:ring-sky-500/50"
+            tabIndex={0}
+            onClick={() => equityCurveFocusRef.current?.focus()}
+            onFocus={() => {
+              if (selectedEquityIndex === null && equityCurveChartData.length) {
+                setSelectedEquityIndex(equityCurveChartData.length - 1);
+              }
+            }}
+            onKeyDown={handleEquityCurveKeyDown}
+            aria-label="Equity curve chart. Use left and right arrow keys to move between dates."
+          >
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={equityCurve}>
+              <LineChart
+                data={equityCurveChartData}
+                onClick={handleEquityCurveSelection}
+                onMouseMove={handleEquityCurveSelection}
+              >
                 <CartesianGrid stroke={chartGrid} strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
+                <XAxis
+                  xAxisId="minor-dates"
+                  type="number"
+                  scale="time"
+                  domain={equityCurveDomain}
+                  dataKey="dateTs"
+                  ticks={equityCurveChartData.map((point) => point.dateTs)}
+                  tick={false}
+                  axisLine={false}
+                  tickLine={{ stroke: chartAxis, strokeOpacity: 0.45 }}
+                  height={10}
+                />
+                <XAxis
+                  type="number"
+                  scale="time"
+                  domain={equityCurveDomain}
+                  dataKey="dateTs"
+                  ticks={equityCurveMonthTickDates}
+                  tick={{ fill: chartTick }}
+                  axisLine={{ stroke: chartAxis }}
+                  tickLine={{ stroke: chartAxis }}
+                  tickFormatter={(value) => monthLabel(toMonthKey(value) || '')}
+                  allowDuplicatedCategory={false}
+                  height={36}
+                />
                 <YAxis tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
                 <Tooltip
                   content={<EquityTooltip />}
                 />
-                <Line type="monotone" dataKey="equity" stroke="#34d399" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="equity"
+                  stroke="#34d399"
+                  strokeWidth={2}
+                  dot={({ cx, cy, index }) => {
+                    if (index !== selectedEquityIndex || cx === undefined || cy === undefined) return null;
+                    return <circle cx={cx} cy={cy} r={6} fill="#ffffff" stroke="#10b981" strokeWidth={2} />;
+                  }}
+                />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+          <EquitySelectionDetails point={selectedEquityPoint} />
           </div>
         </section>
 
@@ -1307,17 +1514,52 @@ const DashboardPage = () => {
           <h2 className="text-lg font-semibold">Monthly P&L</h2>
           <div className="mt-4 h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyPnL}>
+              <BarChart data={monthlyPnL} onClick={handleMonthlyPnlSelection}>
                 <CartesianGrid stroke={chartGrid} strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: chartTick }}
+                  axisLine={{ stroke: chartAxis }}
+                  tickLine={{ stroke: chartAxis }}
+                  tickFormatter={(value) => monthLabel(value)}
+                />
                 <YAxis tick={{ fill: chartTick }} axisLine={{ stroke: chartAxis }} tickLine={{ stroke: chartAxis }} />
                 <Tooltip
                   content={<MonthlyPnlTooltip />}
                 />
-                <Bar dataKey="pnl" fill="#34d399" />
+                <Bar
+                  dataKey="pnl"
+                  shape={(props) => {
+                    const { x, y, width, height, payload, index } = props;
+                    const isSelected = index === selectedMonthlyPnlIndex;
+                    const isPositive = Number(payload?.pnl || 0) >= 0;
+                    const fill = isPositive ? '#34d399' : '#ef4444';
+                    const barY = height >= 0 ? y : y + height;
+                    const barHeight = Math.abs(height);
+                    return (
+                      <g>
+                        <rect x={x} y={barY} width={width} height={barHeight} rx={2} ry={2} fill={fill} />
+                        {isSelected ? (
+                          <rect
+                            x={x - 2}
+                            y={barY - 2}
+                            width={width + 4}
+                            height={barHeight + 4}
+                            rx={4}
+                            ry={4}
+                            fill="none"
+                            stroke="#0f172a"
+                            strokeWidth={2}
+                          />
+                        ) : null}
+                      </g>
+                    );
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <MonthlyPnlSelectionDetails point={selectedMonthlyPnlPoint} />
         </section>
       </div>
 
