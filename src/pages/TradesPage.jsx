@@ -425,6 +425,7 @@ const TradesPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [monthFilter, setMonthFilter] = useState('');
+  const [showFilters, setShowFilters] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: 'entryDate', direction: 'desc' });
   const [liveLoading, setLiveLoading] = useState(false);
   const [editingBase, setEditingBase] = useState(null);
@@ -911,14 +912,25 @@ const TradesPage = () => {
     <div className="space-y-4">
       <div className="surface-card space-y-3 p-3">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
-            Filter Trades
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+              Filter Trades
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowFilters((current) => !current)}
+              className="btn-muted px-2 py-1 text-[11px]"
+            >
+              {showFilters ? 'Collapse' : 'Expand'}
+            </button>
+          </div>
           <p className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             {filtered.length} result{filtered.length === 1 ? '' : 's'}
           </p>
         </div>
 
+        {showFilters ? (
+        <>
         <div className="grid gap-2 md:grid-cols-3">
           <label className="space-y-1">
             <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -992,6 +1004,8 @@ const TradesPage = () => {
             </button>
           </div>
         </div>
+        </>
+        ) : null}
       </div>
 
       <div className="surface-card max-h-[70vh] overflow-auto">
