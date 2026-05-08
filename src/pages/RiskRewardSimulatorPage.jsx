@@ -3,6 +3,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  Label,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,7 +16,7 @@ const DEFAULTS = {
   averageWinR: 3.5,
   tradesPerYear: 120,
   riskPerTradePercent: 0.4,
-  totalCapital: 1000000,
+  totalCapital: 250000,
   tradesAt4R: 5,
   tradesAt5R: 3,
   tradesAt6R: 2,
@@ -600,12 +601,21 @@ const RiskRewardSimulatorPage = () => {
                     stroke={axisColor(theme)}
                     tick={{ fill: tickColor(theme), fontSize: 12 }}
                     tickFormatter={(value) => `${value}%`}
-                  />
+                  >
+                    <Label value="Win Rate (%)" position="insideBottom" offset={-4} fill={tickColor(theme)} />
+                  </XAxis>
                   <YAxis
                     stroke={axisColor(theme)}
                     tick={{ fill: tickColor(theme), fontSize: 12 }}
                     tickFormatter={(value) => `${Number(value).toFixed(0)}%`}
-                  />
+                  >
+                    <Label
+                      value="Annual Return (%)"
+                      angle={-90}
+                      position="insideLeft"
+                      style={{ textAnchor: 'middle', fill: tickColor(theme), fontSize: 11 }}
+                    />
+                  </YAxis>
                   <Tooltip
                     content={
                       <ChartTooltip
@@ -644,12 +654,21 @@ const RiskRewardSimulatorPage = () => {
                     stroke={axisColor(theme)}
                     tick={{ fill: tickColor(theme), fontSize: 12 }}
                     tickFormatter={(value) => `${value}R`}
-                  />
+                  >
+                    <Label value="Average Win (R)" position="insideBottom" offset={-4} fill={tickColor(theme)} style={{ fontSize: 11 }} />
+                  </XAxis>
                   <YAxis
                     stroke={axisColor(theme)}
                     tick={{ fill: tickColor(theme), fontSize: 12 }}
                     tickFormatter={(value) => `${Number(value).toFixed(0)}%`}
-                  />
+                  >
+                    <Label
+                      value="Annual Return (%)"
+                      angle={-90}
+                      position="insideLeft"
+                      style={{ textAnchor: 'middle', fill: tickColor(theme), fontSize: 11 }}
+                    />
+                  </YAxis>
                   <Tooltip
                     content={
                       <ChartTooltip
