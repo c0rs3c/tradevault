@@ -36,6 +36,23 @@ const pnlTextClass = (value) => {
   return '';
 };
 
+const SortArrow = ({ active = false, direction = 'desc' }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    className={`h-3 w-3 ${active ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'} ${
+      direction === 'asc' ? 'rotate-180' : ''
+    }`}
+    aria-hidden="true"
+  >
+    <path d="M12 5v14" strokeLinecap="round" />
+    <path d="m8 15 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const entryRisk = (entryPrice, stopLoss, qty, side = 'LONG') => {
   const entry = Number(entryPrice || 0);
   const stop = Number(stopLoss || 0);
@@ -322,6 +339,15 @@ const tradeHoldingDays = (trade) => {
   return diffInCalendarDaysInclusive(trade.entryDate, lastExitDate || trade.entryDate);
 };
 
+const compareNullableNumbers = (a, b, direction = 'desc') => {
+  const aValid = Number.isFinite(a);
+  const bValid = Number.isFinite(b);
+  if (!aValid && !bValid) return 0;
+  if (!aValid) return 1;
+  if (!bValid) return -1;
+  return direction === 'asc' ? a - b : b - a;
+};
+
 const todayInputDate = () => new Date().toISOString().slice(0, 10);
 const normalizeScreenshots = (items) =>
   (Array.isArray(items) ? items : [])
@@ -392,7 +418,7 @@ const TradesPage = () => {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [sortBy, setSortBy] = useState('entryDateDesc');
+  const [sortConfig, setSortConfig] = useState({ key: 'entryDate', direction: 'desc' });
   const [liveLoading, setLiveLoading] = useState(false);
   const [editingBase, setEditingBase] = useState(null);
   const [editingPyramid, setEditingPyramid] = useState(null);
@@ -508,31 +534,59 @@ const TradesPage = () => {
     }
 
     list.sort((a, b) => {
-      if (sortBy === 'entryDateAsc') return new Date(a.entryDate) - new Date(b.entryDate);
-      if (sortBy === 'entryDateDesc') return new Date(b.entryDate) - new Date(a.entryDate);
-      if (sortBy === 'realizedPnLDesc') {
-        return Number(b.metrics.realizedPnL || 0) - Number(a.metrics.realizedPnL || 0);
+      if (sortConfig.key === 'symbol') {
+        return sortConfig.direction === 'asc'
+          ? a.symbol.localeCompare(b.symbol)
+          : b.symbol.localeCompare(a.symbol);
       }
-      if (sortBy === 'realizedPnLAsc') {
-        return Number(a.metrics.realizedPnL || 0) - Number(b.metrics.realizedPnL || 0);
+      if (sortConfig.key === 'entryDate') {
+        return sortConfig.direction === 'asc'
+          ? new Date(a.entryDate) - new Date(b.entryDate)
+          : new Date(b.entryDate) - new Date(a.entryDate);
       }
-      if (sortBy === 'realizedRDesc') {
-        return tradeRMultipleBySl(b) - tradeRMultipleBySl(a);
+      if (sortConfig.key === 'capitalAllocated') {
+        return compareNullableNumbers(capitalAllocated(a), capitalAllocated(b), sortConfig.direction);
       }
-      if (sortBy === 'realizedRAsc') {
-        return tradeRMultipleBySl(a) - tradeRMultipleBySl(b);
+      if (sortConfig.key === 'realizedPnL') {
+        return compareNullableNumbers(
+          Number(a.metrics.realizedPnL || 0),
+          Number(b.metrics.realizedPnL || 0),
+          sortConfig.direction
+        );
       }
-      if (sortBy === 'symbolAsc') return a.symbol.localeCompare(b.symbol);
+      if (sortConfig.key === 'unrealizedPnL') {
+        const aLivePrice = quotesByTradeId[a._id]?.price;
+        const bLivePrice = quotesByTradeId[b._id]?.price;
+        return compareNullableNumbers(
+          unrealizedPnlValue(a, aLivePrice),
+          unrealizedPnlValue(b, bLivePrice),
+          sortConfig.direction
+        );
+      }
+      if (sortConfig.key === 'rMultiple') {
+        return compareNullableNumbers(tradeRMultipleBySl(a), tradeRMultipleBySl(b), sortConfig.direction);
+      }
+      if (sortConfig.key === 'holdingDays') {
+        return compareNullableNumbers(tradeHoldingDays(a), tradeHoldingDays(b), sortConfig.direction);
+      }
       return 0;
     });
 
     return list;
-  }, [trades, search, statusFilter, sortBy]);
+  }, [trades, search, statusFilter, sortConfig, quotesByTradeId]);
   const chartTradeIndex = useMemo(() => {
     if (!chartTrade?._id) return -1;
     return filtered.findIndex((trade) => trade._id === chartTrade._id);
   }, [filtered, chartTrade]);
   const filteredTradesCopyPayload = useMemo(() => buildTradesCopyPayload(filtered), [filtered]);
+
+  const toggleSort = (key) => {
+    setSortConfig((current) => (
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: key === 'symbol' ? 'asc' : 'desc' }
+    ));
+  };
 
   const handleDelete = async (id) => {
     const confirmation = window.prompt('Type "del" to delete this trade.');
@@ -882,25 +936,6 @@ const TradesPage = () => {
             </select>
           </label>
 
-          <label className="space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Sort By
-            </span>
-            <select
-              className="field-input py-1.5 text-sm"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="entryDateAsc">Date (Oldest)</option>
-              <option value="entryDateDesc">Date (Newest)</option>
-              <option value="realizedPnLDesc">Realized P&L (High to Low)</option>
-              <option value="realizedPnLAsc">Realized P&L (Low to High)</option>
-              <option value="realizedRDesc">R Multiple (High to Low)</option>
-              <option value="realizedRAsc">R Multiple (Low to High)</option>
-              <option value="symbolAsc">Symbol (A-Z)</option>
-            </select>
-          </label>
-
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
@@ -926,7 +961,7 @@ const TradesPage = () => {
               onClick={() => {
                 setSearch('');
                 setStatusFilter('ALL');
-                setSortBy('entryDateDesc');
+                setSortConfig({ key: 'entryDate', direction: 'desc' });
               }}
             >
               Reset Filters
@@ -940,17 +975,80 @@ const TradesPage = () => {
           <thead className="table-head [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-slate-100 dark:[&_th]:bg-slate-900">
             <tr>
               <th className="px-3 py-2">Trade #</th>
-              <th className="px-3 py-2">Symbol</th>
-              <th className="px-3 py-2">Entry Date</th>
+              <th className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('symbol')}
+                  className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                >
+                  Symbol
+                  <SortArrow active={sortConfig.key === 'symbol'} direction={sortConfig.direction} />
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('entryDate')}
+                  className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                >
+                  Entry Date
+                  <SortArrow active={sortConfig.key === 'entryDate'} direction={sortConfig.direction} />
+                </button>
+              </th>
               <th className="px-3 py-2">Avg Entry</th>
               <th className="px-3 py-2">Open Qty</th>
-              <th className="px-3 py-2">Capital Allocated (Rs / %)</th>
+              <th className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('capitalAllocated')}
+                  className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                >
+                  Capital Allocated (Rs / %)
+                  <SortArrow active={sortConfig.key === 'capitalAllocated'} direction={sortConfig.direction} />
+                </button>
+              </th>
               <th className="px-3 py-2">Current Price</th>
               <th className="px-3 py-2">Capital at Risk</th>
-              <th className="px-3 py-2">Realized P&L</th>
-              <th className="px-3 py-2">Unrealized P&L</th>
-              <th className="px-3 py-2">R Multiple</th>
-              <th className="px-3 py-2">Holding Days</th>
+              <th className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('realizedPnL')}
+                  className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                >
+                  Realized P&L
+                  <SortArrow active={sortConfig.key === 'realizedPnL'} direction={sortConfig.direction} />
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('unrealizedPnL')}
+                  className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                >
+                  Unrealized P&L
+                  <SortArrow active={sortConfig.key === 'unrealizedPnL'} direction={sortConfig.direction} />
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('rMultiple')}
+                  className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                >
+                  R Multiple
+                  <SortArrow active={sortConfig.key === 'rMultiple'} direction={sortConfig.direction} />
+                </button>
+              </th>
+              <th className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort('holdingDays')}
+                  className="inline-flex items-center gap-1 hover:text-sky-600 dark:hover:text-sky-300"
+                >
+                  Holding Days
+                  <SortArrow active={sortConfig.key === 'holdingDays'} direction={sortConfig.direction} />
+                </button>
+              </th>
               <th className="px-3 py-2">Actions</th>
             </tr>
           </thead>
