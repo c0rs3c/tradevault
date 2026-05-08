@@ -70,6 +70,8 @@ const TradeDetailPage = () => {
     entryQty: '',
     stopLoss: '',
     strategy: '',
+    pastTradeMarketComment: '',
+    pastTradeGeneralComment: '',
     notes: '',
     screenshots: []
   });
@@ -98,6 +100,8 @@ const TradeDetailPage = () => {
         entryQty: String(data.entryQty ?? ''),
         stopLoss: String(data.stopLoss ?? ''),
         strategy: data.strategy || '',
+        pastTradeMarketComment: data.pastTradeMarketComment || '',
+        pastTradeGeneralComment: data.pastTradeGeneralComment || data.pastTradeComment || '',
         notes: data.notes || '',
         screenshots: normalizeScreenshots(data.screenshots)
       });
@@ -326,6 +330,8 @@ const TradeDetailPage = () => {
         entryQty: Number(entryForm.entryQty),
         stopLoss: Number(entryForm.stopLoss),
         strategy: entryForm.strategy,
+        pastTradeMarketComment: entryForm.pastTradeMarketComment,
+        pastTradeGeneralComment: entryForm.pastTradeGeneralComment,
         notes: entryForm.notes,
         screenshots: normalizeScreenshots(entryForm.screenshots)
       };
@@ -850,6 +856,18 @@ const TradeDetailPage = () => {
             className={inputClass}
             value={entryForm.strategy}
             onChange={(e) => setEntryForm((prev) => ({ ...prev, strategy: e.target.value }))}
+          />
+          <textarea
+            placeholder="Past Trade Market Comment (optional)"
+            className={inputClass}
+            value={entryForm.pastTradeMarketComment}
+            onChange={(e) => setEntryForm((prev) => ({ ...prev, pastTradeMarketComment: e.target.value }))}
+          />
+          <textarea
+            placeholder="Past Trade General Comment (optional)"
+            className={inputClass}
+            value={entryForm.pastTradeGeneralComment}
+            onChange={(e) => setEntryForm((prev) => ({ ...prev, pastTradeGeneralComment: e.target.value }))}
           />
           <textarea
             placeholder="Notes (optional)"

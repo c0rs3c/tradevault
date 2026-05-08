@@ -55,6 +55,9 @@ const TradeSchema = new mongoose.Schema(
     charges: { type: Number, default: 0 },
     brokerGrossPnL: { type: Number },
     brokerNetPnL: { type: Number },
+    pastTradeMarketComment: { type: String, trim: true },
+    pastTradeGeneralComment: { type: String, trim: true },
+    pastTradeComment: { type: String, trim: true },
     notes: { type: String, trim: true },
     tags: [{ type: String, trim: true }],
     strategy: { type: String, trim: true },
@@ -66,4 +69,10 @@ const TradeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.models.Trade || mongoose.model('Trade', TradeSchema);
+const TradeModel = mongoose.models.Trade;
+
+if (TradeModel) {
+  delete mongoose.connection.models.Trade;
+}
+
+export default mongoose.model('Trade', TradeSchema);

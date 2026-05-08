@@ -14,6 +14,8 @@ const initialValues = {
   entryQty: '',
   stopLoss: '',
   strategy: [],
+  pastTradeMarketComment: '',
+  pastTradeGeneralComment: '',
   notes: '',
   screenshots: []
 };
@@ -113,6 +115,8 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
       ...values,
       symbol: values.symbol.trim().toUpperCase(),
       strategy: values.strategy.join(', '),
+      pastTradeMarketComment: values.pastTradeMarketComment,
+      pastTradeGeneralComment: values.pastTradeGeneralComment,
       entryPrice: Number(values.entryPrice),
       entryQty: Number(values.entryQty),
       stopLoss: values.stopLoss === '' ? undefined : Number(values.stopLoss),
@@ -265,6 +269,24 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
               );
             })}
           </div>
+        </label>
+
+        <label className="space-y-1 md:col-span-2">
+          <span className="text-sm font-medium">Past Trade Market Comment</span>
+          <textarea
+            className="field-input min-h-24"
+            value={values.pastTradeMarketComment}
+            onChange={(e) => setField('pastTradeMarketComment', e.target.value)}
+          />
+        </label>
+
+        <label className="space-y-1 md:col-span-2">
+          <span className="text-sm font-medium">Past Trade General Comment</span>
+          <textarea
+            className="field-input min-h-24"
+            value={values.pastTradeGeneralComment}
+            onChange={(e) => setField('pastTradeGeneralComment', e.target.value)}
+          />
         </label>
 
         <div className="md:col-span-2">

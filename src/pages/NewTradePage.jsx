@@ -33,6 +33,8 @@ const NewTradePage = () => {
         entryQty: values.entryQty,
         stopLoss: values.stopLoss,
         strategy: values.strategy,
+        pastTradeMarketComment: values.pastTradeMarketComment,
+        pastTradeGeneralComment: values.pastTradeGeneralComment,
         notes: values.notes,
         screenshots: values.screenshots || []
       };

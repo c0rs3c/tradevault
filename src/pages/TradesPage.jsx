@@ -14,6 +14,7 @@ import {
   updateTrade,
   updatePyramid
 } from '../api/trades';
+import Modal from '../components/Modal';
 import ScreenshotManager from '../components/ScreenshotManager';
 import { useSettings } from '../contexts/SettingsContext';
 import TradeChartOverlay from '../components/TradeChartOverlay';
@@ -380,6 +381,66 @@ const monthFilterValue = (dateValue) => {
   return date.toISOString().slice(0, 7);
 };
 
+const TradesLoadingState = () => (
+  <div className="space-y-4 animate-pulse">
+    <div className="surface-card space-y-3 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="h-4 w-28 rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="h-6 w-24 rounded-full bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="grid gap-2 md:grid-cols-3">
+        <div className="h-10 rounded-md bg-slate-200 dark:bg-slate-800" />
+        <div className="h-10 rounded-md bg-slate-200 dark:bg-slate-800" />
+        <div className="h-10 rounded-md bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="flex justify-end gap-2">
+        <div className="h-8 w-24 rounded-md bg-slate-200 dark:bg-slate-800" />
+        <div className="h-8 w-32 rounded-md bg-slate-200 dark:bg-slate-800" />
+        <div className="h-8 w-28 rounded-md bg-slate-200 dark:bg-slate-800" />
+      </div>
+    </div>
+
+    <div className="surface-card overflow-hidden">
+      <div className="grid grid-cols-[72px_160px_120px_110px_90px_170px_130px_150px_160px_170px_110px_110px_120px] gap-0 border-b border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900">
+        {Array.from({ length: 13 }).map((_, index) => (
+          <div key={`head-${index}`} className="px-3 py-3">
+            <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-0">
+        {Array.from({ length: 6 }).map((_, rowIndex) => (
+          <div
+            key={`row-${rowIndex}`}
+            className="grid grid-cols-[72px_160px_120px_110px_90px_170px_130px_150px_160px_170px_110px_110px_120px] gap-0 border-b border-slate-200 dark:border-slate-800"
+          >
+            {Array.from({ length: 13 }).map((__, colIndex) => (
+              <div key={`cell-${rowIndex}-${colIndex}`} className="px-3 py-3">
+                <div className="h-4 rounded bg-slate-200 dark:bg-slate-800" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent dark:border-slate-500" />
+      Loading trades...
+    </div>
+  </div>
+);
+
+const getPastTradeComments = (trade) => ({
+  market: String(trade?.pastTradeMarketComment || '').trim(),
+  general: String(trade?.pastTradeGeneralComment || trade?.pastTradeComment || '').trim()
+});
+
+const hasPastTradeComments = (trade) => {
+  const comments = getPastTradeComments(trade);
+  return Boolean(comments.market || comments.general);
+};
+
 const buildTradesCopyPayload = (trades) => {
   const groups = [];
   const groupsByKey = trades.reduce((acc, trade) => {
@@ -426,6 +487,7 @@ const TradesPage = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [monthFilter, setMonthFilter] = useState('');
   const [showFilters, setShowFilters] = useState(true);
+  const [showPastTradeComments, setShowPastTradeComments] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'entryDate', direction: 'desc' });
   const [liveLoading, setLiveLoading] = useState(false);
   const [editingBase, setEditingBase] = useState(null);
@@ -436,7 +498,14 @@ const TradesPage = () => {
   const [editingBaseScreenshotFiles, setEditingBaseScreenshotFiles] = useState([]);
   const [editingBaseUploadError, setEditingBaseUploadError] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
+  const [commentTrade, setCommentTrade] = useState(null);
+  const [commentMarketDraft, setCommentMarketDraft] = useState('');
+  const [commentGeneralDraft, setCommentGeneralDraft] = useState('');
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [expandedCommentTradeId, setExpandedCommentTradeId] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const copyStatusTimeoutRef = useRef(null);
+  const tradesTableScrollRef = useRef(null);
 
   const loadTrades = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -467,6 +536,25 @@ const TradesPage = () => {
       copyStatusTimeoutRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    const node = tradesTableScrollRef.current;
+    if (!node) return undefined;
+
+    const handleScroll = () => {
+      setShowScrollTop(node.scrollTop > 240);
+    };
+
+    handleScroll();
+    node.addEventListener('scroll', handleScroll, { passive: true });
+    return () => node.removeEventListener('scroll', handleScroll);
+  }, [loading, trades.length]);
+
+  useEffect(() => {
+    const comments = getPastTradeComments(commentTrade);
+    setCommentMarketDraft(comments.market);
+    setCommentGeneralDraft(comments.general);
+  }, [commentTrade]);
 
   const fetchQuoteForTrade = useCallback(async (tradeId) => {
     setQuoteStatusByTradeId((prev) => ({
@@ -633,6 +721,25 @@ const TradesPage = () => {
       tradesCache.data = next;
       return next;
     });
+    setCommentTrade((prev) => (prev && prev._id === updatedTrade._id ? updatedTrade : prev));
+  };
+
+  const savePastTradeComment = async (tradeId, nextComments, { closeOnSave = false } = {}) => {
+    setCommentSaving(true);
+    try {
+      const updatedTrade = await updateTrade(tradeId, {
+        pastTradeMarketComment: nextComments.market,
+        pastTradeGeneralComment: nextComments.general
+      });
+      upsertTrade(updatedTrade);
+      setShowPastTradeComments(true);
+      setExpandedCommentTradeId('');
+      if (closeOnSave) setCommentTrade(null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to save past trade comment');
+    } finally {
+      setCommentSaving(false);
+    }
   };
 
   const handleDeletePyramid = async (tradeId, pyramidId) => {
@@ -905,7 +1012,7 @@ const TradesPage = () => {
     }
   };
 
-  if (loading) return <p>Loading trades...</p>;
+  if (loading) return <TradesLoadingState />;
   if (error) return <p className="text-red-600">{error}</p>;
 
   return (
@@ -916,6 +1023,13 @@ const TradesPage = () => {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
               Filter Trades
             </p>
+            <button
+              type="button"
+              onClick={() => setShowPastTradeComments((current) => !current)}
+              className="btn-muted px-2 py-1 text-[11px]"
+            >
+              {showPastTradeComments ? 'Hide Past Trade Comments' : 'Show Past Trade Comments'}
+            </button>
             <button
               type="button"
               onClick={() => setShowFilters((current) => !current)}
@@ -1008,7 +1122,7 @@ const TradesPage = () => {
         ) : null}
       </div>
 
-      <div className="surface-card max-h-[70vh] overflow-auto">
+      <div ref={tradesTableScrollRef} className="surface-card max-h-[70vh] overflow-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="table-head [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-slate-100 dark:[&_th]:bg-slate-900">
             <tr>
@@ -1108,14 +1222,35 @@ const TradesPage = () => {
                 <tr className={rowClassName}>
                   <td className="px-3 py-2 font-medium text-slate-600 dark:text-slate-300">{index + 1}</td>
                   <td className="px-3 py-2 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => openChartForTrade(trade)}
-                      className="underline decoration-dotted underline-offset-2 hover:text-sky-600 dark:hover:text-sky-300"
-                      title="Open chart"
-                    >
-                      {trade.symbol}
-                    </button>
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => openChartForTrade(trade)}
+                        className="underline decoration-dotted underline-offset-2 hover:text-sky-600 dark:hover:text-sky-300"
+                        title="Open chart"
+                      >
+                        {trade.symbol}
+                      </button>
+                      {showPastTradeComments ? (
+                        <div className="max-w-xs text-xs font-normal text-slate-600 dark:text-slate-300">
+                          {(() => {
+                            const comments = getPastTradeComments(trade);
+                            return (
+                              <div className="space-y-1">
+                                <div>
+                                  <span className="font-medium text-slate-700 dark:text-slate-200">Market:</span>{' '}
+                                  <span className="whitespace-pre-wrap break-words">{comments.market || '-'}</span>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-slate-700 dark:text-slate-200">General:</span>{' '}
+                                  <span className="whitespace-pre-wrap break-words">{comments.general || '-'}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-3 py-2">{new Date(trade.entryDate).toLocaleDateString()}</td>
                   <td className="px-3 py-2">{money(trade.metrics.avgEntryPrice)}</td>
@@ -1164,6 +1299,32 @@ const TradesPage = () => {
                   <td className="px-3 py-2">{holdingDays}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setCommentTrade(trade)}
+                        className={`group relative inline-flex h-7 w-7 items-center justify-center rounded border transition-colors duration-200 ${
+                          hasPastTradeComments(trade)
+                            ? 'border-amber-500/70 bg-amber-50 text-amber-700 dark:border-amber-500/60 dark:bg-amber-950/30 dark:text-amber-300'
+                            : 'border-slate-300 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                        }`}
+                        aria-label="Past trade comment"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.9"
+                          className="h-3.5 w-3.5"
+                          aria-hidden="true"
+                        >
+                          <path d="M7 10h10M7 14h6" strokeLinecap="round" />
+                          <path d="M21 12a8.9 8.9 0 0 1-9 9 9.3 9.3 0 0 1-4-.9L3 21l.9-5A9 9 0 1 1 21 12Z" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                          Past trade comment
+                        </span>
+                      </button>
                       <Link
                         href={`/trades/${trade._id}?openModal=pyramid&source=trades`}
                         className="group relative inline-flex h-7 w-7 items-center justify-center rounded border border-emerald-500/70 bg-emerald-50 text-emerald-700 transition-colors duration-200 hover:bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50"
@@ -1913,6 +2074,83 @@ const TradesPage = () => {
                           <p className="text-red-700 dark:text-red-200">None</p>
                         )}
                       </div>
+
+                      <div className="mt-3 rounded border border-amber-400/60 bg-amber-50 px-3 py-2 dark:border-amber-600/40 dark:bg-amber-950/20">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="font-semibold text-amber-700 dark:text-amber-300">Past Trade Comment</p>
+                          {expandedCommentTradeId === trade._id ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                className="btn-primary px-2 py-1 text-xs"
+                                disabled={commentSaving}
+                                onClick={() => savePastTradeComment(trade._id, {
+                                  market: commentMarketDraft,
+                                  general: commentGeneralDraft
+                                })}
+                              >
+                                {commentSaving ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-muted px-2 py-1 text-xs"
+                                disabled={commentSaving}
+                                onClick={() => {
+                                  setExpandedCommentTradeId('');
+                                  const comments = getPastTradeComments(trade);
+                                  setCommentMarketDraft(comments.market);
+                                  setCommentGeneralDraft(comments.general);
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-muted px-2 py-1 text-xs"
+                              onClick={() => {
+                                setExpandedCommentTradeId(trade._id);
+                                const comments = getPastTradeComments(trade);
+                                setCommentMarketDraft(comments.market);
+                                setCommentGeneralDraft(comments.general);
+                              }}
+                            >
+                              {hasPastTradeComments(trade) ? 'Edit' : 'Add'}
+                            </button>
+                          )}
+                        </div>
+                        {expandedCommentTradeId === trade._id ? (
+                          <div className="space-y-2">
+                            <textarea
+                              className="field-input min-h-20 text-sm"
+                              value={commentMarketDraft}
+                              onChange={(e) => setCommentMarketDraft(e.target.value)}
+                              placeholder="Market comment"
+                            />
+                            <textarea
+                              className="field-input min-h-20 text-sm"
+                              value={commentGeneralDraft}
+                              onChange={(e) => setCommentGeneralDraft(e.target.value)}
+                              placeholder="General comment"
+                            />
+                          </div>
+                        ) : (
+                          (() => {
+                            const comments = getPastTradeComments(trade);
+                            return (
+                              <div className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
+                                <p className="whitespace-pre-wrap break-words">
+                                  <span className="font-medium">Market:</span> {comments.market || '-'}
+                                </p>
+                                <p className="whitespace-pre-wrap break-words">
+                                  <span className="font-medium">General:</span> {comments.general || '-'}
+                                </p>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -1930,6 +2168,54 @@ const TradesPage = () => {
           </tbody>
         </table>
       </div>
+      {showScrollTop ? (
+        <button
+          type="button"
+          onClick={() => tradesTableScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-40 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-lg transition-colors duration-200 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          Top
+        </button>
+      ) : null}
+      <Modal
+        title={commentTrade ? `${commentTrade.symbol} Past Trade Comment` : 'Past Trade Comment'}
+        open={Boolean(commentTrade)}
+        onClose={() => setCommentTrade(null)}
+      >
+        <div className="space-y-3">
+          <textarea
+            className="field-input min-h-24 text-sm"
+            value={commentMarketDraft}
+            onChange={(e) => setCommentMarketDraft(e.target.value)}
+            placeholder="Market comment"
+          />
+          <textarea
+            className="field-input min-h-24 text-sm"
+            value={commentGeneralDraft}
+            onChange={(e) => setCommentGeneralDraft(e.target.value)}
+            placeholder="General comment"
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="btn-primary px-3 py-1.5 text-sm"
+              disabled={!commentTrade || commentSaving}
+              onClick={() => commentTrade && savePastTradeComment(
+                commentTrade._id,
+                { market: commentMarketDraft, general: commentGeneralDraft },
+                { closeOnSave: true }
+              )}
+            >
+              {commentSaving ? 'Saving...' : 'Save Comment'}
+            </button>
+          </div>
+          {commentTrade?.entryDate ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Entry Date: {new Date(commentTrade.entryDate).toLocaleDateString()}
+            </p>
+          ) : null}
+        </div>
+      </Modal>
       <TradeChartOverlay
         open={Boolean(chartTrade)}
         trade={chartTrade}
