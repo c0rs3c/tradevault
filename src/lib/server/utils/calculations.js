@@ -443,17 +443,45 @@ export const buildDashboardAnalytics = (trades) => {
 
   exitEvents.sort((a, b) => a.date - b.date);
 
+  const dailyExitEvents = [];
+  const dailyExitEventsByDate = new Map();
+
+  exitEvents.forEach((event) => {
+    const dateKey = event.date.toISOString().slice(0, 10);
+    if (!dailyExitEventsByDate.has(dateKey)) {
+      const nextDay = {
+        date: dateKey,
+        pnl: 0,
+        symbols: new Set(),
+        symbolPnlMap: new Map()
+      };
+      dailyExitEventsByDate.set(dateKey, nextDay);
+      dailyExitEvents.push(nextDay);
+    }
+
+    const day = dailyExitEventsByDate.get(dateKey);
+    day.pnl += event.pnl;
+    if (event.symbol) {
+      day.symbols.add(event.symbol);
+      day.symbolPnlMap.set(event.symbol, (day.symbolPnlMap.get(event.symbol) || 0) + event.pnl);
+    }
+  });
+
   let runningEquity = 0;
   let peak = 0;
   let maxDrawdown = 0;
 
-  exitEvents.forEach((event) => {
+  dailyExitEvents.forEach((event) => {
     runningEquity += event.pnl;
     equityPoints.push({
-      date: event.date.toISOString().slice(0, 10),
+      date: event.date,
       equity: round(runningEquity, 2),
       eventPnl: round(event.pnl, 2),
-      symbols: event.symbol ? [event.symbol] : []
+      symbols: Array.from(event.symbols),
+      symbolPnls: Array.from(event.symbolPnlMap.entries()).map(([symbol, pnl]) => ({
+        symbol,
+        pnl: round(pnl, 2)
+      }))
     });
 
     if (runningEquity > peak) peak = runningEquity;

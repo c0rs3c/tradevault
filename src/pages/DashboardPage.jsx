@@ -509,7 +509,18 @@ const EquityTooltip = ({ active, payload, label }) => {
       <p className="font-medium">{formatDisplayDate(label)}</p>
       <p className={pnlTextClass(point.eventPnl)}>Event P&L: {money(point.eventPnl)}</p>
       <p className="text-slate-700 dark:text-slate-300">Equity: {money(point.equity)}</p>
-      <p className="text-slate-700 dark:text-slate-300">Symbols: {symbolText(point.symbols)}</p>
+      {(point.symbolPnls || []).length ? (
+        <div className="mt-2 space-y-1">
+          {(point.symbolPnls || []).map((item) => (
+            <div key={item.symbol} className="flex items-center justify-between gap-3">
+              <span className="text-slate-700 dark:text-slate-300">{item.symbol}</span>
+              <span className={pnlTextClass(item.pnl)}>{money(item.pnl)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-slate-700 dark:text-slate-300">Symbols: {symbolText(point.symbols)}</p>
+      )}
     </div>
   );
 };
