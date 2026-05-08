@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, useEffect, useCallback } from 'react';
+import { Fragment, useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   addStopLossAdjustment,
@@ -339,6 +339,48 @@ const validateScreenshotFiles = (files) => {
   return '';
 };
 
+const monthGroupLabel = (dateValue) => {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return 'Unknown Month';
+  return new Intl.DateTimeFormat('en-IN', {
+    month: 'long',
+    year: 'numeric'
+  }).format(date);
+};
+
+const buildTradesCopyPayload = (trades) => {
+  const groups = [];
+  const groupsByKey = trades.reduce((acc, trade) => {
+    const symbol = String(trade?.symbol || '').trim().toUpperCase();
+    if (!symbol) return acc;
+
+    const date = new Date(trade?.entryDate || 0);
+    const year = Number.isNaN(date.getTime()) ? 0 : date.getUTCFullYear();
+    const month = Number.isNaN(date.getTime()) ? 0 : date.getUTCMonth();
+    const groupKey = `${year}-${String(month).padStart(2, '0')}`;
+
+    if (!acc[groupKey]) {
+      acc[groupKey] = {
+        label: monthGroupLabel(trade?.entryDate),
+        symbols: [],
+        seen: new Set()
+      };
+      groups.push(acc[groupKey]);
+    }
+
+    if (!acc[groupKey].seen.has(symbol)) {
+      acc[groupKey].seen.add(symbol);
+      acc[groupKey].symbols.push(`NSE:${symbol}`);
+    }
+
+    return acc;
+  }, {});
+
+  return groups
+    .map((group) => `###${group.label}(${group.symbols.length}),${group.symbols.join(',')}`)
+    .join(',');
+};
+
 const TradesPage = () => {
   const { settings } = useSettings();
   const totalCapital = Number(settings?.totalCapital || 0);
@@ -359,6 +401,8 @@ const TradesPage = () => {
   const [chartTrade, setChartTrade] = useState(null);
   const [editingBaseScreenshotFiles, setEditingBaseScreenshotFiles] = useState([]);
   const [editingBaseUploadError, setEditingBaseUploadError] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
+  const copyStatusTimeoutRef = useRef(null);
 
   const loadTrades = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -381,6 +425,13 @@ const TradesPage = () => {
       return;
     }
     loadTrades();
+  }, []);
+
+  useEffect(() => () => {
+    if (copyStatusTimeoutRef.current) {
+      window.clearTimeout(copyStatusTimeoutRef.current);
+      copyStatusTimeoutRef.current = null;
+    }
   }, []);
 
   const fetchQuoteForTrade = useCallback(async (tradeId) => {
@@ -481,6 +532,7 @@ const TradesPage = () => {
     if (!chartTrade?._id) return -1;
     return filtered.findIndex((trade) => trade._id === chartTrade._id);
   }, [filtered, chartTrade]);
+  const filteredTradesCopyPayload = useMemo(() => buildTradesCopyPayload(filtered), [filtered]);
 
   const handleDelete = async (id) => {
     const confirmation = window.prompt('Type "del" to delete this trade.');
@@ -762,6 +814,31 @@ const TradesPage = () => {
     }
   };
 
+  const handleCopyTrades = async () => {
+    if (copyStatusTimeoutRef.current) {
+      window.clearTimeout(copyStatusTimeoutRef.current);
+      copyStatusTimeoutRef.current = null;
+    }
+    if (!filteredTradesCopyPayload) {
+      setCopyStatus('No trades to copy');
+      return;
+    }
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      setCopyStatus('Clipboard unavailable');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(filteredTradesCopyPayload);
+      setCopyStatus(`${filtered.length} copied`);
+      copyStatusTimeoutRef.current = window.setTimeout(() => {
+        setCopyStatus('');
+        copyStatusTimeoutRef.current = null;
+      }, 2500);
+    } catch {
+      setCopyStatus('Failed to copy trades');
+    }
+  };
+
   if (loading) return <p>Loading trades...</p>;
   if (error) return <p className="text-red-600">{error}</p>;
 
@@ -826,8 +903,15 @@ const TradesPage = () => {
 
         </div>
 
-        <div className="flex justify-end pt-1">
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn-muted px-2.5 py-1 text-xs"
+              onClick={handleCopyTrades}
+            >
+              {copyStatus || 'Copy Trades'}
+            </button>
             <button
               type="button"
               className="btn-muted px-2.5 py-1 text-xs"
