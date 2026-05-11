@@ -321,6 +321,7 @@ export const ensureDeepDiveBenchmarks = async () => {
 
 const upsertStockSymbols = async (symbols) => {
   if (!symbols.length) return;
+
   const { DeepDiveSymbol } = await getModels();
   await Promise.all(
     symbols.map((symbol) =>

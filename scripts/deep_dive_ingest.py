@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import math
 import os
 import time
@@ -163,8 +164,6 @@ def get_service_account_info():
     raw = str(os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY", "")).strip()
     if not raw:
         return None
-    import json
-
     return json.loads(raw)
 
 
@@ -766,6 +765,23 @@ def combined_summary(mode, *summaries):
 
 
 def main():
+    global firestore
+    global FieldFilter
+    global ResourceExhausted
+    global TooManyRequests
+    global RetryError
+    global query_in_chunks
+    global commit_sets_in_chunks
+    global ensure_benchmarks
+    global ensure_stock_symbols
+    global load_active_symbols
+    global record_run
+    global load_sync_states
+    global update_sync_state_for_success
+    global update_sync_state_for_failure
+    global compute_average_traded_value
+    global load_profiles
+
     load_dotenv()
     parser = argparse.ArgumentParser(description="Deep Dive historical price and profile ingestion")
     parser.add_argument(
@@ -803,22 +819,6 @@ def main():
         db = get_db()
     else:
         mongo_client, db, ASCENDING, DESCENDING = get_mongo_db()
-        global firestore
-        global FieldFilter
-        global ResourceExhausted
-        global TooManyRequests
-        global RetryError
-        global query_in_chunks
-        global commit_sets_in_chunks
-        global ensure_benchmarks
-        global ensure_stock_symbols
-        global load_active_symbols
-        global record_run
-        global load_sync_states
-        global update_sync_state_for_success
-        global update_sync_state_for_failure
-        global compute_average_traded_value
-        global load_profiles
         import pymongo
 
         def query_in_chunks(collection, field, values, chunk_size=30):

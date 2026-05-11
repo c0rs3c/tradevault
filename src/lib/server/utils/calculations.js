@@ -414,6 +414,39 @@ export const calcTradeMetrics = (trade, totalCapital = 0) => {
   };
 };
 
+const buildRealizedExitEvents = (trade) => {
+  const entries = buildEntries(trade);
+  const exits = Array.isArray(trade?.exits) ? trade.exits : [];
+  if (!exits.length) return [];
+  const sortedExits = [...exits].sort((a, b) => new Date(a.exitDate) - new Date(b.exitDate));
+
+  const fifo = buildFifoResult({ entries, exits: sortedExits, side: trade.side });
+  const totalCharges = toNumber(trade?.charges);
+  const totalExitedQty = sortedExits.reduce((acc, exit) => acc + Math.max(toNumber(exit?.exitQty), 0), 0);
+  let allocatedCharges = 0;
+
+  return fifo.exitPnlEvents.map((event, index) => {
+    const exit = sortedExits[index] || {};
+    let chargeShare = 0;
+
+    if (totalExitedQty > EPSILON_QTY) {
+      if (index === fifo.exitPnlEvents.length - 1) {
+        chargeShare = totalCharges - allocatedCharges;
+      } else {
+        chargeShare = round((totalCharges * Math.max(toNumber(exit?.exitQty), 0)) / totalExitedQty, 2);
+        allocatedCharges += chargeShare;
+      }
+    }
+
+    return {
+      date: event.date,
+      pnl: round(toNumber(event.pnl) - chargeShare, 2),
+      symbol: trade.symbol,
+      tradeId: trade._id ? String(trade._id) : null
+    };
+  });
+};
+
 export const buildDashboardAnalytics = (trades) => {
   const closedTrades = trades.filter((trade) => trade.metrics.status === 'CLOSED');
   const openPositionKeys = new Set(
@@ -427,16 +460,15 @@ export const buildDashboardAnalytics = (trades) => {
 
   const exitEvents = [];
   trades.forEach((trade) => {
-    const entries = buildEntries(trade);
-    const fifo = buildFifoResult({ entries, exits: trade.exits || [], side: trade.side });
-    fifo.exitPnlEvents.forEach((event) => {
+    buildRealizedExitEvents(trade).forEach((event) => {
       const parsedDate = new Date(event.date);
       if (Number.isNaN(parsedDate.getTime())) return;
 
       exitEvents.push({
         date: parsedDate,
         pnl: event.pnl,
-        symbol: trade.symbol
+        symbol: event.symbol,
+        tradeId: event.tradeId
       });
     });
   });
@@ -489,40 +521,37 @@ export const buildDashboardAnalytics = (trades) => {
     if (drawdown > maxDrawdown) maxDrawdown = drawdown;
 
   });
-  const monthlyMap = closedTrades.reduce((acc, trade) => {
-    const closedOn = getTradeClosedOn(trade);
-    const parsedDate = new Date(closedOn);
+  const monthlyMap = exitEvents.reduce((acc, event) => {
+    const parsedDate = new Date(event.date);
     if (Number.isNaN(parsedDate.getTime())) return acc;
     const monthKey = parsedDate.toISOString().slice(0, 7);
-    acc[monthKey] = round((acc[monthKey] || 0) + toNumber(trade?.metrics?.realizedPnL), 2);
+    acc[monthKey] = round((acc[monthKey] || 0) + toNumber(event.pnl), 2);
     return acc;
   }, {});
-  const monthlyTradesInBarMap = closedTrades.reduce((acc, trade) => {
-    const closedOn = getTradeClosedOn(trade);
-    const parsedDate = new Date(closedOn);
-    if (Number.isNaN(parsedDate.getTime())) return acc;
-    const monthKey = parsedDate.toISOString().slice(0, 7);
-    acc[monthKey] = (acc[monthKey] || 0) + 1;
-    return acc;
-  }, {});
-  const monthlySymbolsMap = closedTrades.reduce((acc, trade) => {
-    const closedOn = getTradeClosedOn(trade);
-    const parsedDate = new Date(closedOn);
+  const monthlyTradesInBarSetMap = exitEvents.reduce((acc, event) => {
+    const parsedDate = new Date(event.date);
     if (Number.isNaN(parsedDate.getTime())) return acc;
     const monthKey = parsedDate.toISOString().slice(0, 7);
     if (!acc[monthKey]) acc[monthKey] = new Set();
-    if (trade.symbol) acc[monthKey].add(trade.symbol);
+    if (event.tradeId) acc[monthKey].add(event.tradeId);
     return acc;
   }, {});
-  const monthlySymbolPnlsMap = closedTrades.reduce((acc, trade) => {
-    const closedOn = getTradeClosedOn(trade);
-    const parsedDate = new Date(closedOn);
+  const monthlySymbolsMap = exitEvents.reduce((acc, event) => {
+    const parsedDate = new Date(event.date);
     if (Number.isNaN(parsedDate.getTime())) return acc;
     const monthKey = parsedDate.toISOString().slice(0, 7);
-    const symbol = String(trade.symbol || '').trim();
+    if (!acc[monthKey]) acc[monthKey] = new Set();
+    if (event.symbol) acc[monthKey].add(event.symbol);
+    return acc;
+  }, {});
+  const monthlySymbolPnlsMap = exitEvents.reduce((acc, event) => {
+    const parsedDate = new Date(event.date);
+    if (Number.isNaN(parsedDate.getTime())) return acc;
+    const monthKey = parsedDate.toISOString().slice(0, 7);
+    const symbol = String(event.symbol || '').trim();
     if (!symbol) return acc;
     if (!acc[monthKey]) acc[monthKey] = new Map();
-    acc[monthKey].set(symbol, (acc[monthKey].get(symbol) || 0) + toNumber(trade?.metrics?.realizedPnL));
+    acc[monthKey].set(symbol, (acc[monthKey].get(symbol) || 0) + toNumber(event.pnl));
     return acc;
   }, {});
   const monthlyPnL = Object.keys(monthlyMap)
@@ -530,7 +559,7 @@ export const buildDashboardAnalytics = (trades) => {
     .map((month) => ({
       month,
       pnl: round(monthlyMap[month], 2),
-      tradesInBar: monthlyTradesInBarMap[month] || 0,
+      tradesInBar: monthlyTradesInBarSetMap[month]?.size || 0,
       symbols: Array.from(monthlySymbolsMap[month] || []),
       symbolPnls: Array.from(monthlySymbolPnlsMap[month]?.entries() || []).map(([symbol, pnl]) => ({
         symbol,
