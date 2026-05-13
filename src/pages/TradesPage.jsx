@@ -1319,7 +1319,7 @@ const TradesPage = () => {
                     {computedRMultiple.toFixed(2)}
                   </td>
                   <td className="px-3 py-2">{holdingDays}</td>
-                  <td className="px-3 py-2">
+                  <td className="relative z-0 px-3 py-2 hover:z-20">
                     <div className="flex items-center gap-1 whitespace-nowrap">
                       <button
                         type="button"
@@ -1343,7 +1343,7 @@ const TradesPage = () => {
                           <path d="M7 10h10M7 14h6" strokeLinecap="round" />
                           <path d="M21 12a8.9 8.9 0 0 1-9 9 9.3 9.3 0 0 1-4-.9L3 21l.9-5A9 9 0 1 1 21 12Z" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                        <span className="pointer-events-none absolute z-30 -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 dark:bg-slate-100 dark:text-slate-900">
                           Past trade comment
                         </span>
                       </button>
@@ -1364,7 +1364,7 @@ const TradesPage = () => {
                           <path d="m12 4 8 14H4L12 4Z" />
                           <path d="M8.8 12.2h6.4M7.2 15h9.6" strokeLinecap="round" />
                         </svg>
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                        <span className="pointer-events-none absolute z-30 -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
                           Pyramid
                         </span>
                       </Link>
@@ -1386,7 +1386,7 @@ const TradesPage = () => {
                           <path d="M14 12H4" strokeLinecap="round" />
                           <path d="m7.5 8.5-3.5 3.5 3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                        <span className="pointer-events-none absolute z-30 -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
                           Exit
                         </span>
                       </Link>
@@ -1410,7 +1410,7 @@ const TradesPage = () => {
                         >
                           <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                        <span className="pointer-events-none absolute z-30 -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
                           View entries/exits
                         </span>
                       </button>
@@ -1433,7 +1433,7 @@ const TradesPage = () => {
                           <path d="M5 12v7h7" strokeLinecap="round" />
                           <path d="M12 5h7v7" strokeLinecap="round" />
                         </svg>
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                        <span className="pointer-events-none absolute z-30 -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
                           Details
                         </span>
                       </Link>
@@ -1456,7 +1456,7 @@ const TradesPage = () => {
                           <path d="M6.8 6 7.6 20a1.5 1.5 0 0 0 1.5 1.4h5.8a1.5 1.5 0 0 0 1.5-1.4L17.2 6" />
                           <path d="M10 10.5v6M14 10.5v6" strokeLinecap="round" />
                         </svg>
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
+                        <span className="pointer-events-none absolute z-30 -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-slate-100 dark:text-slate-900">
                           Delete
                         </span>
                       </button>
