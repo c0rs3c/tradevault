@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import ScreenshotManager from './ScreenshotManager';
+import TradeStrategySelector from './TradeStrategySelector';
+import { normalizeOptionList, joinOptionList } from '../utils/tradeOptions';
 
 const todayInputDate = () => new Date().toISOString().slice(0, 10);
 const STOP_LOSS_PCTS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 5];
-const STRATEGY_OPTIONS = ['In the Base', 'Outside Base', 'Expansion'];
 
 const initialValues = {
   symbol: '',
@@ -26,12 +27,7 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
     return {
       ...merged,
       entryDate: merged.entryDate ? String(merged.entryDate).slice(0, 10) : todayInputDate(),
-      strategy: Array.isArray(merged.strategy)
-        ? merged.strategy
-        : String(merged.strategy || '')
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean)
+      strategy: normalizeOptionList(merged.strategy)
     };
   });
   const [errors, setErrors] = useState({});
@@ -114,7 +110,7 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
     onSubmit({
       ...values,
       symbol: values.symbol.trim().toUpperCase(),
-      strategy: values.strategy.join(', '),
+      strategy: joinOptionList(values.strategy),
       pastTradeMarketComment: values.pastTradeMarketComment,
       pastTradeGeneralComment: values.pastTradeGeneralComment,
       entryPrice: Number(values.entryPrice),
@@ -248,28 +244,7 @@ const TradeForm = ({ defaultValues = initialValues, onSubmit, submitting, symbol
           {errors.stopLoss && <span className="text-sm text-red-600">{errors.stopLoss}</span>}
         </label>
 
-        <label className="space-y-1 md:col-span-2">
-          <span className="text-sm font-medium">Strategy</span>
-          <div className="flex flex-wrap gap-2">
-            {STRATEGY_OPTIONS.map((option) => {
-              const isSelected = values.strategy.includes(option);
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => toggleStrategy(option)}
-                  className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                    isSelected
-                      ? 'border-sky-600 bg-sky-100 text-sky-800 dark:border-sky-500 dark:bg-sky-950/40 dark:text-sky-200'
-                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {option}
-                </button>
-              );
-            })}
-          </div>
-        </label>
+        <TradeStrategySelector value={values.strategy} onToggle={toggleStrategy} className="md:col-span-2" />
 
         <label className="space-y-1 md:col-span-2">
           <span className="text-sm font-medium">Past Trade Market Comment</span>

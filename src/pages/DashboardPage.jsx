@@ -201,6 +201,27 @@ const OpenTradeActionButtons = ({ tradeId, compact = false }) => {
   return (
     <div className="flex items-center gap-1 whitespace-nowrap">
       <Link
+        href={`/trades/${tradeId}`}
+        className={`${baseButtonClass} border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800`}
+        aria-label="Details"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.9"
+          className={iconClass}
+          aria-hidden="true"
+        >
+          <path d="M9 9h6v6" strokeLinecap="round" />
+          <path d="m15 9-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5 12v7h7" strokeLinecap="round" />
+          <path d="M12 5h7v7" strokeLinecap="round" />
+        </svg>
+        <span className={tooltipClass}>Details</span>
+      </Link>
+      <Link
         href={`/trades/${tradeId}?openModal=pyramid&source=dashboard`}
         className={`${baseButtonClass} border-emerald-500/70 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50`}
         aria-label="Pyramid"

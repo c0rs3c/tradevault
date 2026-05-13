@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Modal from '../components/Modal';
 import ScreenshotManager from '../components/ScreenshotManager';
+import TradeStrategySelector from '../components/TradeStrategySelector';
+import ExitReasonMultiSelect from '../components/ExitReasonMultiSelect';
 import {
   addExit,
   addPyramid,
@@ -16,6 +18,7 @@ import {
   updatePyramid,
   updateTrade
 } from '../api/trades';
+import { joinOptionList, normalizeOptionList } from '../utils/tradeOptions';
 
 const inputClass = 'field-input';
 const toInputDate = (value) => (value ? new Date(value).toISOString().slice(0, 10) : '');
@@ -33,6 +36,11 @@ const normalizeScreenshots = (items) =>
       key: String(item?.key || '').trim()
     }))
     .filter((item) => item.url);
+
+const toggleOption = (current, option) => {
+  const items = normalizeOptionList(current);
+  return items.includes(option) ? items.filter((item) => item !== option) : [...items, option];
+};
 
 const validateScreenshotFiles = (files) => {
   const nextFiles = Array.from(files || []);
@@ -63,13 +71,13 @@ const TradeDetailPage = () => {
   const [editingExitId, setEditingExitId] = useState('');
 
   const [pyramidForm, setPyramidForm] = useState({ date: '', price: '', qty: '', stopLoss: '', screenshots: [] });
-  const [exitForm, setExitForm] = useState({ exitDate: '', exitPrice: '', exitQty: '', notes: '' });
+  const [exitForm, setExitForm] = useState({ exitDate: '', exitPrice: '', exitQty: '', exitReasons: [], notes: '' });
   const [entryForm, setEntryForm] = useState({
     entryDate: '',
     entryPrice: '',
     entryQty: '',
     stopLoss: '',
-    strategy: '',
+    strategy: [],
     pastTradeMarketComment: '',
     pastTradeGeneralComment: '',
     notes: '',
@@ -80,6 +88,7 @@ const TradeDetailPage = () => {
     exitDate: '',
     exitPrice: '',
     exitQty: '',
+    exitReasons: [],
     notes: ''
   });
   const [entryScreenshotFiles, setEntryScreenshotFiles] = useState([]);
@@ -99,7 +108,7 @@ const TradeDetailPage = () => {
         entryPrice: String(data.entryPrice ?? ''),
         entryQty: String(data.entryQty ?? ''),
         stopLoss: String(data.stopLoss ?? ''),
-        strategy: data.strategy || '',
+        strategy: normalizeOptionList(data.strategy),
         pastTradeMarketComment: data.pastTradeMarketComment || '',
         pastTradeGeneralComment: data.pastTradeGeneralComment || data.pastTradeComment || '',
         notes: data.notes || '',
@@ -210,11 +219,12 @@ const TradeDetailPage = () => {
         exitDate: exitForm.exitDate,
         exitPrice: Number(exitForm.exitPrice),
         exitQty: Number(exitForm.exitQty),
+        exitReasons: exitForm.exitReasons,
         notes: exitForm.notes
       });
       setTrade(updated);
       setShowExitModal(false);
-      setExitForm({ exitDate: '', exitPrice: '', exitQty: '', notes: '' });
+      setExitForm({ exitDate: '', exitPrice: '', exitQty: '', exitReasons: [], notes: '' });
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to add exit');
     }
@@ -244,7 +254,7 @@ const TradeDetailPage = () => {
       entryPrice: String(trade.entryPrice ?? ''),
       entryQty: String(trade.entryQty ?? ''),
       stopLoss: String(trade.stopLoss ?? ''),
-      strategy: trade.strategy || '',
+      strategy: normalizeOptionList(trade.strategy),
       notes: trade.notes || '',
       screenshots: normalizeScreenshots(trade.screenshots)
     });
@@ -329,7 +339,7 @@ const TradeDetailPage = () => {
         entryPrice: Number(entryForm.entryPrice),
         entryQty: Number(entryForm.entryQty),
         stopLoss: Number(entryForm.stopLoss),
-        strategy: entryForm.strategy,
+        strategy: joinOptionList(entryForm.strategy),
         pastTradeMarketComment: entryForm.pastTradeMarketComment,
         pastTradeGeneralComment: entryForm.pastTradeGeneralComment,
         notes: entryForm.notes,
@@ -414,6 +424,7 @@ const TradeDetailPage = () => {
       exitDate: toInputDate(exit.exitDate),
       exitPrice: String(exit.exitPrice ?? ''),
       exitQty: String(exit.exitQty ?? ''),
+      exitReasons: normalizeOptionList(exit.exitReasons),
       notes: exit.notes || ''
     });
     setShowEditExitModal(true);
@@ -430,6 +441,7 @@ const TradeDetailPage = () => {
         exitDate: editExitForm.exitDate,
         exitPrice: Number(editExitForm.exitPrice),
         exitQty: Number(editExitForm.exitQty),
+        exitReasons: editExitForm.exitReasons,
         notes: editExitForm.notes
       });
       setTrade(updated);
@@ -658,6 +670,7 @@ const TradeDetailPage = () => {
             >
               <p className="text-sm">
                 {new Date(exit.exitDate).toLocaleDateString()} | Price: {exit.exitPrice} | Qty: {exit.exitQty}{' '}
+                {normalizeOptionList(exit.exitReasons).length ? `| Reasons: ${normalizeOptionList(exit.exitReasons).join(', ')} ` : ''}
                 {exit.notes ? `| ${exit.notes}` : ''}
               </p>
               <div className="flex items-center gap-2">
@@ -802,6 +815,10 @@ const TradeDetailPage = () => {
             onChange={(e) => setExitForm((prev) => ({ ...prev, exitQty: e.target.value }))}
             required
           />
+          <ExitReasonMultiSelect
+            value={exitForm.exitReasons}
+            onToggle={(option) => setExitForm((prev) => ({ ...prev, exitReasons: toggleOption(prev.exitReasons, option) }))}
+          />
           <textarea
             placeholder="Notes (optional)"
             className={inputClass}
@@ -850,12 +867,9 @@ const TradeDetailPage = () => {
             onChange={(e) => setEntryForm((prev) => ({ ...prev, stopLoss: e.target.value }))}
             required
           />
-          <input
-            type="text"
-            placeholder="Strategy (optional)"
-            className={inputClass}
+          <TradeStrategySelector
             value={entryForm.strategy}
-            onChange={(e) => setEntryForm((prev) => ({ ...prev, strategy: e.target.value }))}
+            onToggle={(option) => setEntryForm((prev) => ({ ...prev, strategy: toggleOption(prev.strategy, option) }))}
           />
           <textarea
             placeholder="Past Trade Market Comment (optional)"
@@ -1007,6 +1021,12 @@ const TradeDetailPage = () => {
             value={editExitForm.exitQty}
             onChange={(e) => setEditExitForm((prev) => ({ ...prev, exitQty: e.target.value }))}
             required
+          />
+          <ExitReasonMultiSelect
+            value={editExitForm.exitReasons}
+            onToggle={(option) =>
+              setEditExitForm((prev) => ({ ...prev, exitReasons: toggleOption(prev.exitReasons, option) }))
+            }
           />
           <textarea
             placeholder="Notes (optional)"

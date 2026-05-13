@@ -16,8 +16,11 @@ import {
 } from '../api/trades';
 import Modal from '../components/Modal';
 import ScreenshotManager from '../components/ScreenshotManager';
+import TradeStrategySelector from '../components/TradeStrategySelector';
+import ExitReasonMultiSelect from '../components/ExitReasonMultiSelect';
 import { useSettings } from '../contexts/SettingsContext';
 import TradeChartOverlay from '../components/TradeChartOverlay';
+import { hasAnySelectedOption, joinOptionList, normalizeOptionList } from '../utils/tradeOptions';
 
 const tradesCache = {
   data: null
@@ -366,6 +369,11 @@ const validateScreenshotFiles = (files) => {
   return '';
 };
 
+const toggleOption = (current, option) => {
+  const items = normalizeOptionList(current);
+  return items.includes(option) ? items.filter((item) => item !== option) : [...items, option];
+};
+
 const monthGroupLabel = (dateValue) => {
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return 'Unknown Month';
@@ -486,6 +494,7 @@ const TradesPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [monthFilter, setMonthFilter] = useState('');
+  const [strategyFilter, setStrategyFilter] = useState([]);
   const [showFilters, setShowFilters] = useState(true);
   const [showPastTradeComments, setShowPastTradeComments] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'entryDate', direction: 'desc' });
@@ -633,6 +642,10 @@ const TradesPage = () => {
       list = list.filter((trade) => monthFilterValue(trade.entryDate) === monthFilter);
     }
 
+    if (strategyFilter.length) {
+      list = list.filter((trade) => hasAnySelectedOption(trade.strategy, strategyFilter));
+    }
+
     list.sort((a, b) => {
       if (sortConfig.key === 'symbol') {
         return sortConfig.direction === 'asc'
@@ -673,7 +686,7 @@ const TradesPage = () => {
     });
 
     return list;
-  }, [trades, search, statusFilter, monthFilter, sortConfig, quotesByTradeId]);
+  }, [trades, search, statusFilter, monthFilter, strategyFilter, sortConfig, quotesByTradeId]);
   const chartTradeIndex = useMemo(() => {
     if (!chartTrade?._id) return -1;
     return filtered.findIndex((trade) => trade._id === chartTrade._id);
@@ -812,6 +825,7 @@ const TradesPage = () => {
         exitDate: new Date(exit.exitDate).toISOString().slice(0, 10),
         exitPrice: String(exit.exitPrice ?? ''),
         exitQty: String(exit.exitQty ?? ''),
+        exitReasons: normalizeOptionList(exit.exitReasons),
         notes: exit.notes || ''
       }
     });
@@ -823,6 +837,7 @@ const TradesPage = () => {
       exitDate: editingExit.values.exitDate,
       exitPrice: Number(editingExit.values.exitPrice),
       exitQty: Number(editingExit.values.exitQty),
+      exitReasons: editingExit.values.exitReasons,
       notes: editingExit.values.notes
     };
 
@@ -854,7 +869,7 @@ const TradesPage = () => {
         entryPrice: String(trade.entryPrice ?? ''),
         entryQty: String(trade.entryQty ?? ''),
         stopLoss: String(trade.stopLoss ?? ''),
-        strategy: trade.strategy || '',
+        strategy: normalizeOptionList(trade.strategy),
         notes: trade.notes || '',
         screenshots: normalizeScreenshots(trade.screenshots)
       }
@@ -882,7 +897,7 @@ const TradesPage = () => {
       entryPrice: Number(editingBase.values.entryPrice),
       entryQty: Number(editingBase.values.entryQty),
       stopLoss: Number(editingBase.values.stopLoss),
-      strategy: editingBase.values.strategy,
+      strategy: joinOptionList(editingBase.values.strategy),
       notes: editingBase.values.notes,
       screenshots: normalizeScreenshots(editingBase.values.screenshots)
     };
@@ -1084,8 +1099,14 @@ const TradesPage = () => {
               onChange={(e) => setMonthFilter(e.target.value)}
             />
           </label>
-
         </div>
+
+        <TradeStrategySelector
+          value={strategyFilter}
+          onToggle={(option) => setStrategyFilter((current) => toggleOption(current, option))}
+          label="Criteria"
+          className="pt-1"
+        />
 
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
           <div className="flex items-center gap-2">
@@ -1111,6 +1132,7 @@ const TradesPage = () => {
                 setSearch('');
                 setStatusFilter('ALL');
                 setMonthFilter('');
+                setStrategyFilter([]);
                 setSortConfig({ key: 'entryDate', direction: 'desc' });
               }}
             >
@@ -1561,18 +1583,17 @@ const TradesPage = () => {
                               }
                               placeholder="Stop Loss"
                             />
-                            <input
-                              type="text"
-                              className="field-input py-1 text-xs md:col-span-2"
-                              value={editingBase.values.strategy}
-                              onChange={(e) =>
-                                setEditingBase((prev) => ({
-                                  ...prev,
-                                  values: { ...prev.values, strategy: e.target.value }
-                                }))
-                              }
-                              placeholder="Strategy"
-                            />
+                            <div className="md:col-span-2">
+                              <TradeStrategySelector
+                                value={editingBase.values.strategy}
+                                onToggle={(option) =>
+                                  setEditingBase((prev) => ({
+                                    ...prev,
+                                    values: { ...prev.values, strategy: toggleOption(prev.values.strategy, option) }
+                                  }))
+                                }
+                              />
+                            </div>
                             <textarea
                               className="field-input min-h-20 py-1 text-xs md:col-span-2"
                               value={editingBase.values.notes}
@@ -2013,19 +2034,31 @@ const TradesPage = () => {
                                         }
                                         placeholder="Exit Qty"
                                       />
-                                      <input
-                                        type="text"
-                                        className="field-input py-1 text-xs"
-                                        value={editingExit.values.notes}
-                                        onChange={(ev) =>
-                                          setEditingExit((prev) => ({
-                                            ...prev,
-                                            values: { ...prev.values, notes: ev.target.value }
-                                          }))
-                                        }
-                                        placeholder="Notes"
-                                      />
                                     </div>
+                                    <ExitReasonMultiSelect
+                                      value={editingExit.values.exitReasons}
+                                      onToggle={(option) =>
+                                        setEditingExit((prev) => ({
+                                          ...prev,
+                                          values: {
+                                            ...prev.values,
+                                            exitReasons: toggleOption(prev.values.exitReasons, option)
+                                          }
+                                        }))
+                                      }
+                                    />
+                                    <input
+                                      type="text"
+                                      className="field-input py-1 text-xs"
+                                      value={editingExit.values.notes}
+                                      onChange={(ev) =>
+                                        setEditingExit((prev) => ({
+                                          ...prev,
+                                          values: { ...prev.values, notes: ev.target.value }
+                                        }))
+                                      }
+                                      placeholder="Notes"
+                                    />
                                     <div className="flex items-center gap-2">
                                       <button
                                         type="button"
@@ -2047,6 +2080,9 @@ const TradesPage = () => {
                                   <div className="flex flex-wrap items-center justify-between gap-2">
                                     <p>
                                       Date: {new Date(e.exitDate).toLocaleDateString()} | Price: {e.exitPrice} | Qty: {e.exitQty}
+                                      {normalizeOptionList(e.exitReasons).length
+                                        ? ` | Reasons: ${normalizeOptionList(e.exitReasons).join(', ')}`
+                                        : ''}
                                       {e.notes ? ` | Notes: ${e.notes}` : ''}
                                     </p>
                                     <div className="flex items-center gap-2">

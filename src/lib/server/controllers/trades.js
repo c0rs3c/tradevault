@@ -5,6 +5,7 @@ import { calcTradeMetrics, buildDashboardAnalytics, getOpenLotsForTrade } from '
 import { fetchSymbolQuote } from '../services/marketData';
 import { deleteObjectByKey } from '../services/objectStorage';
 import { parseCsv } from '../utils/csv';
+import { joinOptionList, normalizeOptionList } from '../../../utils/tradeOptions';
 
 const LIST_CACHE_TTL_MS = 15000;
 const DEFAULT_STOP_LOSS_PCT = 0.03;
@@ -108,6 +109,21 @@ const withDefaultStopLoss = ({ entryPrice, side, stopLoss }) => {
     ? 1 + DEFAULT_STOP_LOSS_PCT
     : 1 - DEFAULT_STOP_LOSS_PCT;
   return Number((price * multiplier).toFixed(4));
+};
+
+const normalizeStrategyValue = (value) => joinOptionList(value);
+
+const normalizeExitPayload = (payload = {}) => ({
+  ...payload,
+  exitReasons: normalizeOptionList(payload.exitReasons)
+});
+
+const normalizeTradePayload = (payload = {}) => {
+  const nextPayload = normalizeTradePayloadScreenshots(payload);
+  if ('strategy' in nextPayload) {
+    nextPayload.strategy = normalizeStrategyValue(nextPayload.strategy);
+  }
+  return nextPayload;
 };
 
 const createError = (message, statusCode = 500) => {
@@ -427,7 +443,7 @@ export const getTradeById = async (id) => {
 
 export const createTrade = async (payload) => {
   const normalizedPayload = {
-    ...normalizeTradePayloadScreenshots(payload),
+    ...normalizeTradePayload(payload),
     stopLoss: withDefaultStopLoss({
       entryPrice: payload.entryPrice,
       side: payload.side,
@@ -759,7 +775,7 @@ export const updateTrade = async (id, payload) => {
   if (!trade) throw createError('Trade not found', 404);
 
   const previousScreenshots = getNormalizedScreenshots(trade);
-  const normalizedPayload = normalizeTradePayloadScreenshots(payload);
+  const normalizedPayload = normalizeTradePayload(payload);
   const nextEntryPrice = payload.entryPrice ?? trade.entryPrice;
   const nextSide = payload.side ?? trade.side;
   const nextStopLoss = withDefaultStopLoss({
@@ -854,9 +870,10 @@ export const addExit = async (id, payload) => {
   const trade = await Trade.findById(id);
   if (!trade) throw createError('Trade not found', 404);
 
-  validateExitQty(trade, payload.exitQty);
+  const normalizedPayload = normalizeExitPayload(payload);
+  validateExitQty(trade, normalizedPayload.exitQty);
 
-  trade.exits.push(payload);
+  trade.exits.push(normalizedPayload);
   await trade.save();
   invalidateTradeCaches();
 
@@ -949,10 +966,11 @@ export const updateExit = async (id, eid, payload) => {
   const exit = trade.exits.id(eid);
   if (!exit) throw createError('Exit not found', 404);
 
-  const nextQty = payload.exitQty ?? exit.exitQty;
+  const normalizedPayload = normalizeExitPayload(payload);
+  const nextQty = normalizedPayload.exitQty ?? exit.exitQty;
   validateExitQty(trade, nextQty, eid);
 
-  Object.assign(exit, payload);
+  Object.assign(exit, normalizedPayload);
   await trade.save();
   invalidateTradeCaches();
 

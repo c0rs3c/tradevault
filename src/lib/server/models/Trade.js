@@ -24,6 +24,7 @@ const ExitSchema = new mongoose.Schema(
     exitDate: { type: Date, required: true },
     exitPrice: { type: Number, required: true, min: 0.000001 },
     exitQty: { type: Number, required: true, min: 0.000001 },
+    exitReasons: [{ type: String, trim: true }],
     notes: { type: String, trim: true }
   },
   { _id: true }

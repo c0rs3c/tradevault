@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { addExit, fetchTrades } from '../api/trades';
+import ExitReasonMultiSelect from '../components/ExitReasonMultiSelect';
+import TradeStrategySelector from '../components/TradeStrategySelector';
+import { hasAnySelectedOption, normalizeOptionList } from '../utils/tradeOptions';
 
 const todayInputDate = () => new Date().toISOString().slice(0, 10);
 
@@ -11,11 +14,17 @@ const money = (value) =>
     maximumFractionDigits: 2
   }).format(Number(value || 0));
 
+const toggleOption = (current, option) => {
+  const items = normalizeOptionList(current);
+  return items.includes(option) ? items.filter((item) => item !== option) : [...items, option];
+};
+
 const ExitTradePage = () => {
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [strategyFilter, setStrategyFilter] = useState([]);
   const [selectedTradeId, setSelectedTradeId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
@@ -23,6 +32,7 @@ const ExitTradePage = () => {
     exitDate: todayInputDate(),
     exitPrice: '',
     exitQty: '',
+    exitReasons: [],
     notes: ''
   });
 
@@ -55,13 +65,13 @@ const ExitTradePage = () => {
 
   const filteredTrades = useMemo(() => {
     const query = String(search || '').trim().toUpperCase();
-    if (!query) return openTrades;
     return openTrades.filter((trade) => {
       const symbol = String(trade?.symbol || '').toUpperCase();
       const strategy = String(trade?.strategy || '').toUpperCase();
-      return symbol.includes(query) || strategy.includes(query);
+      const matchesQuery = !query || symbol.includes(query) || strategy.includes(query);
+      return matchesQuery && hasAnySelectedOption(trade?.strategy, strategyFilter);
     });
-  }, [openTrades, search]);
+  }, [openTrades, search, strategyFilter]);
 
   const selectedTrade =
     filteredTrades.find((trade) => trade._id === selectedTradeId) ||
@@ -101,6 +111,7 @@ const ExitTradePage = () => {
       exitDate: form.exitDate,
       exitPrice: Number(form.exitPrice),
       exitQty: Number(form.exitQty),
+      exitReasons: form.exitReasons,
       notes: form.notes
     };
 
@@ -123,6 +134,7 @@ const ExitTradePage = () => {
         exitDate: todayInputDate(),
         exitPrice: '',
         exitQty: '',
+        exitReasons: [],
         notes: ''
       });
       await loadTrades();
@@ -163,6 +175,12 @@ const ExitTradePage = () => {
               placeholder="Type symbol or strategy"
             />
           </label>
+
+          <TradeStrategySelector
+            value={strategyFilter}
+            onToggle={(option) => setStrategyFilter((current) => toggleOption(current, option))}
+            label="Filter by Criteria"
+          />
 
           <div className="max-h-[32rem] space-y-2 overflow-auto">
             {filteredTrades.map((trade) => {
@@ -252,6 +270,12 @@ const ExitTradePage = () => {
                     placeholder={`Max ${selectedTrade.metrics.openQty}`}
                   />
                 </label>
+
+                <ExitReasonMultiSelect
+                  value={form.exitReasons}
+                  onToggle={(option) => setForm((current) => ({ ...current, exitReasons: toggleOption(current.exitReasons, option) }))}
+                  className="md:col-span-2"
+                />
 
                 <label className="space-y-1 md:col-span-2">
                   <span className="text-sm font-medium">Remarks</span>
