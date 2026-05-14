@@ -7,7 +7,7 @@ import {
 } from '../utils/positionSizing';
 
 const STOP_LOSS_PCTS = Array.from({ length: 36 }, (_, index) => Number((1.5 + index * 0.1).toFixed(1)));
-const CAR_PCTS = Array.from({ length: 10 }, (_, index) => Number((0.1 + index * 0.1).toFixed(1)));
+const CAR_PCTS = Array.from({ length: 19 }, (_, index) => Number((0.1 + index * 0.05).toFixed(2)));
 const ALLOCATION_PCTS = Array.from({ length: 36 }, (_, index) => 5 + index);
 const DEFAULT_CAR_PCT = 0.3;
 const DEFAULT_ALLOCATION_PCT = 10;
@@ -35,6 +35,8 @@ const integerText = (value) => {
 
 const percentText = (value) =>
   Number.isFinite(Number(value)) ? `${Number(value).toFixed(2)}%` : '—';
+
+const formatRiskPreset = (value) => `${Number(value).toFixed(2).replace(/\.?0+$/, '')}%`;
 
 const metricValueClass = 'text-base font-semibold text-slate-900 dark:text-slate-100 md:text-lg';
 const outputCardClass = (isHighlighted = false) =>
@@ -310,7 +312,7 @@ const PositionSizingPage = () => {
                         : 'btn-muted px-2 py-1 text-xs'
                     }
                   >
-                    {form.sizingMode === 'RISK_PERCENT' ? `${value.toFixed(1)}%` : `${value}%`}
+                    {form.sizingMode === 'RISK_PERCENT' ? formatRiskPreset(value) : `${value}%`}
                   </button>
                 );
               })}
