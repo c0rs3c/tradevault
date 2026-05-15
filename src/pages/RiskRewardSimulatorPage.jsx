@@ -11,6 +11,8 @@ import {
 } from 'recharts';
 import { useSettings } from '../contexts/SettingsContext';
 
+const MAX_TOTAL_CAPITAL = 20_000_000;
+
 const DEFAULTS = {
   winRate: 35,
   averageWinR: 3.5,
@@ -65,7 +67,7 @@ const INPUTS = [
     label: 'Total Capital',
     description: 'Account size used to convert risk into INR terms.',
     min: 100000,
-    max: 5000000,
+    max: MAX_TOTAL_CAPITAL,
     step: 1000,
     format: (value) =>
       new Intl.NumberFormat('en-IN', {
@@ -326,8 +328,19 @@ const SliderField = ({ config, value, onChange, auxiliaryText = '' }) => {
 };
 
 const RiskRewardSimulatorPage = () => {
-  const { theme } = useSettings();
+  const { theme, settings } = useSettings();
   const [inputs, setInputs] = useState(() => normalizeSpecialTradeCounts(DEFAULTS));
+
+  useEffect(() => {
+    const configuredCapital = Number(settings?.totalCapital || 0);
+    if (!(configuredCapital > 0)) return;
+    setInputs((current) =>
+      normalizeSpecialTradeCounts({
+        ...current,
+        totalCapital: clamp(configuredCapital, 100000, MAX_TOTAL_CAPITAL)
+      })
+    );
+  }, [settings?.totalCapital]);
 
   const metrics = useMemo(() => calculateScenarioMetrics(inputs), [inputs]);
 
