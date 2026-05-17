@@ -7,6 +7,7 @@ const SYMBOLS_FILE_PATH = path.join(process.cwd(), 'data', 'nse_equity_symbols.c
 
 const symbolsCache = {
   symbols: null,
+  entries: null,
   updatedAt: null
 };
 
@@ -16,28 +17,44 @@ const createError = (message, statusCode = 500) => {
   return error;
 };
 
-const parseSymbols = (csvText) => {
+const parseSymbolEntries = (csvText) => {
   const rows = parseCsv(String(csvText || ''));
   if (!rows.length) return [];
   const header = rows[0].map((cell) => String(cell || '').trim().toUpperCase());
   const symbolIndex = header.findIndex((cell) => cell === 'SYMBOL');
+  const companyNameIndex = header.findIndex((cell) => cell === 'NAME OF COMPANY');
   const index = symbolIndex >= 0 ? symbolIndex : 0;
 
-  const symbols = rows
-    .slice(1)
-    .map((row) => String(row[index] || '').trim().toUpperCase())
-    .filter(Boolean);
+  const deduped = new Map();
 
-  return [...new Set(symbols)].sort((a, b) => a.localeCompare(b));
+  rows
+    .slice(1)
+    .forEach((row) => {
+      const symbol = String(row[index] || '').trim().toUpperCase();
+      if (!symbol) return;
+      const companyName = String(companyNameIndex >= 0 ? row[companyNameIndex] || '' : '').trim();
+      if (!deduped.has(symbol)) {
+        deduped.set(symbol, {
+          symbol,
+          companyName
+        });
+      }
+    });
+
+  return [...deduped.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
 };
 
 const readSymbolsFromFile = async () => {
   try {
     const csv = await readFile(SYMBOLS_FILE_PATH, 'utf8');
-    const symbols = parseSymbols(csv);
-    if (!symbols.length) return null;
+    const entries = parseSymbolEntries(csv);
+    if (!entries.length) return null;
     const fileStats = await stat(SYMBOLS_FILE_PATH);
-    return { symbols, updatedAt: fileStats.mtime.toISOString() };
+    return {
+      entries,
+      symbols: entries.map((item) => item.symbol),
+      updatedAt: fileStats.mtime.toISOString()
+    };
   } catch {
     return null;
   }
@@ -57,8 +74,8 @@ export const refreshSymbolsFromNse = async () => {
   }
 
   const csvText = await response.text();
-  const symbols = parseSymbols(csvText);
-  if (!symbols.length) {
+  const entries = parseSymbolEntries(csvText);
+  if (!entries.length) {
     throw createError('Downloaded NSE symbols CSV is empty or invalid', 502);
   }
 
@@ -66,15 +83,17 @@ export const refreshSymbolsFromNse = async () => {
   await writeFile(SYMBOLS_FILE_PATH, csvText, 'utf8');
 
   const updatedAt = new Date().toISOString();
-  symbolsCache.symbols = symbols;
+  symbolsCache.entries = entries;
+  symbolsCache.symbols = entries.map((item) => item.symbol);
   symbolsCache.updatedAt = updatedAt;
 
-  return { symbols, count: symbols.length, updatedAt };
+  return { entries, symbols: symbolsCache.symbols, count: symbolsCache.symbols.length, updatedAt };
 };
 
 export const getSymbols = async () => {
   if (Array.isArray(symbolsCache.symbols) && symbolsCache.symbols.length) {
     return {
+      entries: symbolsCache.entries || symbolsCache.symbols.map((symbol) => ({ symbol, companyName: '' })),
       symbols: symbolsCache.symbols,
       count: symbolsCache.symbols.length,
       updatedAt: symbolsCache.updatedAt
@@ -83,9 +102,11 @@ export const getSymbols = async () => {
 
   const fileData = await readSymbolsFromFile();
   if (fileData) {
+    symbolsCache.entries = fileData.entries;
     symbolsCache.symbols = fileData.symbols;
     symbolsCache.updatedAt = fileData.updatedAt;
     return {
+      entries: fileData.entries,
       symbols: fileData.symbols,
       count: fileData.symbols.length,
       updatedAt: fileData.updatedAt

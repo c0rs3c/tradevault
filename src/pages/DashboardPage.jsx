@@ -42,6 +42,13 @@ const formatSignedPercent = (value) => {
   return `${sign}${num.toFixed(2)}%`;
 };
 
+const formatSignedR = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 'N/A';
+  const sign = num > 0 ? '+' : '';
+  return `${sign}${num.toFixed(2)}R`;
+};
+
 const monthLabel = (monthKey) => {
   if (!monthKey) return '';
   const parsed = new Date(`${monthKey}-01T00:00:00.000Z`);
@@ -1355,7 +1362,8 @@ const DashboardPage = () => {
                           'N/A'
                         ) : (
                           <span className={pnlTextClass(group.unrealizedPnL)}>
-                            {money(group.unrealizedPnL)}
+                            {money(group.unrealizedPnL)}{' '}
+                            {group.capitalAtRisk > 0 ? `(${formatSignedR(group.unrealizedPnL / group.capitalAtRisk)})` : ''}
                           </span>
                         )}
                       </td>

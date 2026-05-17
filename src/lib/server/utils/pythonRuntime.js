@@ -1,6 +1,8 @@
 import { constants, accessSync } from 'fs';
+import path from 'path';
 
 const DEFAULT_PYTHON_CANDIDATES = [
+  path.resolve(process.cwd(), '.venv/bin/python'),
   '/usr/bin/python3',
   '/opt/homebrew/bin/python3',
   '/usr/local/bin/python3',
@@ -28,4 +30,3 @@ export const resolvePythonBin = () => {
 
   return 'python3';
 };
-

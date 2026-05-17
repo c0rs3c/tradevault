@@ -32,6 +32,7 @@ const NavItem = ({ href, label, exact = false, activeQuery = null }) => {
 const NavDropdown = ({ label, items }) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [open, setOpen] = useState(false);
   const isActive = items.some(({ href, exact = false, activeQuery = null }) => {
     const pathOnly = String(href || '').split('?')[0];
     const pathMatch = exact ? pathname === pathOnly : pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
@@ -44,8 +45,19 @@ const NavDropdown = ({ label, items }) => {
   });
 
   return (
-    <div className="group relative">
-      <button type="button" className={navClass(isActive)} aria-haspopup="menu">
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        className={navClass(isActive)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        onFocus={() => setOpen(true)}
+      >
         <span className="flex items-center gap-1.5">
           <span>{label}</span>
           <svg
@@ -62,7 +74,11 @@ const NavDropdown = ({ label, items }) => {
         </span>
       </button>
 
-      <div className="invisible absolute left-0 top-full z-20 mt-2 min-w-[13rem] translate-y-1 rounded-xl border border-slate-200 bg-white p-1 opacity-0 shadow-xl transition-all duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 dark:border-slate-800 dark:bg-slate-950">
+      <div
+        className={`absolute left-0 top-full z-20 mt-2 min-w-[13rem] rounded-xl border border-slate-200 bg-white p-1 shadow-xl transition-all duration-150 dark:border-slate-800 dark:bg-slate-950 ${
+          open ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
+        }`}
+      >
         {items.map(({ href, label: itemLabel, exact = false, description, activeQuery = null }) => {
           const pathOnly = String(href || '').split('?')[0];
           const pathMatch = exact ? pathname === pathOnly : pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
@@ -76,6 +92,7 @@ const NavDropdown = ({ label, items }) => {
             <Link
               key={href}
               href={href}
+              onClick={() => setOpen(false)}
               className={`block rounded-lg px-3 py-2 transition-colors ${
                 itemActive
                   ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
@@ -168,6 +185,18 @@ const Layout = ({ children }) => {
     { href: '/trades/exit', label: 'Exit Trade', exact: true, description: 'Search open trades and record an exit' }
   ];
   const toolsMenuItems = [
+    {
+      href: '/tools/earnings-data',
+      label: 'Earnings Data',
+      exact: true,
+      description: 'All stocks list with earnings and shareholding search'
+    },
+    {
+      href: '/deep-dive/nse-universe',
+      label: 'NSE Universe',
+      exact: true,
+      description: 'OHLCV, SMAs, volume, and market-cap snapshots'
+    },
     { href: '/position-sizing', label: 'Position Sizing', exact: true, description: 'Risk and sizing calculator' },
     {
       href: '/risk-reward-simulator',
@@ -179,6 +208,12 @@ const Layout = ({ children }) => {
   ];
   const deepDiveMenuItems = [
     { href: '/deep-dive', label: 'Overview', exact: true, description: 'Choose a deep-dive workflow' },
+    {
+      href: '/deep-dive/earnings-shareholding',
+      label: 'Earnings and Shareholding Deep Dive',
+      exact: true,
+      description: 'Screen stocks with earnings and shareholding filters'
+    },
     { href: '/deep-dive/rs', label: 'RS Deep Dive', exact: true, description: 'Relative-strength scanner and ranking' }
   ];
   const settingsMenuItems = [
@@ -329,6 +364,7 @@ const Layout = ({ children }) => {
               <div className="space-y-2 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Deep Dive</p>
                 <NavItem href="/deep-dive" label="Overview" exact />
+                <NavItem href="/deep-dive/earnings-shareholding" label="Earnings and Shareholding Deep Dive" exact />
                 <NavItem href="/deep-dive/rs" label="RS Deep Dive" exact />
               </div>
               <NavItem href="/news" label="News" exact />
@@ -340,6 +376,8 @@ const Layout = ({ children }) => {
               </div>
               <div className="space-y-2 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tools</p>
+                <NavItem href="/tools/earnings-data" label="Earnings Data" exact />
+                <NavItem href="/deep-dive/nse-universe" label="NSE Universe" exact />
                 <NavItem href="/position-sizing" label="Position Sizing" exact />
                 <NavItem href="/risk-reward-simulator" label="Risk-Reward Simulator" exact />
                 <NavItem href="/market-trend" label="Market Trend" exact />

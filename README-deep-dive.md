@@ -13,6 +13,60 @@ Allowed values:
 - `mongodb`: recommended for historical bar storage and backfills
 - `firestore`: supported, but slower for large historical datasets
 
+## Earnings And Shareholding Deep Dive PostgreSQL Setup
+
+The `Earnings and Shareholding Deep Dive` screen reads quarterly results, shareholding pattern, and company profile data from PostgreSQL.
+
+It uses these env variables:
+
+```env
+SCREENER_PG_DSN=
+SCREENER_PG_HOST=127.0.0.1
+SCREENER_PG_PORT=5432
+SCREENER_PG_DB=earnings_screener_db
+SCREENER_PG_USER=praween
+SCREENER_PG_PASSWORD=
+```
+
+You can configure PostgreSQL in either of these two ways:
+
+### Option 1: Full connection string
+
+```env
+SCREENER_PG_DSN=postgresql://praween@127.0.0.1:5432/earnings_screener_db
+```
+
+If your database has a password, include it in the DSN.
+
+### Option 2: Individual variables
+
+```env
+SCREENER_PG_HOST=127.0.0.1
+SCREENER_PG_PORT=5432
+SCREENER_PG_DB=earnings_screener_db
+SCREENER_PG_USER=praween
+SCREENER_PG_PASSWORD=
+```
+
+For your current local setup, this is enough:
+
+```env
+SCREENER_PG_DB=earnings_screener_db
+SCREENER_PG_USER=praween
+SCREENER_PG_PASSWORD=
+```
+
+You can even omit those locally, because the app already defaults to:
+
+- host `127.0.0.1`
+- port `5432`
+- database `earnings_screener_db`
+- user `praween`
+- empty password
+
+Use `SCREENER_PG_DSN` when you want a single portable variable.
+Use the individual `SCREENER_PG_*` variables when you want the connection settings to stay explicit.
+
 ## Firestore Configuration
 
 Use these only when `DEEP_DIVE_DB_PROVIDER=firestore`.

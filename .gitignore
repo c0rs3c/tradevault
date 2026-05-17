@@ -10,3 +10,4 @@ tradebook
 .vercel
 .venv
 service-account-creds.json
+*.dump

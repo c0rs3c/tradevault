@@ -4,6 +4,17 @@ import Link from 'next/link';
 
 const tools = [
   {
+    href: '/deep-dive/earnings-shareholding',
+    title: 'Earnings and Shareholding Deep Dive',
+    description: 'Screen stocks using stored quarterly results and shareholding filters from PostgreSQL.'
+  },
+  {
+    href: '/deep-dive/nse-universe',
+    title: 'NSE Universe',
+    description:
+      'Browse PostgreSQL-backed daily OHLCV history, SMAs, rupee volume, and market-cap snapshots for symbols from nse-universe.csv.'
+  },
+  {
     href: '/deep-dive/rs',
     title: 'RS Deep Dive',
     description: 'Run relative-strength deep dives against Nifty 50.'
@@ -18,7 +29,7 @@ export default function DeepDivePage() {
           Deep Dive
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
-          Choose a deep-dive workflow below. Only attached modules are shown here.
+          Choose a deep-dive workflow below.
         </p>
       </section>
 

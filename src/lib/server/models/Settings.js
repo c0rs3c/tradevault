@@ -72,6 +72,38 @@ const SettingsSchema = new mongoose.Schema(
         size: { type: Number, default: 1, min: 0.5, max: 3 },
         position: { type: String, enum: ['aboveBar', 'belowBar'], default: 'belowBar' }
       }
+    },
+    deepDiveEarningsSettings: {
+      thresholds: {
+        sales: {
+          lower: { type: Number, default: null },
+          upper: { type: Number, default: null }
+        },
+        netProfit: {
+          lower: { type: Number, default: null },
+          upper: { type: Number, default: null }
+        },
+        earnings: {
+          lower: { type: Number, default: null },
+          upper: { type: Number, default: null }
+        },
+        opmPercent: {
+          lower: { type: Number, default: null },
+          upper: { type: Number, default: null }
+        },
+        promoters: {
+          lower: { type: Number, default: null },
+          upper: { type: Number, default: null }
+        },
+        fiis: {
+          lower: { type: Number, default: null },
+          upper: { type: Number, default: null }
+        },
+        diis: {
+          lower: { type: Number, default: null },
+          upper: { type: Number, default: null }
+        }
+      }
     }
   },
   { timestamps: true }

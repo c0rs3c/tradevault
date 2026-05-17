@@ -197,6 +197,40 @@ python scripts/deep_dive_ingest.py --mode sync_profiles
 python scripts/deep_dive_ingest.py --mode daily_sync
 ```
 
+## Screener Quarterly Scraper
+- Standalone PostgreSQL ingestion script: `scripts/scrape_screener_quarterly.py`
+- Extracts only `Sales`, `Net Profit`, and `EPS in Rs` from the `Quarterly Results` section on a Screener company page.
+- Uses one request per symbol, browser-like headers, retry/backoff, and a default `12 hour` freshness window to stay conservative.
+- The app's `Earnings and Shareholding Deep Dive` screen reads the same PostgreSQL data through the Node `pg` client.
+
+Example:
+
+```bash
+export SCREENER_PG_DSN="postgresql://user:password@localhost:5432/earnings_screener_db"
+python3 scripts/scrape_screener_quarterly.py --symbol RRKABEL
+```
+
+Force a refresh even if the symbol was scraped recently:
+
+```bash
+python3 scripts/scrape_screener_quarterly.py --symbol RRKABEL --force
+```
+
+Batch mode for large symbol lists:
+
+```bash
+python3 scripts/scrape_screener_quarterly.py --symbols-file data/symbols.txt
+```
+
+Supported input formats:
+- Text file: one symbol per line
+- CSV: `symbol` column required, optional `url` column
+
+For large runs, the script stays sequential and conservative by default:
+- `8s` base delay between symbols
+- up to `4s` random jitter between symbols
+- `12h` freshness window, so reruns skip recently successful symbols
+
 ## Watchlist News Feed
 - News watchlists and articles are stored in a dedicated MongoDB cluster via `NEWS_MONGO_URI`.
 - Import public TradingView watchlists or upload `.txt` watchlist files from `/news`, then sync Google News for the last 7 days per ticker/company.

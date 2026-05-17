@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {
   CandlestickSeries,
   ColorType,
+  CrosshairMode,
   HistogramSeries,
   LineSeries,
   createChart,
@@ -274,6 +275,110 @@ const buildSmaData = (candles, period) => {
     }
   });
   return output;
+};
+
+const SMA_RIBBON_BULLISH = 'rgba(134, 239, 172, 0.28)';
+const SMA_RIBBON_BEARISH = 'rgba(252, 165, 165, 0.28)';
+const SMA_LINE_CONFIGS = [
+  { period: 10, color: 'rgba(74, 222, 128, 0.22)', lineWidth: 1 },
+  { period: 20, color: 'rgba(248, 113, 113, 0.22)', lineWidth: 1 },
+  { period: 50, color: '#16a34a', lineWidth: 1 }
+];
+
+const drawRibbonSegment = (ctx, start, end, fillStyle) => {
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.fastY);
+  ctx.lineTo(end.x, end.fastY);
+  ctx.lineTo(end.x, end.slowY);
+  ctx.lineTo(start.x, start.slowY);
+  ctx.closePath();
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+};
+
+const createSmaRibbonOverlay = ({ container, chart, fastSeries, slowSeries, fastData, slowData }) => {
+  if (!container || !chart || !fastSeries || !slowSeries || !fastData.length || !slowData.length) {
+    return { redraw: () => {}, cleanup: () => {} };
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.style.position = 'absolute';
+  canvas.style.inset = '0';
+  canvas.style.pointerEvents = 'none';
+  canvas.style.zIndex = '12';
+  container.appendChild(canvas);
+
+  const slowByTime = new Map(slowData.map((point) => [String(point.time), point.value]));
+
+  const render = () => {
+    const width = container.clientWidth;
+    const height = container.clientHeight || 500;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(dpr, dpr);
+
+    const points = fastData
+      .map((point) => {
+        const slowValue = slowByTime.get(String(point.time));
+        if (!Number.isFinite(slowValue)) return null;
+        const x = chart.timeScale().timeToCoordinate(point.time);
+        const fastY = fastSeries.priceToCoordinate(point.value);
+        const slowY = slowSeries.priceToCoordinate(slowValue);
+        if (![x, fastY, slowY].every((value) => Number.isFinite(value))) return null;
+        return {
+          x,
+          fastY,
+          slowY,
+          diff: point.value - slowValue
+        };
+      })
+      .filter(Boolean);
+
+    for (let index = 1; index < points.length; index += 1) {
+      const prev = points[index - 1];
+      const curr = points[index];
+      const prevBullish = prev.diff >= 0;
+      const currBullish = curr.diff >= 0;
+
+      if (prevBullish === currBullish || prev.diff === curr.diff) {
+        drawRibbonSegment(ctx, prev, curr, prevBullish ? SMA_RIBBON_BULLISH : SMA_RIBBON_BEARISH);
+        continue;
+      }
+
+      const t = prev.diff / (prev.diff - curr.diff);
+      const crossX = prev.x + (curr.x - prev.x) * t;
+      const crossFastY = prev.fastY + (curr.fastY - prev.fastY) * t;
+      const crossSlowY = prev.slowY + (curr.slowY - prev.slowY) * t;
+      const crossPoint = {
+        x: crossX,
+        fastY: crossFastY,
+        slowY: crossSlowY,
+        diff: 0
+      };
+
+      drawRibbonSegment(ctx, prev, crossPoint, prevBullish ? SMA_RIBBON_BULLISH : SMA_RIBBON_BEARISH);
+      drawRibbonSegment(ctx, crossPoint, curr, currBullish ? SMA_RIBBON_BULLISH : SMA_RIBBON_BEARISH);
+    }
+  };
+
+  render();
+  chart.timeScale().subscribeVisibleTimeRangeChange(render);
+
+  return {
+    redraw: render,
+    cleanup: () => {
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(render);
+      canvas.remove();
+    }
+  };
 };
 
 const defaultPaneData = () => ({
@@ -651,6 +756,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
           borderColor: isDark ? '#334155' : '#cbd5e1'
         },
         crosshair: {
+          mode: CrosshairMode.Normal,
           vertLine: { color: '#64748b' },
           horzLine: { color: '#64748b' }
         }
@@ -694,12 +800,14 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
       });
       chart.priceScale('volume').setAutoScale(true);
 
-      chartPrefs.smaPeriods.forEach((period, index) => {
+      const smaSeriesMap = new Map();
+      const smaDataMap = new Map();
+      SMA_LINE_CONFIGS.forEach(({ period, color, lineWidth }) => {
         const smaData = buildSmaData(candles, period);
         const showSmaScaleLabels = chartPrefs.smaScaleLabelsVisible;
         const series = chart.addSeries(LineSeries, {
-          lineWidth: widthMap[chartPrefs.smaLineWidth] || 1,
-          color: chartPrefs.smaColors[index],
+          lineWidth,
+          color,
           priceLineVisible: showSmaScaleLabels,
           lastValueVisible: showSmaScaleLabels,
           crosshairMarkerVisible: showSmaScaleLabels,
@@ -707,6 +815,17 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
           autoscaleInfoProvider: dailyAutoscaleProvider
         });
         series.setData(smaData);
+        smaSeriesMap.set(period, series);
+        smaDataMap.set(period, smaData);
+      });
+
+      const ribbonOverlay = createSmaRibbonOverlay({
+        container,
+        chart,
+        fastSeries: smaSeriesMap.get(10),
+        slowSeries: smaSeriesMap.get(20),
+        fastData: smaDataMap.get(10) || [],
+        slowData: smaDataMap.get(20) || []
       });
 
       const candleTimes = candles.map((bar) => bar.time);
@@ -835,6 +954,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
           width: container.clientWidth,
           height: container.clientHeight || 500
         });
+        ribbonOverlay.redraw();
       });
       resizeObserver.observe(container);
 
@@ -842,6 +962,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
         viewportRef.current[paneKey] = {
           logicalRange: chart.timeScale().getVisibleLogicalRange()
         };
+        ribbonOverlay.cleanup();
         resizeObserver.disconnect();
         chart.unsubscribeCrosshairMove(onCrosshairMove);
         chart.remove();
@@ -1183,7 +1304,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                       {formatPercent(paneOhlc.single.changePct)} V {formatVolume(paneOhlc.single.volume)}
                     </div>
                   )}
-                  <div ref={singleChartRef} className="h-full w-full" />
+                  <div ref={singleChartRef} className="relative h-full w-full" />
                 </>
               )}
             </div>
@@ -1223,7 +1344,7 @@ const TradeChartOverlay = ({ open, trade, onClose, onPrevTrade, onNextTrade }) =
                             {formatPercent(paneOhlc[pane.key].changePct)} V {formatVolume(paneOhlc[pane.key].volume)}
                           </div>
                         )}
-                        <div ref={pane.ref} className="h-full w-full" />
+                        <div ref={pane.ref} className="relative h-full w-full" />
                       </>
                     )}
                   </div>

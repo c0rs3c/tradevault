@@ -30,6 +30,18 @@ const DEFAULT_CHART_SETTINGS = {
   }
 };
 
+const DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS = {
+  thresholds: {
+    sales: { lower: null, upper: null },
+    netProfit: { lower: null, upper: null },
+    earnings: { lower: null, upper: null },
+    opmPercent: { lower: null, upper: null },
+    promoters: { lower: null, upper: null },
+    fiis: { lower: null, upper: null },
+    diis: { lower: null, upper: null }
+  }
+};
+
 const DEFAULT_DASHBOARD_CARDS = {
   totalRealizedPnl: true,
   monthlyPnl: true,
@@ -165,6 +177,33 @@ const normalizeChartSettings = (raw = {}) => {
   };
 };
 
+const normalizeThresholdPair = (raw = {}, fallback = { lower: null, upper: null }) => {
+  const normalizeNumber = (value, fallbackValue) => {
+    if (value === '' || value === null || value === undefined) return null;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallbackValue;
+  };
+  return {
+    lower: normalizeNumber(raw.lower, fallback.lower),
+    upper: normalizeNumber(raw.upper, fallback.upper)
+  };
+};
+
+const normalizeDeepDiveEarningsSettings = (raw = {}) => {
+  const source = raw.thresholds || {};
+  return {
+    thresholds: {
+      sales: normalizeThresholdPair(source.sales, DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS.thresholds.sales),
+      netProfit: normalizeThresholdPair(source.netProfit, DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS.thresholds.netProfit),
+      earnings: normalizeThresholdPair(source.earnings, DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS.thresholds.earnings),
+      opmPercent: normalizeThresholdPair(source.opmPercent, DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS.thresholds.opmPercent),
+      promoters: normalizeThresholdPair(source.promoters, DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS.thresholds.promoters),
+      fiis: normalizeThresholdPair(source.fiis, DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS.thresholds.fiis),
+      diis: normalizeThresholdPair(source.diis, DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS.thresholds.diis)
+    }
+  };
+};
+
 const getOrCreateSettings = async () => {
   let settings = await Settings.findOne();
   if (!settings) {
@@ -175,6 +214,8 @@ const getOrCreateSettings = async () => {
       dashboardCards: DEFAULT_DASHBOARD_CARDS,
       dashboardExcludedOpenPositions: [],
       chartSettings: DEFAULT_CHART_SETTINGS
+      ,
+      deepDiveEarningsSettings: DEFAULT_DEEP_DIVE_EARNINGS_SETTINGS
     });
     return settings;
   }
@@ -220,6 +261,17 @@ const getOrCreateSettings = async () => {
     settings.chartSettings = normalizedChart;
     updated = true;
   }
+  const normalizedDeepDiveEarningsSettings = normalizeDeepDiveEarningsSettings(
+    settings.deepDiveEarningsSettings || {}
+  );
+  if (
+    !settings.deepDiveEarningsSettings ||
+    JSON.stringify(settings.deepDiveEarningsSettings || {}) !==
+      JSON.stringify(normalizedDeepDiveEarningsSettings)
+  ) {
+    settings.deepDiveEarningsSettings = normalizedDeepDiveEarningsSettings;
+    updated = true;
+  }
   if (updated) await settings.save();
   return settings;
 };
@@ -237,7 +289,8 @@ export const updateSettings = async (payload) => {
     accentColor,
     dashboardCards,
     dashboardExcludedOpenPositions,
-    chartSettings
+    chartSettings,
+    deepDiveEarningsSettings
   } = payload;
 
   if (totalCapital !== undefined) settings.totalCapital = totalCapital;
@@ -261,6 +314,17 @@ export const updateSettings = async (payload) => {
       ...chartSettings
     });
     settings.chartSettings = mergedChart;
+  }
+  if (deepDiveEarningsSettings !== undefined) {
+    const mergedDeepDiveEarningsSettings = normalizeDeepDiveEarningsSettings({
+      ...settings.deepDiveEarningsSettings?.toObject?.(),
+      ...deepDiveEarningsSettings,
+      thresholds: {
+        ...(settings.deepDiveEarningsSettings?.toObject?.().thresholds || {}),
+        ...(deepDiveEarningsSettings?.thresholds || {})
+      }
+    });
+    settings.deepDiveEarningsSettings = mergedDeepDiveEarningsSettings;
   }
 
   await settings.save();
