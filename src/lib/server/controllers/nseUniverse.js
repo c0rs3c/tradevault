@@ -11,6 +11,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE_MIN = 25;
 const PAGE_SIZE_MAX = 250;
 const DEFAULT_PAGE_SIZE = 100;
+const DEFAULT_MARKET_BREADTH_PAGE_SIZE = 20;
+const MAX_MARKET_BREADTH_PAGE_SIZE = 250;
 const DEFAULT_MARKET_CAP_STALE_DAYS = 7;
 const NSE_UNIVERSE_SYNC_STALE_MS = 2 * 60 * 1000;
 
@@ -65,6 +67,13 @@ const parseOptionalNumberParam = (value, label) => {
     throw createError(`Invalid ${label}`, 400);
   }
   return parsed;
+};
+
+const safePct = (part, total) => {
+  const numerator = maybeNumber(part);
+  const denominator = maybeNumber(total);
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return null;
+  return (numerator / denominator) * 100;
 };
 
 const normalizeNseUniverseSymbol = (value) => {
@@ -174,6 +183,21 @@ const ensureNseUniverseTables = async () => {
           recent_lines JSONB NOT NULL DEFAULT '[]'::jsonb,
           summary JSONB,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await queryScreenerPostgres(`
+        CREATE TABLE IF NOT EXISTS nse_universe_market_breadth_daily (
+          trade_date DATE PRIMARY KEY,
+          universe_count INTEGER NOT NULL,
+          move_eligible_count INTEGER NOT NULL,
+          up_4_pct_count INTEGER NOT NULL,
+          down_4_pct_count INTEGER NOT NULL,
+          above_sma_10_count INTEGER NOT NULL,
+          above_sma_20_count INTEGER NOT NULL,
+          above_sma_50_count INTEGER NOT NULL,
+          above_sma_200_count INTEGER NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
     })().catch((error) => {
@@ -501,12 +525,26 @@ const runNseUniverseSyncScript = async ({ syncDate }) =>
         .pop();
 
       if (code === 0) {
-        finishActiveSync('success', activeNseUniverseSync?.summary?.message || 'NSE Universe sync completed');
-        resolve({
-          started: true,
-          syncDate,
-          status: activeNseUniverseSync
-        });
+        activeNseUniverseSync.message = 'Updating stored market breadth snapshots...';
+        activeNseUniverseSync.updatedAt = new Date().toISOString();
+        activeNseUniverseSync.recentLines = [...activeNseUniverseSync.recentLines, activeNseUniverseSync.message].slice(-8);
+        void persistSyncState(activeNseUniverseSync).catch(() => {});
+
+        void (async () => {
+          try {
+            await syncStoredMarketBreadthSnapshots({ upToTradeDate: syncDate });
+            finishActiveSync('success', activeNseUniverseSync?.summary?.message || 'NSE Universe sync completed');
+            resolve({
+              started: true,
+              syncDate,
+              status: activeNseUniverseSync
+            });
+          } catch (error) {
+            const message = error?.message || 'Failed to update stored market breadth snapshots';
+            finishActiveSync('failed', message);
+            reject(createError(message, 500));
+          }
+        })();
         return;
       }
 
@@ -522,10 +560,20 @@ const runNseUniverseSyncScript = async ({ syncDate }) =>
     }, 0);
   });
 
+const createEmptyNseUniverseInventory = () => ({
+  totalSymbols: 0,
+  syncedSymbols: 0,
+  erroredSymbols: 0,
+  earliestSyncedDate: null,
+  latestSyncedDate: null,
+  earliestTradeDate: null,
+  latestTradeDate: null
+});
+
 export const getNseUniverseSyncStatus = async () => {
   await ensureNseUniverseSymbolsSeeded();
 
-  const [summaryResult, latestDateResult] = await Promise.all([
+  const [summaryResult, latestDateResult, persistedSyncResult] = await Promise.allSettled([
     queryScreenerPostgres(
       `
         SELECT
@@ -542,25 +590,379 @@ export const getNseUniverseSyncStatus = async () => {
         SELECT MAX(trade_date) AS latest_trade_date, MIN(trade_date) AS earliest_trade_date
         FROM nse_universe_daily_bars
       `
-    )
+    ),
+    readPersistedSyncState().then(recoverStaleSyncState)
   ]);
 
-  const summaryRow = summaryResult.rows[0] || {};
-  const latestRow = latestDateResult.rows[0] || {};
+  const summaryRow = summaryResult.status === 'fulfilled' ? summaryResult.value.rows[0] || {} : {};
+  const latestRow = latestDateResult.status === 'fulfilled' ? latestDateResult.value.rows[0] || {} : {};
+  const persistedSync = persistedSyncResult.status === 'fulfilled' ? persistedSyncResult.value : null;
+  const inventory = {
+    ...createEmptyNseUniverseInventory(),
+    totalSymbols: maybeInteger(summaryRow.total_symbols) || 0,
+    syncedSymbols: maybeInteger(summaryRow.synced_symbols) || 0,
+    erroredSymbols: maybeInteger(summaryRow.errored_symbols) || 0,
+    earliestSyncedDate: formatDateKey(summaryRow.earliest_history_sync_date) || null,
+    latestSyncedDate: formatDateKey(summaryRow.latest_history_sync_date) || null,
+    earliestTradeDate: formatDateKey(latestRow.earliest_trade_date) || null,
+    latestTradeDate: formatDateKey(latestRow.latest_trade_date) || null
+  };
 
-  const persistedSync = await recoverStaleSyncState(await readPersistedSyncState());
+  if (
+    summaryResult.status === 'rejected' &&
+    latestDateResult.status === 'rejected' &&
+    persistedSyncResult.status === 'rejected' &&
+    !activeNseUniverseSync
+  ) {
+    throw summaryResult.reason || latestDateResult.reason || persistedSyncResult.reason;
+  }
 
   return {
     sync: activeNseUniverseSync?.status === 'running' ? activeNseUniverseSync : persistedSync,
-    inventory: {
-      totalSymbols: maybeInteger(summaryRow.total_symbols) || 0,
-      syncedSymbols: maybeInteger(summaryRow.synced_symbols) || 0,
-      erroredSymbols: maybeInteger(summaryRow.errored_symbols) || 0,
-      earliestSyncedDate: formatDateKey(summaryRow.earliest_history_sync_date) || null,
-      latestSyncedDate: formatDateKey(summaryRow.latest_history_sync_date) || null,
-      earliestTradeDate: formatDateKey(latestRow.earliest_trade_date) || null,
-      latestTradeDate: formatDateKey(latestRow.latest_trade_date) || null
-    }
+    inventory
+  };
+};
+
+const resolveNseUniverseEffectiveDate = async (selectedDate = '') => {
+  const requestedDate = selectedDate ? parseDateParam(selectedDate, 'selectedDate') : '';
+  const effectiveDateResult = requestedDate
+    ? await queryScreenerPostgres(
+        `
+          SELECT MAX(trade_date) AS effective_date
+          FROM nse_universe_daily_bars
+          WHERE trade_date <= $1::date
+        `,
+        [requestedDate]
+      )
+    : await queryScreenerPostgres(`
+        SELECT MAX(trade_date) AS effective_date
+        FROM nse_universe_daily_bars
+      `);
+
+  return {
+    requestedDate,
+    effectiveDate: formatDateKey(effectiveDateResult.rows[0]?.effective_date)
+  };
+};
+
+const resolveMarketBreadthEffectiveDate = async (selectedDate = '') => {
+  const requestedDate = selectedDate ? parseDateParam(selectedDate, 'selectedDate') : '';
+  const effectiveDateResult = requestedDate
+    ? await queryScreenerPostgres(
+        `
+          SELECT MAX(trade_date) AS effective_date
+          FROM nse_universe_market_breadth_daily
+          WHERE trade_date <= $1::date
+        `,
+        [requestedDate]
+      )
+    : await queryScreenerPostgres(`
+        SELECT MAX(trade_date) AS effective_date
+        FROM nse_universe_market_breadth_daily
+      `);
+
+  return {
+    requestedDate,
+    effectiveDate: formatDateKey(effectiveDateResult.rows[0]?.effective_date)
+  };
+};
+
+const normalizeMarketBreadthRow = (row) => {
+  const universeCount = maybeInteger(row?.universe_count) || 0;
+  const moveEligibleCount = maybeInteger(row?.move_eligible_count) || 0;
+  const up4PctCount = maybeInteger(row?.up_4_pct_count) || 0;
+  const down4PctCount = maybeInteger(row?.down_4_pct_count) || 0;
+  const aboveSma10Count = maybeInteger(row?.above_sma_10_count) || 0;
+  const aboveSma20Count = maybeInteger(row?.above_sma_20_count) || 0;
+  const aboveSma50Count = maybeInteger(row?.above_sma_50_count) || 0;
+  const aboveSma200Count = maybeInteger(row?.above_sma_200_count) || 0;
+  const up4Pct = safePct(up4PctCount, universeCount);
+  const down4Pct = safePct(down4PctCount, universeCount);
+
+  return {
+    tradeDate: formatDateKey(row?.trade_date),
+    universeCount,
+    moveEligibleCount,
+    up4PctCount,
+    down4PctCount,
+    aboveSma10Count,
+    aboveSma20Count,
+    aboveSma50Count,
+    aboveSma200Count,
+    up4Pct,
+    down4Pct,
+    adRatio: Number.isFinite(up4Pct) && Number.isFinite(down4Pct) && down4Pct > 0 ? (up4Pct / down4Pct) * 100 : null,
+    aboveSma10Pct: safePct(aboveSma10Count, universeCount),
+    aboveSma20Pct: safePct(aboveSma20Count, universeCount),
+    aboveSma50Pct: safePct(aboveSma50Count, universeCount),
+    aboveSma200Pct: safePct(aboveSma200Count, universeCount)
+  };
+};
+
+const buildMarketBreadthSummary = (row = {}) => ({
+  universeCount: row.universeCount || 0,
+  moveEligibleCount: row.moveEligibleCount || 0,
+  up4PctCount: row.up4PctCount || 0,
+  down4PctCount: row.down4PctCount || 0,
+  aboveSma10Count: row.aboveSma10Count || 0,
+  aboveSma20Count: row.aboveSma20Count || 0,
+  aboveSma50Count: row.aboveSma50Count || 0,
+  aboveSma200Count: row.aboveSma200Count || 0,
+  up4Pct: row.up4Pct ?? null,
+  down4Pct: row.down4Pct ?? null,
+  adRatio: row.adRatio ?? null,
+  aboveSma10Pct: row.aboveSma10Pct ?? null,
+  aboveSma20Pct: row.aboveSma20Pct ?? null,
+  aboveSma50Pct: row.aboveSma50Pct ?? null,
+  aboveSma200Pct: row.aboveSma200Pct ?? null
+});
+
+const syncStoredMarketBreadthSnapshots = async ({ upToTradeDate = '' } = {}) => {
+  await ensureNseUniverseTables();
+
+  const params = [];
+  const whereClauses = [];
+
+  if (upToTradeDate) {
+    const normalizedTradeDate = parseDateParam(upToTradeDate, 'upToTradeDate');
+    params.push(normalizedTradeDate);
+    whereClauses.push(`bars.trade_date <= $${params.length}::date`);
+  }
+
+  const missingDatesResult = await queryScreenerPostgres(
+    `
+      WITH missing_dates AS (
+        SELECT DISTINCT bars.trade_date
+        FROM nse_universe_daily_bars bars
+        LEFT JOIN nse_universe_market_breadth_daily breadth
+          ON breadth.trade_date = bars.trade_date
+        WHERE breadth.trade_date IS NULL
+        ${whereClauses.length ? `AND ${whereClauses.join(' AND ')}` : ''}
+      )
+      SELECT
+        ARRAY_AGG(trade_date ORDER BY trade_date ASC) AS trade_dates,
+        COUNT(*)::INT AS missing_count
+      FROM missing_dates
+      WHERE trade_date IS NOT NULL
+    `,
+    params
+  );
+
+  const missingCount = maybeInteger(missingDatesResult.rows[0]?.missing_count) || 0;
+  const tradeDates = Array.isArray(missingDatesResult.rows[0]?.trade_dates) ? missingDatesResult.rows[0].trade_dates : [];
+
+  if (!missingCount || !tradeDates.length) {
+    return { insertedDates: 0 };
+  }
+
+  await queryScreenerPostgres(
+    `
+      WITH target_dates AS (
+        SELECT DISTINCT unnest($1::date[]) AS trade_date
+      ),
+      ordered_bars AS (
+        SELECT
+          bars.symbol,
+          bars.trade_date,
+          bars.close,
+          bars.sma_10,
+          bars.sma_20,
+          bars.sma_50,
+          bars.sma_200,
+          LAG(bars.close) OVER (PARTITION BY bars.symbol ORDER BY bars.trade_date) AS previous_close
+        FROM nse_universe_daily_bars bars
+        WHERE bars.trade_date <= (SELECT MAX(trade_date) FROM target_dates)
+      ),
+      current_bars AS (
+        SELECT *
+        FROM ordered_bars
+        WHERE trade_date IN (SELECT trade_date FROM target_dates)
+      ),
+      aggregated AS (
+        SELECT
+          trade_date,
+          COUNT(*)::INT AS universe_count,
+          COUNT(*) FILTER (
+            WHERE close IS NOT NULL AND previous_close IS NOT NULL AND previous_close > 0
+          )::INT AS move_eligible_count,
+          COUNT(*) FILTER (
+            WHERE close IS NOT NULL AND previous_close IS NOT NULL AND previous_close > 0
+              AND ((close / previous_close) - 1) * 100 >= 4
+          )::INT AS up_4_pct_count,
+          COUNT(*) FILTER (
+            WHERE close IS NOT NULL AND previous_close IS NOT NULL AND previous_close > 0
+              AND ((close / previous_close) - 1) * 100 <= -4
+          )::INT AS down_4_pct_count,
+          COUNT(*) FILTER (WHERE close IS NOT NULL AND sma_10 IS NOT NULL AND close > sma_10)::INT AS above_sma_10_count,
+          COUNT(*) FILTER (WHERE close IS NOT NULL AND sma_20 IS NOT NULL AND close > sma_20)::INT AS above_sma_20_count,
+          COUNT(*) FILTER (WHERE close IS NOT NULL AND sma_50 IS NOT NULL AND close > sma_50)::INT AS above_sma_50_count,
+          COUNT(*) FILTER (WHERE close IS NOT NULL AND sma_200 IS NOT NULL AND close > sma_200)::INT AS above_sma_200_count
+        FROM current_bars
+        GROUP BY trade_date
+      )
+      INSERT INTO nse_universe_market_breadth_daily (
+        trade_date,
+        universe_count,
+        move_eligible_count,
+        up_4_pct_count,
+        down_4_pct_count,
+        above_sma_10_count,
+        above_sma_20_count,
+        above_sma_50_count,
+        above_sma_200_count,
+        updated_at
+      )
+      SELECT
+        trade_date,
+        universe_count,
+        move_eligible_count,
+        up_4_pct_count,
+        down_4_pct_count,
+        above_sma_10_count,
+        above_sma_20_count,
+        above_sma_50_count,
+        above_sma_200_count,
+        NOW()
+      FROM aggregated
+      ON CONFLICT (trade_date) DO UPDATE SET
+        universe_count = EXCLUDED.universe_count,
+        move_eligible_count = EXCLUDED.move_eligible_count,
+        up_4_pct_count = EXCLUDED.up_4_pct_count,
+        down_4_pct_count = EXCLUDED.down_4_pct_count,
+        above_sma_10_count = EXCLUDED.above_sma_10_count,
+        above_sma_20_count = EXCLUDED.above_sma_20_count,
+        above_sma_50_count = EXCLUDED.above_sma_50_count,
+        above_sma_200_count = EXCLUDED.above_sma_200_count,
+        updated_at = NOW()
+    `,
+    [tradeDates]
+  );
+
+  return { insertedDates: tradeDates.length };
+};
+
+const createEmptyMarketBreadthPayload = (requestedDate = null, limit = DEFAULT_MARKET_BREADTH_PAGE_SIZE) => ({
+  requestedDate: requestedDate || null,
+  effectiveDate: null,
+  latestAvailableDate: null,
+  earliestAvailableDate: null,
+  limit,
+  hasMore: false,
+  nextBeforeDate: null,
+  summary: {
+    universeCount: 0,
+    moveEligibleCount: 0,
+    up4PctCount: 0,
+    down4PctCount: 0,
+    aboveSma10Count: 0,
+    aboveSma20Count: 0,
+    aboveSma50Count: 0,
+    aboveSma200Count: 0,
+    up4Pct: null,
+    down4Pct: null,
+    adRatio: null,
+    aboveSma10Pct: null,
+    aboveSma20Pct: null,
+    aboveSma50Pct: null,
+    aboveSma200Pct: null
+  },
+  rows: []
+});
+
+export const getNseUniverseMarketBreadth = async ({
+  selectedDate = '',
+  beforeDate = '',
+  limit = DEFAULT_MARKET_BREADTH_PAGE_SIZE
+} = {}) => {
+  await ensureNseUniverseSymbolsSeeded();
+
+  const { requestedDate, effectiveDate } = await resolveMarketBreadthEffectiveDate(selectedDate);
+
+  const safeLimit = Math.max(1, Math.min(MAX_MARKET_BREADTH_PAGE_SIZE, Number(limit) || DEFAULT_MARKET_BREADTH_PAGE_SIZE));
+  const normalizedBeforeDate = beforeDate ? parseDateParam(beforeDate, 'beforeDate') : '';
+
+  if (!effectiveDate) {
+    return createEmptyMarketBreadthPayload(requestedDate, safeLimit);
+  }
+
+  const latestStoredRangeResult = await queryScreenerPostgres(
+    `
+      SELECT
+        MIN(trade_date) AS earliest_trade_date,
+        MAX(trade_date) AS latest_trade_date
+      FROM nse_universe_market_breadth_daily
+    `,
+    []
+  );
+
+  const rangeRow = latestStoredRangeResult.rows[0] || {};
+  const earliestAvailableDate = formatDateKey(rangeRow.earliest_trade_date) || null;
+  const latestAvailableDate = formatDateKey(rangeRow.latest_trade_date) || null;
+  const queryParams = [effectiveDate];
+  const beforeClause = normalizedBeforeDate
+    ? (() => {
+        queryParams.push(normalizedBeforeDate);
+        return `AND trade_date < $${queryParams.length}::date`;
+      })()
+    : '';
+  queryParams.push(safeLimit + 1);
+
+  const rowsResult = await queryScreenerPostgres(
+    `
+      SELECT
+        trade_date,
+        universe_count,
+        move_eligible_count,
+        up_4_pct_count,
+        down_4_pct_count,
+        above_sma_10_count,
+        above_sma_20_count,
+        above_sma_50_count,
+        above_sma_200_count
+      FROM nse_universe_market_breadth_daily
+      WHERE trade_date <= $1::date
+      ${beforeClause}
+      ORDER BY trade_date DESC
+      LIMIT $${queryParams.length}
+    `,
+    queryParams
+  );
+
+  const normalizedRows = rowsResult.rows.map((row) => normalizeMarketBreadthRow(row));
+  const hasMore = normalizedRows.length > safeLimit;
+  const rows = hasMore ? normalizedRows.slice(0, safeLimit) : normalizedRows;
+  const nextBeforeDate = hasMore ? rows[rows.length - 1]?.tradeDate || null : null;
+
+  const summaryResult = await queryScreenerPostgres(
+    `
+      SELECT
+        trade_date,
+        universe_count,
+        move_eligible_count,
+        up_4_pct_count,
+        down_4_pct_count,
+        above_sma_10_count,
+        above_sma_20_count,
+        above_sma_50_count,
+        above_sma_200_count
+      FROM nse_universe_market_breadth_daily
+      WHERE trade_date = $1::date
+      LIMIT 1
+    `,
+    [effectiveDate]
+  );
+  const summaryRow = normalizeMarketBreadthRow(summaryResult.rows[0] || {});
+
+  return {
+    requestedDate: requestedDate || effectiveDate,
+    effectiveDate,
+    latestAvailableDate,
+    earliestAvailableDate,
+    limit: safeLimit,
+    hasMore,
+    nextBeforeDate,
+    summary: buildMarketBreadthSummary(summaryRow),
+    rows
   };
 };
 
@@ -652,22 +1054,7 @@ export const getNseUniverseSnapshot = async ({
   const safePage = Math.max(1, Number(page) || 1);
   const safePageSize = Math.min(PAGE_SIZE_MAX, Math.max(PAGE_SIZE_MIN, Number(pageSize) || DEFAULT_PAGE_SIZE));
   const offset = (safePage - 1) * safePageSize;
-  const requestedDate = selectedDate ? parseDateParam(selectedDate, 'selectedDate') : '';
-  const effectiveDateResult = requestedDate
-    ? await queryScreenerPostgres(
-        `
-          SELECT MAX(trade_date) AS effective_date
-          FROM nse_universe_daily_bars
-          WHERE trade_date <= $1::date
-        `,
-        [requestedDate]
-      )
-    : await queryScreenerPostgres(`
-        SELECT MAX(trade_date) AS effective_date
-        FROM nse_universe_daily_bars
-      `);
-
-  const effectiveDate = formatDateKey(effectiveDateResult.rows[0]?.effective_date);
+  const { requestedDate, effectiveDate } = await resolveNseUniverseEffectiveDate(selectedDate);
 
   const status = await getNseUniverseSyncStatus();
 

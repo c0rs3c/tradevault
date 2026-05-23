@@ -214,6 +214,12 @@ const Layout = ({ children }) => {
       exact: true,
       description: 'Screen stocks with earnings and shareholding filters'
     },
+    {
+      href: '/deep-dive/market-breadth',
+      label: 'Market Breadth Deep Dive',
+      exact: true,
+      description: 'Whole-universe breadth and SMA participation'
+    },
     { href: '/deep-dive/rs', label: 'RS Deep Dive', exact: true, description: 'Relative-strength scanner and ranking' }
   ];
   const settingsMenuItems = [
@@ -365,6 +371,7 @@ const Layout = ({ children }) => {
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Deep Dive</p>
                 <NavItem href="/deep-dive" label="Overview" exact />
                 <NavItem href="/deep-dive/earnings-shareholding" label="Earnings and Shareholding Deep Dive" exact />
+                <NavItem href="/deep-dive/market-breadth" label="Market Breadth Deep Dive" exact />
                 <NavItem href="/deep-dive/rs" label="RS Deep Dive" exact />
               </div>
               <NavItem href="/news" label="News" exact />

@@ -180,3 +180,15 @@ export const triggerNseUniverseSync = async (payload) => {
   const { data } = await http.post('/deep-dive/nse-universe', payload || {});
   return data;
 };
+
+export const fetchMarketBreadthDeepDive = async ({ selectedDate = '', beforeDate = '', limit = 20 } = {}) => {
+  const { data } = await http.get('/deep-dive/market-breadth', {
+    params: {
+      selectedDate,
+      beforeDate,
+      limit,
+      _ts: Date.now()
+    }
+  });
+  return data;
+};

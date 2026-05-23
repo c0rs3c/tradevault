@@ -1529,7 +1529,17 @@ const DashboardPage = () => {
                   strokeWidth={2}
                   dot={({ cx, cy, index }) => {
                     if (index !== selectedEquityIndex || cx === undefined || cy === undefined) return null;
-                    return <circle cx={cx} cy={cy} r={6} fill="#ffffff" stroke="#10b981" strokeWidth={2} />;
+                    return (
+                      <circle
+                        key={`selected-equity-dot-${index}`}
+                        cx={cx}
+                        cy={cy}
+                        r={6}
+                        fill="#ffffff"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                      />
+                    );
                   }}
                 />
               </LineChart>

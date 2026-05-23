@@ -15,6 +15,11 @@ const tools = [
       'Browse PostgreSQL-backed daily OHLCV history, SMAs, rupee volume, and market-cap snapshots for symbols from nse-universe.csv.'
   },
   {
+    href: '/deep-dive/market-breadth',
+    title: 'Market Breadth Deep Dive',
+    description: 'Track whole-universe 4% movers and participation above 10/20/50/200 SMA.'
+  },
+  {
     href: '/deep-dive/rs',
     title: 'RS Deep Dive',
     description: 'Run relative-strength deep dives against Nifty 50.'
@@ -33,7 +38,7 @@ export default function DeepDivePage() {
         </p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {tools.map((tool) => (
           <Link
             key={tool.href}

@@ -13,6 +13,10 @@ const DEFAULT_PG_USER = String(process.env.SCREENER_PG_USER || 'praween').trim()
 const DEFAULT_PG_PASSWORD = String(process.env.SCREENER_PG_PASSWORD || '').trim();
 const SCREENER_PG_DSN = String(process.env.SCREENER_PG_DSN || process.env.DATABASE_URL || '').trim();
 const PSQL_BIN = String(process.env.PSQL_BIN || 'psql').trim();
+const PG_POOL_MAX = Math.max(1, Number(process.env.SCREENER_PG_POOL_MAX || 4));
+const PG_POOL_IDLE_TIMEOUT_MS = Math.max(1000, Number(process.env.SCREENER_PG_IDLE_TIMEOUT_MS || 5000));
+const PG_POOL_CONNECTION_TIMEOUT_MS = Math.max(1000, Number(process.env.SCREENER_PG_CONNECTION_TIMEOUT_MS || 5000));
+const PG_POOL_MAX_LIFETIME_SECONDS = Math.max(30, Number(process.env.SCREENER_PG_MAX_LIFETIME_SECONDS || 60));
 
 const parseConnectionFromDsn = (dsn) => {
   if (!dsn) return null;
@@ -50,14 +54,26 @@ if (!cachedPool) {
   cachedPool = global.screenerPostgresPool = new Pool(
     SCREENER_PG_DSN
       ? {
-          connectionString: SCREENER_PG_DSN
+          connectionString: SCREENER_PG_DSN,
+          application_name: 'trade-journal',
+          max: PG_POOL_MAX,
+          idleTimeoutMillis: PG_POOL_IDLE_TIMEOUT_MS,
+          connectionTimeoutMillis: PG_POOL_CONNECTION_TIMEOUT_MS,
+          maxLifetimeSeconds: PG_POOL_MAX_LIFETIME_SECONDS,
+          allowExitOnIdle: true
         }
       : {
           host: DEFAULT_PG_PASSWORD ? DEFAULT_PG_HOST : SOCKET_PG_HOST,
           port: Number.isFinite(DEFAULT_PG_PORT) ? DEFAULT_PG_PORT : 5432,
           database: DEFAULT_PG_DB,
           user: DEFAULT_PG_USER,
-          password: DEFAULT_PG_PASSWORD
+          password: DEFAULT_PG_PASSWORD,
+          application_name: 'trade-journal',
+          max: PG_POOL_MAX,
+          idleTimeoutMillis: PG_POOL_IDLE_TIMEOUT_MS,
+          connectionTimeoutMillis: PG_POOL_CONNECTION_TIMEOUT_MS,
+          maxLifetimeSeconds: PG_POOL_MAX_LIFETIME_SECONDS,
+          allowExitOnIdle: true
         }
   );
 }
