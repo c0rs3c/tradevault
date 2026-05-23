@@ -117,6 +117,13 @@ const mergeRowsByTradeDate = (currentRows, nextRows) => {
   return [...merged.values()].sort((left, right) => String(right.tradeDate).localeCompare(String(left.tradeDate)));
 };
 
+const DATABASE_UNAVAILABLE_TEXT = "Can't connect to database";
+
+const resolveDatabaseUnavailableMessage = (message = '') =>
+  String(message || '').toLowerCase().includes("can't connect to database")
+    ? String(message)
+    : '';
+
 export default function MarketBreadthDeepDivePage() {
   const [selectedDateInput, setSelectedDateInput] = useState('');
   const [querySelectedDate, setQuerySelectedDate] = useState('');
@@ -166,6 +173,21 @@ export default function MarketBreadthDeepDivePage() {
   const effectiveDate = payload?.effectiveDate || '';
   const earliestAvailableDate = payload?.earliestAvailableDate || '';
   const hasMore = Boolean(payload?.hasMore);
+  const databaseUnavailableMessage = resolveDatabaseUnavailableMessage(error);
+
+  if (databaseUnavailableMessage) {
+    return (
+      <section className="surface-card mx-auto max-w-2xl p-10 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl text-amber-700 dark:bg-amber-950/70 dark:text-amber-300">
+          !
+        </div>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {DATABASE_UNAVAILABLE_TEXT}
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{databaseUnavailableMessage}</p>
+      </section>
+    );
+  }
 
   const handleShowMore = async () => {
     const nextCursor = String(payload?.nextBeforeDate || '');

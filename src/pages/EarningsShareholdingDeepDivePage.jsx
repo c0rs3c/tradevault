@@ -351,6 +351,11 @@ const ScreenerTable = ({ title, subtitle = '', columns, rows, showMiniChart = fa
   </section>
 );
 
+const DATABASE_UNAVAILABLE_TEXT = "Can't connect to database";
+
+const resolveDatabaseUnavailableMessage = (...messages) =>
+  messages.find((message) => String(message || '').toLowerCase().includes("can't connect to database")) || '';
+
 export default function EarningsShareholdingDeepDivePage({ mode = 'tools' }) {
   const isScreenerMode = mode === 'screener';
   const router = useRouter();
@@ -392,6 +397,12 @@ export default function EarningsShareholdingDeepDivePage({ mode = 'tools' }) {
   const [summarySwingBySymbol, setSummarySwingBySymbol] = useState({});
   const showSearchSection = !isScreenerMode;
   const shouldShowSummaryTable = isScreenerMode;
+  const databaseUnavailableMessage = resolveDatabaseUnavailableMessage(
+    companyLoadError,
+    summaryLoadError,
+    error,
+    quarterSelectionError
+  );
   const orderedScreenerQuarterEnds = useMemo(
     () => [...selectedScreenerQuarterEnds].sort((left, right) => String(left).localeCompare(String(right))),
     [selectedScreenerQuarterEnds]
@@ -1122,6 +1133,20 @@ export default function EarningsShareholdingDeepDivePage({ mode = 'tools' }) {
     setHighlightedSuggestionIndex(-1);
     setSuggestionsHidden(false);
   };
+
+  if (databaseUnavailableMessage) {
+    return (
+      <section className="surface-card mx-auto max-w-2xl p-10 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl text-amber-700 dark:bg-amber-950/70 dark:text-amber-300">
+          !
+        </div>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          {DATABASE_UNAVAILABLE_TEXT}
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{databaseUnavailableMessage}</p>
+      </section>
+    );
+  }
 
   return (
     <div className="space-y-6">

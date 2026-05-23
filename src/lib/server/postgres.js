@@ -48,6 +48,25 @@ const createError = (message, statusCode = 500) => {
   return error;
 };
 
+const isDatabaseConnectionError = (error) => {
+  const message = String(error?.message || '').toLowerCase();
+  return [
+    'connect econrefused',
+    'connection terminated unexpectedly',
+    'the server closed the connection unexpectedly',
+    'could not connect to server',
+    'no such file or directory',
+    'timeout expired',
+    'failed to query postgresql via psql fallback'
+  ].some((fragment) => message.includes(fragment));
+};
+
+const createDatabaseConnectionError = () =>
+  createError(
+    "Can't connect to database. This page is available only when the local PostgreSQL database is running.",
+    503
+  );
+
 let cachedPool = global.screenerPostgresPool;
 
 if (!cachedPool) {
@@ -127,6 +146,9 @@ const runPsqlFallback = async (text, params) => {
     stdout = result.stdout;
   } catch (error) {
     const stderr = String(error?.stderr || '').trim();
+    if (isDatabaseConnectionError({ message: stderr || error?.message })) {
+      throw createDatabaseConnectionError();
+    }
     const fallbackMessage = stderr || 'Failed to query PostgreSQL via psql fallback';
     throw createError(fallbackMessage, 500);
   }
@@ -148,6 +170,9 @@ export const queryScreenerPostgres = async (text, params = []) => {
     return await cachedPool.query(text, params);
   } catch (error) {
     const message = String(error?.message || '');
+    if (isDatabaseConnectionError(error)) {
+      throw createDatabaseConnectionError();
+    }
     if (
       message.includes('client password must be a string') ||
       message.includes('password authentication failed') ||
