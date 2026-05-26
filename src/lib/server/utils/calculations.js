@@ -355,6 +355,20 @@ const calcOpenCapitalAtRisk = (openLots, stopLossAdjustments, side = 'LONG') => 
   }, 0);
 };
 
+const calcInitialCapitalAtRisk = (openLots, side = 'LONG') =>
+  openLots.reduce((acc, lot) => {
+    const qty = toNumber(lot.qty);
+    if (qty <= EPSILON_QTY) return acc;
+    return (
+      acc +
+      calcDirectionalRiskPerUnit({
+        side,
+        entryPrice: toNumber(lot.entryPrice),
+        stopLoss: toNumber(lot.stopLoss)
+      }) * qty
+    );
+  }, 0);
+
 const calcUnrealizedPnL = ({ openQty, lastPrice, avgEntryPrice, side }) => {
   if (!openQty || lastPrice === null || lastPrice === undefined || lastPrice === '') return null;
   const marketPrice = toNumber(lastPrice);
@@ -378,6 +392,10 @@ export const calcTradeMetrics = (trade, totalCapital = 0) => {
   const openQty = round(Math.max(fifo.openQty, 0), 6);
   const avgEntryPrice =
     openQty > 0 ? fifo.avgOpenEntryPrice : calcWeightedAvgEntryPrice(entries);
+  const initialCapitalAtRisk =
+    openQty > EPSILON_QTY
+      ? calcInitialCapitalAtRisk(fifo.openLots, trade.side)
+      : 0;
   const capitalAtRisk =
     openQty > EPSILON_QTY
       ? calcOpenCapitalAtRisk(fifo.openLots, trade.stopLossAdjustments, trade.side)
@@ -402,6 +420,7 @@ export const calcTradeMetrics = (trade, totalCapital = 0) => {
     avgEntryPrice: round(avgEntryPrice, 4),
     openQty,
     exitedQty: round(exitedQty, 6),
+    initialCapitalAtRisk: round(initialCapitalAtRisk, 2),
     capitalAtRisk: round(capitalAtRisk, 2),
     riskPercent: round(riskPercent, 2),
     realizedPnL: round(netRealizedPnL, 2),

@@ -208,27 +208,6 @@ const OpenTradeActionButtons = ({ tradeId, compact = false }) => {
   return (
     <div className="flex items-center gap-1 whitespace-nowrap">
       <Link
-        href={`/trades/${tradeId}`}
-        className={`${baseButtonClass} border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800`}
-        aria-label="Details"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.9"
-          className={iconClass}
-          aria-hidden="true"
-        >
-          <path d="M9 9h6v6" strokeLinecap="round" />
-          <path d="m15 9-6 6" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M5 12v7h7" strokeLinecap="round" />
-          <path d="M12 5h7v7" strokeLinecap="round" />
-        </svg>
-        <span className={tooltipClass}>Details</span>
-      </Link>
-      <Link
         href={`/trades/${tradeId}?openModal=pyramid&source=dashboard`}
         className={`${baseButtonClass} border-emerald-500/70 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/60 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50`}
         aria-label="Pyramid"
@@ -267,6 +246,60 @@ const OpenTradeActionButtons = ({ tradeId, compact = false }) => {
         </svg>
         <span className={tooltipClass}>Exit</span>
       </Link>
+    </div>
+  );
+};
+
+const DashboardTradeBreakdown = ({ trade }) => {
+  if (!trade) return null;
+
+  return (
+    <div className="space-y-3 rounded border border-slate-200 bg-white/80 px-3 py-3 text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="font-semibold text-slate-900 dark:text-slate-100">{trade.symbol}</p>
+          <p className="text-xs">
+            {formatDisplayDate(trade.entryDate)} | Avg Entry: {Number(trade.metrics?.avgEntryPrice || 0).toFixed(2)} |
+            {' '}Open Qty: {trade.metrics?.openQty}
+          </p>
+        </div>
+        <OpenTradeActionButtons tradeId={trade._id} compact />
+      </div>
+
+      <div className="rounded border border-slate-200 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/70">
+        <p className="font-medium text-slate-900 dark:text-slate-100">Base Entry</p>
+        <p className="mt-1 text-xs">
+          Date: {formatDisplayDate(trade.entryDate)} | Price: {trade.entryPrice} | Qty: {trade.entryQty} | Stop Loss:{' '}
+          {trade.stopLoss}
+        </p>
+      </div>
+
+      {!!trade.pyramids?.length && (
+        <div className="rounded border border-amber-200 bg-amber-50/70 px-3 py-2 dark:border-amber-900/60 dark:bg-amber-950/20">
+          <p className="font-medium text-slate-900 dark:text-slate-100">Pyramids</p>
+          <div className="mt-1 space-y-1 text-xs">
+            {trade.pyramids.map((pyramid) => (
+              <p key={pyramid._id}>
+                {formatDisplayDate(pyramid.date)} | Price: {pyramid.price} | Qty: {pyramid.qty} | Stop Loss:{' '}
+                {pyramid.stopLoss}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!!trade.exits?.length && (
+        <div className="rounded border border-sky-200 bg-sky-50/70 px-3 py-2 dark:border-sky-900/60 dark:bg-sky-950/20">
+          <p className="font-medium text-slate-900 dark:text-slate-100">Exits</p>
+          <div className="mt-1 space-y-1 text-xs">
+            {trade.exits.map((exit) => (
+              <p key={exit._id}>
+                {formatDisplayDate(exit.exitDate)} | Price: {exit.exitPrice} | Qty: {exit.exitQty}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -834,6 +867,7 @@ const DashboardPage = () => {
           totalEntryQty: 0,
           openQty: 0,
           avgEntryValue: 0,
+          initialCapitalAtRisk: 0,
           capitalAtRisk: 0,
           realizedPnL: 0,
           unrealizedPnL: 0,
@@ -852,6 +886,7 @@ const DashboardPage = () => {
       group.totalEntryQty += totalEntryQty;
       group.openQty += openQty;
       group.avgEntryValue += Number(trade.metrics.avgEntryPrice || 0) * openQty;
+      group.initialCapitalAtRisk += Number(trade.metrics.initialCapitalAtRisk || 0);
       group.capitalAtRisk += Number(trade.metrics.capitalAtRisk || 0);
       group.realizedPnL += Number(trade.metrics.realizedPnL || 0);
       const livePrice = Number(trade.lastPrice);
@@ -1210,7 +1245,7 @@ const DashboardPage = () => {
             </thead>
             <tbody>
               {sortedGroupedOpenTrades.map((group) => {
-                const canExpand = group.side === 'LONG' && group.trades.length > 1;
+                const canExpand = group.trades.length > 0;
                 const isHidden = Boolean(hiddenGroups[group.id]);
                 const isExcluded = excludedOpenPositionIds.includes(group.id);
                 const primaryTrade = group.trades[0] || null;
@@ -1229,8 +1264,8 @@ const DashboardPage = () => {
                                 ? 'border-violet-400/80 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-500/60 dark:bg-violet-950/30 dark:text-violet-200 dark:hover:bg-violet-900/50'
                                 : 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-600'
                             }`}
-                            aria-label={canExpand ? 'Show buy breakup' : 'Single entry'}
-                            title={canExpand ? 'Show buy breakup' : 'Single entry'}
+                            aria-label={canExpand ? 'View entries/exits' : 'No entries'}
+                            title={canExpand ? 'View entries/exits' : 'No entries'}
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -1363,7 +1398,9 @@ const DashboardPage = () => {
                         ) : (
                           <span className={pnlTextClass(group.unrealizedPnL)}>
                             {money(group.unrealizedPnL)}{' '}
-                            {group.capitalAtRisk > 0 ? `(${formatSignedR(group.unrealizedPnL / group.capitalAtRisk)})` : ''}
+                            {group.initialCapitalAtRisk > 0
+                              ? `(${formatSignedR(group.unrealizedPnL / group.initialCapitalAtRisk)})`
+                              : ''}
                           </span>
                         )}
                       </td>
@@ -1430,25 +1467,7 @@ const DashboardPage = () => {
                               group.trades
                                 .slice()
                                 .sort((a, b) => new Date(a.entryDate) - new Date(b.entryDate))
-                                .map((trade) => (
-                                  <div
-                                    key={trade._id}
-                                    className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-white/80 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300"
-                                  >
-                                    <p>
-                                      {formatDisplayDate(trade.entryDate)} | Entry: {trade.entryPrice} | Qty: {trade.entryQty} | Open Qty: {trade.metrics.openQty}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                      <OpenTradeActionButtons tradeId={trade._id} compact />
-                                      <Link
-                                        href={`/trades/${trade._id}`}
-                                        className="rounded border border-slate-300 px-2 py-1 text-[11px] text-slate-700 transition-colors duration-200 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                                      >
-                                        Details
-                                      </Link>
-                                    </div>
-                                  </div>
-                                ))
+                                .map((trade) => <DashboardTradeBreakdown key={trade._id} trade={trade} />)
                             )}
                           </div>
                         </td>
