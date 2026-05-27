@@ -1488,7 +1488,7 @@ const DashboardPage = () => {
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
         <section className="surface-card p-4">
           <h2 className="text-lg font-semibold">Equity Curve</h2>
           <div
@@ -1513,18 +1513,6 @@ const DashboardPage = () => {
               >
                 <CartesianGrid stroke={chartGrid} strokeDasharray="3 3" />
                 <XAxis
-                  xAxisId="minor-dates"
-                  type="number"
-                  scale="time"
-                  domain={equityCurveDomain}
-                  dataKey="dateTs"
-                  ticks={equityCurveChartData.map((point) => point.dateTs)}
-                  tick={false}
-                  axisLine={false}
-                  tickLine={{ stroke: chartAxis, strokeOpacity: 0.45 }}
-                  height={10}
-                />
-                <XAxis
                   type="number"
                   scale="time"
                   domain={equityCurveDomain}
@@ -1546,20 +1534,7 @@ const DashboardPage = () => {
                   dataKey="equity"
                   stroke="#34d399"
                   strokeWidth={2}
-                  dot={({ cx, cy, index }) => {
-                    if (index !== selectedEquityIndex || cx === undefined || cy === undefined) return null;
-                    return (
-                      <circle
-                        key={`selected-equity-dot-${index}`}
-                        cx={cx}
-                        cy={cy}
-                        r={6}
-                        fill="#ffffff"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                      />
-                    );
-                  }}
+                  dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>
