@@ -259,8 +259,8 @@ const DashboardTradeBreakdown = ({ trade }) => {
         <div>
           <p className="font-semibold text-slate-900 dark:text-slate-100">{trade.symbol}</p>
           <p className="text-xs">
-            {formatDisplayDate(trade.entryDate)} | Avg Entry: {Number(trade.metrics?.avgEntryPrice || 0).toFixed(2)} |
-            {' '}Open Qty: {trade.metrics?.openQty}
+            {formatDisplayDate(trade.entryDate)} | Avg Entry: {Number(trade.metrics?.avgEntryPrice || 0).toFixed(2)} | Open Qty:{' '}
+            {trade.metrics?.openQty}
           </p>
         </div>
         <OpenTradeActionButtons tradeId={trade._id} compact />
@@ -280,8 +280,7 @@ const DashboardTradeBreakdown = ({ trade }) => {
           <div className="mt-1 space-y-1 text-xs">
             {trade.pyramids.map((pyramid) => (
               <p key={pyramid._id}>
-                {formatDisplayDate(pyramid.date)} | Price: {pyramid.price} | Qty: {pyramid.qty} | Stop Loss:{' '}
-                {pyramid.stopLoss}
+                {formatDisplayDate(pyramid.date)} | Price: {pyramid.price} | Qty: {pyramid.qty} | Stop Loss: {pyramid.stopLoss}
               </p>
             ))}
           </div>
@@ -1851,6 +1850,7 @@ const DashboardPage = () => {
           </section>
         </div>
       </section>
+
       <TradeChartOverlay
         open={Boolean(chartTrade)}
         trade={chartTrade}
